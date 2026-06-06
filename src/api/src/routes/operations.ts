@@ -6,33 +6,51 @@ const router = Router();
 
 /**
  * GET /operations
- * Query checkpoint operations by clone, type, and status
+ * Query checkpoint operations by clone or checkpoint, type, and status
  * Query parameters:
- *   - cloneId (required): Filter by clone ID
+ *   - cloneId (optional): Filter by clone ID
+ *   - checkpointId (optional): Filter by checkpoint ID
  *   - operationType (optional): 'create', 'restore', or 'delete'
  *   - status (optional): 'pending', 'in-progress', 'completed', 'failed', 'rolled-back'
  *   - limit (optional): Max results, default 100
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { cloneId, operationType, status, limit = 100 } = req.query;
+    const { cloneId, checkpointId, operationType, status, limit = 100 } = req.query;
 
-    if (!cloneId) {
+    if (!cloneId && !checkpointId) {
       return res.status(400).json({
         success: false,
-        message: 'cloneId is required'
+        message: 'Either cloneId or checkpointId is required'
       });
     }
 
     const operationRepo = getCheckpointOperationRepository();
-    const operations = await operationRepo.listOperations(
-      cloneId as string,
-      operationType as string | undefined,
-      status as string | undefined,
-      parseInt(limit as string) || 100
-    );
 
-    logger.info(`Retrieved ${operations.length} checkpoint operations for clone ${cloneId}`);
+    // Query by checkpoint if checkpointId provided, otherwise by cloneId
+    let operations: any[] = [];
+
+    if (checkpointId) {
+      // Query all operations and filter by checkpoint
+      const allOps = await operationRepo.listOperations(
+        '',
+        operationType as string | undefined,
+        status as string | undefined,
+        parseInt(limit as string) || 100
+      );
+      operations = allOps.filter((op: any) =>
+        (op.checkpointId || op.checkpoint_id) === checkpointId
+      );
+      logger.info(`Retrieved ${operations.length} checkpoint operations for checkpoint ${checkpointId}`);
+    } else {
+      operations = await operationRepo.listOperations(
+        cloneId as string,
+        operationType as string | undefined,
+        status as string | undefined,
+        parseInt(limit as string) || 100
+      );
+      logger.info(`Retrieved ${operations.length} checkpoint operations for clone ${cloneId}`);
+    }
 
     return res.json({
       success: true,
