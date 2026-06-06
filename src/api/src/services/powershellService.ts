@@ -17,9 +17,10 @@ export class PowerShellService {
       const psCommand = this.buildPowerShellCommand(cmdlet, params);
       logger.debug(`Executing PowerShell command: ${cmdlet}`);
 
-      const { stdout, stderr } = await execAsync(`powershell -NoProfile -Command "${psCommand}"`, {
+      const fullCommand = `powershell -NoProfile -Command "${psCommand.replace(/"/g, '\\"')}"`;
+      const { stdout, stderr } = await execAsync(fullCommand, {
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-        shell: 'powershell.exe'
+        shell: 'cmd.exe'
       });
 
       if (stderr) {
@@ -59,20 +60,19 @@ export class PowerShellService {
   }
 
   private buildPowerShellCommand(cmdlet: string, params?: Record<string, any>): string {
-    let cmd = `$WarningPreference='SilentlyContinue'; `;
-    cmd += `$VerbosePreference='SilentlyContinue'; `;
-    cmd += `Import-Module '${this.flashdbModulePath}' -WarningAction SilentlyContinue; `;
+    let cmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; `;
+    cmd += `Import-Module '${this.flashdbModulePath}' -WarningAction SilentlyContinue -ErrorAction Stop; `;
     cmd += cmdlet;
 
     if (params && Object.keys(params).length > 0) {
       const paramStrings = Object.entries(params).map(([key, value]) => {
-        const escapedValue = String(value).replace(/'/g, "''").replace(/"/g, '\\"');
+        const escapedValue = String(value).replace(/'/g, "''");
         return `-${key} '${escapedValue}'`;
       });
       cmd += ` ${paramStrings.join(' ')}`;
     }
 
-    cmd += ' | ConvertTo-Json -Depth 10 -ErrorAction Stop';
+    cmd += ' 2>&1 | ConvertTo-Json -Depth 10 -ErrorAction Stop';
     return cmd;
   }
 }
