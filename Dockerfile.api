@@ -1,7 +1,7 @@
 # Multi-stage build for FlashDB API
 FROM node:18-alpine AS builder
 
-WORKDIR /app/flashdb
+WORKDIR /app
 
 # Copy package files
 COPY src/api/package*.json ./
@@ -19,13 +19,13 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine AS production
 
-WORKDIR /app/flashdb
+WORKDIR /app
 
-# Install PowerShell Core for Windows SDK support
+# Install runtime dependencies
 RUN apk add --no-cache \
-    powershell \
     curl \
-    git
+    git \
+    bash
 
 # Copy package files
 COPY src/api/package*.json ./
@@ -34,7 +34,7 @@ COPY src/api/package*.json ./
 RUN npm ci --only=production
 
 # Copy built code
-COPY --from=builder /app/flashdb/dist ./dist
+COPY --from=builder /app/dist ./dist
 
 # Copy source (for PowerShell module reference)
 COPY src/FlashDB ./src/FlashDB

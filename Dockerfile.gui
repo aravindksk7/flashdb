@@ -11,10 +11,10 @@ RUN npm ci
 
 # Copy source code
 COPY src/gui/src ./src
-COPY src/gui/public ./public 2>/dev/null || true
 COPY src/gui/index.html ./
 COPY src/gui/vite.config.ts ./
 COPY src/gui/tsconfig.json ./
+COPY src/gui/tsconfig.node.json ./
 
 # Build
 RUN npm run build
