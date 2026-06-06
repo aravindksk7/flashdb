@@ -8,8 +8,10 @@ import { v4 as uuidv4 } from 'uuid';
  * Provides utilities for lock-aware request handling
  */
 
-const LOCK_RETRY_ATTEMPTS = parseInt(process.env.LOCK_RETRY_ATTEMPTS || '3', 10);
-const LOCK_RETRY_DELAY_MS = parseInt(process.env.LOCK_RETRY_DELAY_MS || '100', 10);
+const LOCK_RETRY_ATTEMPTS = parseInt(process.env.LOCK_RETRY_ATTEMPTS || '5', 10);
+const LOCK_BASE_DELAY_MS = parseInt(process.env.LOCK_BASE_DELAY_MS || '100', 10);
+const LOCK_MAX_DELAY_MS = parseInt(process.env.LOCK_MAX_DELAY_MS || '5000', 10);
+const LOCK_JITTER_MS = parseInt(process.env.LOCK_JITTER_MS || '1000', 10);
 
 export interface LockContext {
   resourceId: string;
@@ -94,19 +96,45 @@ export async function acquireOrFail(
 }
 
 /**
- * Acquire a lock with retries
- * Waits up to maxAttempts * retryDelayMs milliseconds
+ * Calculate exponential backoff delay with jitter
+ * Formula: min(BASE × 2^(attempt-1), MAX) + random(0, JITTER)
+ * Prevents thundering herd and gives other processes time to release locks
+ * @param attemptNumber - Current attempt number (1-indexed)
+ * @param baseDelayMs - Base delay in milliseconds
+ * @param maxDelayMs - Maximum delay cap in milliseconds
+ * @param jitterMs - Maximum random jitter to add
+ * @returns Delay in milliseconds
+ */
+export function calculateExponentialBackoff(
+  attemptNumber: number,
+  baseDelayMs: number = LOCK_BASE_DELAY_MS,
+  maxDelayMs: number = LOCK_MAX_DELAY_MS,
+  jitterMs: number = LOCK_JITTER_MS
+): number {
+  // Exponential growth: 100ms, 200ms, 400ms, 800ms, 1600ms (capped at 5000ms)
+  const exponentialDelay = Math.min(
+    baseDelayMs * Math.pow(2, attemptNumber - 1),
+    maxDelayMs
+  );
+
+  // Add random jitter (0 to jitterMs) to prevent thundering herd
+  const jitter = Math.random() * jitterMs;
+
+  return exponentialDelay + jitter;
+}
+
+/**
+ * Acquire a lock with retries using exponential backoff
+ * Waits with exponentially increasing delays between retries
  * @param resourceId - Unique identifier for the resource to lock
  * @param ttlSeconds - Time-to-live for the lock in seconds
  * @param maxAttempts - Maximum number of retry attempts
- * @param retryDelayMs - Delay between retries in milliseconds
  * @returns LockContext if acquired, null if timeout
  */
 export async function acquireWithRetry(
   resourceId: string,
   ttlSeconds: number = 30,
-  maxAttempts: number = LOCK_RETRY_ATTEMPTS,
-  retryDelayMs: number = LOCK_RETRY_DELAY_MS
+  maxAttempts: number = LOCK_RETRY_ATTEMPTS
 ): Promise<LockContext | null> {
   const ownerId = uuidv4();
   const startTime = Date.now();
@@ -130,7 +158,9 @@ export async function acquireWithRetry(
       }
 
       if (attempt < maxAttempts) {
-        await delay(retryDelayMs);
+        const backoffDelay = calculateExponentialBackoff(attempt);
+        logger.debug(`Lock contention on ${resourceId} (attempt ${attempt}/${maxAttempts}), waiting ${Math.round(backoffDelay)}ms`);
+        await delay(backoffDelay);
       }
     }
 
@@ -232,10 +262,9 @@ export async function withLockRetry<T>(
   resourceId: string,
   operation: () => Promise<T>,
   ttlSeconds: number = 30,
-  maxAttempts: number = LOCK_RETRY_ATTEMPTS,
-  retryDelayMs: number = LOCK_RETRY_DELAY_MS
+  maxAttempts: number = LOCK_RETRY_ATTEMPTS
 ): Promise<{ result: T; lockContext: LockContext }> {
-  const lockContext = await acquireWithRetry(resourceId, ttlSeconds, maxAttempts, retryDelayMs);
+  const lockContext = await acquireWithRetry(resourceId, ttlSeconds, maxAttempts);
 
   if (!lockContext) {
     throw new Error(`LOCK_TIMEOUT: Cannot acquire lock for ${resourceId} after ${maxAttempts} attempts`);
@@ -265,18 +294,16 @@ export function lockMiddleware(req: Request, _res: Response, next: NextFunction)
     acquireWithRetry: (
       resourceId: string,
       ttlSeconds?: number,
-      maxAttempts?: number,
-      retryDelayMs?: number
-    ) => acquireWithRetry(resourceId, ttlSeconds, maxAttempts, retryDelayMs),
+      maxAttempts?: number
+    ) => acquireWithRetry(resourceId, ttlSeconds, maxAttempts),
     withLock: (resourceId: string, operation: () => Promise<any>, ttlSeconds?: number) =>
       withLock(resourceId, operation, ttlSeconds),
     withLockRetry: (
       resourceId: string,
       operation: () => Promise<any>,
       ttlSeconds?: number,
-      maxAttempts?: number,
-      retryDelayMs?: number
-    ) => withLockRetry(resourceId, operation, ttlSeconds, maxAttempts, retryDelayMs),
+      maxAttempts?: number
+    ) => withLockRetry(resourceId, operation, ttlSeconds, maxAttempts),
     release: (lockContext: LockContext) => releaseLock(lockContext)
   };
 

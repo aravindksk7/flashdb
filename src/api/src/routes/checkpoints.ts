@@ -229,23 +229,78 @@ router.patch('/:checkpointId', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE - Delete checkpoint
+// DELETE - Delete checkpoint (async queued operation)
 router.delete('/:checkpointId', async (req: Request, res: Response) => {
   try {
     const { cloneId, checkpointId } = req.params;
+    const { cascadeDelete = false, force = false } = req.body || {};
 
-    await psService.executeCommandRaw('Remove-FlashdbCheckpoint', {
-      CloneId: cloneId,
-      CheckpointId: checkpointId
-    });
+    logger.info(`Deleting checkpoint ${checkpointId} for clone ${cloneId} (cascadeDelete: ${cascadeDelete}, force: ${force})`);
 
-    // Invalidate cache for checkpoints and metrics
-    invalidateCache(['/checkpoints', '/metrics']);
+    // Lock on clone to prevent concurrent checkpoint operations
+    const lockResourceId = `checkpoint:${cloneId}`;
 
-    return res.json({
-      success: true,
-      message: 'Checkpoint deleted successfully'
-    });
+    try {
+      const { result: task, lockContext } = await withLockRetry(lockResourceId, async () => {
+        // Validate checkpoint exists and get metadata
+        const checkpoint = await psService.executeCommand('Get-FlashdbCheckpoint', {
+          CloneId: cloneId,
+          CheckpointId: checkpointId
+        });
+
+        if (!checkpoint) {
+          throw new Error('Checkpoint not found');
+        }
+
+        // Check for cascade: query child checkpoints (stub - will be implemented with DB in Step 5)
+        // For now, just proceed with async deletion
+        if (!force) {
+          logger.debug(`Cascade delete check requested for ${checkpointId} (will be implemented in Step 3)`);
+        }
+
+        // Queue async deletion task
+        const taskQueue = getTaskQueue();
+        const deleteTask = taskQueue.enqueue('delete-checkpoint', {
+          cloneId,
+          checkpointId,
+          vhdxPath: checkpoint.vhdxPath || '',
+          stateHash: checkpoint.stateHash,
+          cascadeDelete
+        });
+
+        return deleteTask;
+      });
+
+      // Invalidate cache for checkpoints and metrics
+      invalidateCache(['/checkpoints', '/metrics']);
+
+      res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+      return res.status(202).json({
+        success: true,
+        message: 'Checkpoint deletion task queued successfully',
+        data: {
+          taskId: (task as any).id,
+          status: (task as any).status,
+          createdAt: (task as any).createdAt,
+          estimatedCompletionMs: 1800000  // 30 minutes for typical checkpoint
+        },
+        checkpointInfo: {
+          id: checkpointId,
+          name: (task as any).payload?.checkpointName || 'Unknown'
+        }
+      });
+    } catch (error: any) {
+      if (error.message.includes('LOCK_TIMEOUT')) {
+        logger.warn(`Checkpoint deletion blocked - resource locked: ${lockResourceId}`);
+        const lockInfo = await getLockInfo(lockResourceId);
+        return res.status(408).json({
+          success: false,
+          message: 'Checkpoint operation timeout - another operation is in progress on this clone',
+          lockInfo
+        });
+      }
+      throw error;
+    }
   } catch (error: any) {
     logger.error(`Error deleting checkpoint: ${error.message}`);
     return res.status(400).json({ success: false, message: error.message });

@@ -3,7 +3,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../logger';
 
-export type TaskType = 'create-clone' | 'delete-clone' | 'create-checkpoint' | 'restore-checkpoint';
+export type TaskType = 'create-clone' | 'delete-clone' | 'create-checkpoint' | 'restore-checkpoint' | 'delete-checkpoint';
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface Task {

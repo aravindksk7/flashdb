@@ -1,6 +1,7 @@
 import { getTaskQueue, Task } from './taskQueue';
 import { getPooledPowerShellService } from './pooledPowershellService';
 import { getPgQueueManager } from './pgQueueManager';
+import { getCheckpointOperationRepository } from './repository';
 import logger from '../logger';
 
 const MAX_RETRIES = 3;
@@ -105,9 +106,27 @@ class TaskWorker {
   async processTask(task: Task): Promise<void> {
     const taskQueue = getTaskQueue();
     const psService = getPooledPowerShellService();
+    const operationRepo = getCheckpointOperationRepository();
+    let operationId: string | null = null;
 
     try {
       logger.info(`Processing task: ${task.id} (${task.type})`);
+
+      // Create operation record for checkpoint operations
+      if (
+        task.type === 'create-checkpoint' ||
+        task.type === 'restore-checkpoint' ||
+        task.type === 'delete-checkpoint'
+      ) {
+        const operation = await operationRepo.create(
+          task.payload.checkpointId,
+          task.payload.cloneId,
+          task.type.replace('-checkpoint', '') as any,
+          task.payload.vhdxPath || ''
+        );
+        operationId = operation.id;
+        logger.info(`Created operation record: ${operationId}`);
+      }
 
       let result: any;
 
@@ -156,12 +175,43 @@ class TaskWorker {
           });
           break;
 
+        case 'delete-checkpoint':
+          // Handle cascade delete if requested
+          if (task.payload.cascadeDelete) {
+            logger.info(`Cascade delete requested for checkpoint ${task.payload.checkpointId}. Child checkpoints would be queued here (Step 3).`);
+          }
+
+          // Delete from PowerShell/filesystem
+          await psService.executeCommandRaw('Remove-FlashdbCheckpoint', {
+            CloneId: task.payload.cloneId,
+            CheckpointId: task.payload.checkpointId,
+            Force: true
+          });
+
+          result = {
+            success: true,
+            checkpointId: task.payload.checkpointId,
+            message: 'Checkpoint deleted successfully'
+          };
+          break;
+
         default:
           throw new Error(`Unknown task type: ${task.type}`);
       }
 
       logger.info(`Task completed successfully: ${task.id}`);
       taskQueue.updateTask(task.id, 'completed', result);
+
+      // Update operation record if applicable
+      if (operationId) {
+        await operationRepo.update(
+          operationId,
+          'completed',
+          new Date(),
+          undefined,
+          result?.stateHash || result?.postHash
+        );
+      }
 
       // Update DB if persistence is enabled
       if (this.usePersistence) {
@@ -187,6 +237,16 @@ class TaskWorker {
         // Max retries exceeded
         const taskQueue = getTaskQueue();
         taskQueue.updateTask(task.id, 'failed', undefined, errorMessage);
+
+        // Update operation record if applicable
+        if (operationId) {
+          await operationRepo.update(
+            operationId,
+            'failed',
+            new Date(),
+            errorMessage
+          );
+        }
 
         // Update DB if persistence is enabled
         if (this.usePersistence) {

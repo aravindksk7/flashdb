@@ -95,6 +95,10 @@ CREATE TABLE [dbo].[CheckpointOperations] (
     [vhdxPath] NVARCHAR(MAX),
     [backupVhdxPath] NVARCHAR(MAX),
     [databaseCheckpointLsn] NVARCHAR(50),
+    [preVhdxStateHash] NVARCHAR(64),
+    [postVhdxStateHash] NVARCHAR(64),
+    [validationStatus] NVARCHAR(50),
+    [validationError] NVARCHAR(MAX),
     [startedAt] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
     [completedAt] DATETIME2(7),
     [errorMessage] NVARCHAR(MAX),
@@ -106,6 +110,7 @@ CREATE TABLE [dbo].[CheckpointOperations] (
 CREATE INDEX [IX_CheckpointOperations_CheckpointId] ON [dbo].[CheckpointOperations] ([checkpointId]);
 CREATE INDEX [IX_CheckpointOperations_Status] ON [dbo].[CheckpointOperations] ([status]);
 CREATE INDEX [IX_CheckpointOperations_CloneId] ON [dbo].[CheckpointOperations] ([cloneId]);
+CREATE INDEX [IX_CheckpointOperations_ValidationStatus] ON [dbo].[CheckpointOperations] ([validationStatus]);
 
 -- Operation Metrics Table
 CREATE TABLE [dbo].[OperationMetrics] (

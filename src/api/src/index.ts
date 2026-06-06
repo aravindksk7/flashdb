@@ -46,6 +46,7 @@ import { initializeInstanceConfig, shutdownInstanceConfig, getInstanceConfig } f
 import adminRoutes from './routes/admin';
 import authRoutes from './routes/auth';
 import rbacRoutes from './routes/rbac';
+import operationsRoutes from './routes/operations';
 import { attachUserContext } from './middleware/authMiddleware';
 import { bootstrapRbac } from './services/rbacBootstrap';
 
@@ -208,6 +209,7 @@ app.use('/api/rbac', rbacRoutes);
 app.use('/api/golden-images', goldImageRoutes);
 app.use('/api/clones', cloneRoutes);
 app.use('/api/clones/:cloneId/checkpoints', checkpointRoutes);
+app.use('/api/operations', operationsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/metrics', metricsRoutes);
@@ -258,6 +260,11 @@ app.get('/api/docs', (_req: Request, res: Response) => {
       goldenImages: '/api/golden-images',
       clones: '/api/clones',
       checkpoints: '/api/clones/{cloneId}/checkpoints',
+      operations: {
+        list: 'GET /api/operations?cloneId={cloneId}&operationType={type}&status={status}',
+        get: 'GET /api/operations/{operationId}',
+        latestForCheckpoint: 'GET /api/operations/checkpoint/{checkpointId}/latest'
+      },
       search: {
         operations: '/api/search/operations',
         clones: '/api/search/clones',
