@@ -1,13 +1,13 @@
-# Multi-stage build for FlashDB API with PowerShell support
-FROM node:18 AS builder
+# Multi-stage build for FlashDB API
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY src/api/package*.json ./
 
-# Install all dependencies
-RUN npm install
+# Install dependencies
+RUN npm ci
 
 # Copy source code
 COPY src/api/src ./src
@@ -16,30 +16,27 @@ COPY src/api/tsconfig.json ./
 # Build
 RUN npm run build
 
-# Production stage - Ubuntu base for PowerShell support
-FROM node:18
+# Production stage - lightweight for Docker
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Install runtime dependencies including PowerShell
-RUN apt-get update && apt-get install -y \
+# Install minimal runtime dependencies
+RUN apk add --no-cache \
     curl \
     git \
-    bash \
-    pwsh \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    bash
 
 # Copy package files
 COPY src/api/package*.json ./
 
 # Install production dependencies
-RUN npm install --production
+RUN npm ci --only=production
 
 # Copy built code from builder
 COPY --from=builder /app/dist ./dist
 
-# Copy source (for PowerShell module reference)
+# Copy source (for module reference)
 COPY src/FlashDB ./src/FlashDB
 
 # Create logs directory

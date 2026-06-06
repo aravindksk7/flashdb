@@ -24,47 +24,20 @@ services:
       retries: 20
       start_period: 30s
 
-  # REST API Server
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: flashdb-api
-    depends_on:
-      sql-server:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      LOG_LEVEL: info
-      FLASHDB_MODULE_PATH: /app/flashdb/src/FlashDB/FlashDB.psm1
-    ports:
-      - "3001:3001"
-    volumes:
-      - .:/app/flashdb
-      - api-logs:/app/logs
-    networks:
-      - flashdb-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
-
-  # GUI Dashboard
+  # GUI Dashboard - connects to API on host machine
   gui:
     build:
       context: .
       dockerfile: Dockerfile.gui
     container_name: flashdb-gui
     depends_on:
-      api:
+      sql-server:
         condition: service_healthy
     ports:
       - "3000:3000"
     environment:
-      VITE_API_URL: http://api:3001
+      # Connect to API running locally on Windows
+      VITE_API_URL: http://host.docker.internal:3001
     networks:
       - flashdb-network
     healthcheck:
@@ -75,7 +48,6 @@ services:
 
 volumes:
   sql-data:
-  api-logs:
 
 networks:
   flashdb-network:
