@@ -32,8 +32,8 @@ import {
   getCacheMetrics
 } from './middleware/caching';
 import { lockMiddleware } from './middleware/lockMiddleware';
-import { initializeConnectionPool, shutdownConnectionPool } from './services/connectionPool';
-import { initializeTaskQueue } from './services/taskQueue';
+import { initializeConnectionPool, shutdownConnectionPool, getConnectionPool } from './services/connectionPool';
+import { initializeTaskQueue, getTaskQueue } from './services/taskQueue';
 import { initializeTaskWorker } from './services/taskWorker';
 import { initializeSqlClient, shutdownSqlClient } from './services/sqlClient';
 import { initializeDatabaseSchema, checkDatabaseTables, checkStateManagementTables } from './db/init';
@@ -333,12 +333,94 @@ app.get('/api/metrics/state', async (_req: Request, res: Response) => {
   }
 });
 
-// Prometheus metrics endpoint (placeholder)
+const escapePrometheusLabelValue = (value: any): string => String(value)
+  .replace(/\\/g, '\\\\')
+  .replace(/\n/g, '\\n')
+  .replace(/"/g, '\\"');
+
+const toPrometheusLabels = (labels: Record<string, any>): string => {
+  const entries = Object.entries(labels)
+    .map(([key, value]) => `${key}="${escapePrometheusLabelValue(value)}"`);
+  return entries.length > 0 ? `{${entries.join(',')}}` : '';
+};
+
+// Prometheus metrics endpoint
 app.get('/metrics', (_req: Request, res: Response) => {
-  // This would be populated by prometheus client library
-  // For now, return basic metrics
-  res.setHeader('Content-Type', 'text/plain');
-  res.send('# HELP flashdb_api_up API is up\n# TYPE flashdb_api_up gauge\nflashdb_api_up 1\n');
+  const performanceMetrics = getPerformanceMetrics();
+  const cacheMetrics = getCacheMetrics();
+  const poolMetrics = getConnectionPool().getMetrics();
+  const queueMetrics = getTaskQueue().getMetrics();
+
+  const lines: string[] = [];
+
+  lines.push('# HELP flashdb_api_up API is up');
+  lines.push('# TYPE flashdb_api_up gauge');
+  lines.push('flashdb_api_up 1');
+
+  lines.push('# HELP flashdb_api_request_total Total requests grouped by operation');
+  lines.push('# TYPE flashdb_api_request_total counter');
+  for (const [operation, metric] of Object.entries(performanceMetrics)) {
+    const labels = toPrometheusLabels({ operation });
+    lines.push(`flashdb_api_request_total${labels} ${metric.totalRequests}`);
+    lines.push(`flashdb_api_request_errors_total${labels} ${metric.errorCount}`);
+    lines.push(`flashdb_api_request_duration_average_ms${labels} ${metric.averageDuration}`);
+    lines.push(`flashdb_api_request_duration_max_ms${labels} ${metric.maxDuration}`);
+    lines.push(`flashdb_api_request_duration_min_ms${labels} ${metric.minDuration}`);
+  }
+
+  lines.push('# HELP flashdb_cache_hits_total Cache hits');
+  lines.push('# TYPE flashdb_cache_hits_total counter');
+  lines.push(`flashdb_cache_hits_total ${cacheMetrics.hits}`);
+  lines.push('# HELP flashdb_cache_misses_total Cache misses');
+  lines.push('# TYPE flashdb_cache_misses_total counter');
+  lines.push(`flashdb_cache_misses_total ${cacheMetrics.misses}`);
+  lines.push('# HELP flashdb_cache_sets_total Cache sets');
+  lines.push('# TYPE flashdb_cache_sets_total counter');
+  lines.push(`flashdb_cache_sets_total ${cacheMetrics.sets}`);
+  lines.push('# HELP flashdb_cache_invalidations_total Cache invalidations');
+  lines.push('# TYPE flashdb_cache_invalidations_total counter');
+  lines.push(`flashdb_cache_invalidations_total ${cacheMetrics.invalidations}`);
+  lines.push('# HELP flashdb_cache_memory_bytes Estimated cache memory usage in bytes');
+  lines.push('# TYPE flashdb_cache_memory_bytes gauge');
+  lines.push(`flashdb_cache_memory_bytes ${cacheMetrics.memoryUsage}`);
+
+  lines.push('# HELP flashdb_connection_pool_size Current connection pool size');
+  lines.push('# TYPE flashdb_connection_pool_size gauge');
+  lines.push(`flashdb_connection_pool_size ${poolMetrics.size}`);
+  lines.push('# HELP flashdb_connection_pool_available Available connections in the pool');
+  lines.push('# TYPE flashdb_connection_pool_available gauge');
+  lines.push(`flashdb_connection_pool_available ${poolMetrics.available}`);
+  lines.push('# HELP flashdb_connection_pool_active Active connections in the pool');
+  lines.push('# TYPE flashdb_connection_pool_active gauge');
+  lines.push(`flashdb_connection_pool_active ${poolMetrics.activeConnections}`);
+  lines.push('# HELP flashdb_connection_pool_pending Pending acquisitions for the pool');
+  lines.push('# TYPE flashdb_connection_pool_pending gauge');
+  lines.push(`flashdb_connection_pool_pending ${poolMetrics.pending}`);
+  lines.push('# HELP flashdb_connection_pool_errors_total Connection pool errors');
+  lines.push('# TYPE flashdb_connection_pool_errors_total counter');
+  lines.push(`flashdb_connection_pool_errors_total ${poolMetrics.errorCount}`);
+  lines.push('# HELP flashdb_connection_pool_wait_time_ms Average wait time for pool acquisition');
+  lines.push('# TYPE flashdb_connection_pool_wait_time_ms gauge');
+  lines.push(`flashdb_connection_pool_wait_time_ms ${poolMetrics.averageWaitTime}`);
+
+  lines.push('# HELP flashdb_task_queue_depth Current task queue depth');
+  lines.push('# TYPE flashdb_task_queue_depth gauge');
+  lines.push(`flashdb_task_queue_depth ${queueMetrics.queueDepth}`);
+  lines.push('# HELP flashdb_task_queue_pending Pending tasks');
+  lines.push('# TYPE flashdb_task_queue_pending gauge');
+  lines.push(`flashdb_task_queue_pending ${queueMetrics.pendingTasks}`);
+  lines.push('# HELP flashdb_task_queue_processing Processing tasks');
+  lines.push('# TYPE flashdb_task_queue_processing gauge');
+  lines.push(`flashdb_task_queue_processing ${queueMetrics.processingTasks}`);
+  lines.push('# HELP flashdb_task_queue_completed_total Completed tasks');
+  lines.push('# TYPE flashdb_task_queue_completed_total counter');
+  lines.push(`flashdb_task_queue_completed_total ${queueMetrics.completedTasks}`);
+  lines.push('# HELP flashdb_task_queue_failed_total Failed tasks');
+  lines.push('# TYPE flashdb_task_queue_failed_total counter');
+  lines.push(`flashdb_task_queue_failed_total ${queueMetrics.failedTasks}`);
+
+  res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+  res.send(`${lines.join('\n')}\n`);
 });
 
 // Error logging middleware

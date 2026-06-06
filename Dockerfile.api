@@ -40,6 +40,7 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy built code from builder
 COPY --from=builder /app/dist ./dist
+COPY src/api/src/db/*.sql ./dist/db/
 
 # Copy source (for module reference)
 COPY src/FlashDB ./src/FlashDB
