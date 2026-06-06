@@ -59,7 +59,9 @@ export class PowerShellService {
   }
 
   private buildPowerShellCommand(cmdlet: string, params?: Record<string, any>): string {
-    let cmd = `Import-Module '${this.flashdbModulePath}'; `;
+    let cmd = `$WarningPreference='SilentlyContinue'; `;
+    cmd += `$VerbosePreference='SilentlyContinue'; `;
+    cmd += `Import-Module '${this.flashdbModulePath}' -WarningAction SilentlyContinue; `;
     cmd += cmdlet;
 
     if (params && Object.keys(params).length > 0) {
@@ -70,7 +72,7 @@ export class PowerShellService {
       cmd += ` ${paramStrings.join(' ')}`;
     }
 
-    cmd += ' | ConvertTo-Json -Depth 10';
+    cmd += ' | ConvertTo-Json -Depth 10 -ErrorAction Stop';
     return cmd;
   }
 }

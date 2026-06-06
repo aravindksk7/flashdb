@@ -53,7 +53,9 @@ class PowerShellService {
         }
     }
     buildPowerShellCommand(cmdlet, params) {
-        let cmd = `Import-Module '${this.flashdbModulePath}'; `;
+        let cmd = `$WarningPreference='SilentlyContinue'; `;
+        cmd += `$VerbosePreference='SilentlyContinue'; `;
+        cmd += `Import-Module '${this.flashdbModulePath}' -WarningAction SilentlyContinue; `;
         cmd += cmdlet;
         if (params && Object.keys(params).length > 0) {
             const paramStrings = Object.entries(params).map(([key, value]) => {
@@ -62,7 +64,7 @@ class PowerShellService {
             });
             cmd += ` ${paramStrings.join(' ')}`;
         }
-        cmd += ' | ConvertTo-Json -Depth 10';
+        cmd += ' | ConvertTo-Json -Depth 10 -ErrorAction Stop';
         return cmd;
     }
 }
