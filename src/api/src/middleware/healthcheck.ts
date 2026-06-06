@@ -3,6 +3,7 @@ import logger from '../logger';
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getInstanceConfig } from '../config/instanceConfig';
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -17,6 +18,12 @@ interface HealthStatus {
   };
   version: string;
   environment: string;
+  instance?: {
+    instanceId: string;
+    role: string;
+    status: string;
+    isPrimary: boolean;
+  };
 }
 
 interface HealthCheck {
@@ -326,13 +333,31 @@ export async function healthCheckEndpoint(_req: Request, res: Response) {
     const uptime = Math.round((Date.now() - startTime) / 1000);
     const checkDuration = Date.now() - checkStart;
 
+    // Add instance information (Phase 5b.4)
+    let instanceInfo: any | undefined;
+    try {
+      const instanceConfig = getInstanceConfig();
+      if (instanceConfig.isClusterMode()) {
+        const info = instanceConfig.getInstanceInfo();
+        instanceInfo = {
+          instanceId: info.instanceId,
+          role: info.role,
+          status: info.status,
+          isPrimary: instanceConfig.isPrimary()
+        };
+      }
+    } catch (error: any) {
+      logger.debug('Instance info not available in health check');
+    }
+
     const healthStatus: HealthStatus = {
       status: overallStatus,
       timestamp: new Date().toISOString(),
       uptime,
       checks,
       version: API_VERSION,
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
+      instance: instanceInfo
     };
 
     // Log health check result

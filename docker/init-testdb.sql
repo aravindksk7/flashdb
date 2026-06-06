@@ -54,6 +54,27 @@ CREATE INDEX idx_flashdb_operations_type ON dbo.flashdb_operations(operation_typ
 CREATE INDEX idx_flashdb_operations_time ON dbo.flashdb_operations(timestamp DESC);
 
 -- ============================================================================
+-- Multi-Instance Cluster Table (Phase 5b.4)
+-- ============================================================================
+
+-- Instance registry for multi-instance deployment
+CREATE TABLE dbo.flashdb_instances (
+    [instance_id] NVARCHAR(36) PRIMARY KEY NOT NULL,
+    [role] NVARCHAR(20) NOT NULL DEFAULT 'primary',
+    [status] NVARCHAR(20) NOT NULL DEFAULT 'active',
+    [last_heartbeat] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
+    [host] NVARCHAR(255) NOT NULL,
+    [port] INT NOT NULL,
+    [version] NVARCHAR(50) NOT NULL DEFAULT '1.0.0',
+    [created_at] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
+    [updated_at] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE()
+);
+CREATE INDEX idx_flashdb_instances_status ON dbo.flashdb_instances([status]);
+CREATE INDEX idx_flashdb_instances_heartbeat ON dbo.flashdb_instances([last_heartbeat] DESC);
+CREATE INDEX idx_flashdb_instances_role ON dbo.flashdb_instances([role]);
+CREATE INDEX idx_flashdb_instances_status_heartbeat ON dbo.flashdb_instances([status], [last_heartbeat] DESC);
+
+-- ============================================================================
 -- Task Queue Tables (Phase 5b.3)
 -- ============================================================================
 
@@ -194,12 +215,14 @@ DECLARE @TotalOrders INT = (SELECT COUNT(*) FROM dbo.Orders);
 DECLARE @TotalOrderItems INT = (SELECT COUNT(*) FROM dbo.OrderItems);
 DECLARE @TotalProducts INT = (SELECT COUNT(*) FROM dbo.Products);
 DECLARE @QueueTables INT = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN ('flashdb_queue', 'flashdb_queue_archive') AND TABLE_SCHEMA = 'dbo');
+DECLARE @InstanceTable INT = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'flashdb_instances' AND TABLE_SCHEMA = 'dbo');
 
 PRINT 'Test database created successfully!';
-PRINT 'Tables: Customers, Orders, OrderItems, Products, State Management, Task Queue';
+PRINT 'Tables: Customers, Orders, OrderItems, Products, State Management, Task Queue, Multi-Instance Cluster';
 PRINT 'Total Customers: ' + CAST(@TotalCustomers AS NVARCHAR(10));
 PRINT 'Total Orders: ' + CAST(@TotalOrders AS NVARCHAR(10));
 PRINT 'Total Order Items: ' + CAST(@TotalOrderItems AS NVARCHAR(10));
 PRINT 'Total Products: ' + CAST(@TotalProducts AS NVARCHAR(10));
 PRINT 'Queue tables initialized: ' + CAST(@QueueTables AS NVARCHAR(10));
+PRINT 'Instance registry initialized: ' + CAST(@InstanceTable AS NVARCHAR(10));
 GO

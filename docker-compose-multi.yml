@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # Shared SQL Server (database for all instances)
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: flashdb-sql-server
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: "YourPassword123!"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./docker/init-testdb.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - flashdb-network
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "YourPassword123!", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Primary API instance
+  api-primary:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: flashdb-api-primary
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      PORT: 3001
+      SQL_SERVER_HOST: sqlserver
+      SQL_SERVER_PORT: 1433
+      SQL_SERVER_USER: sa
+      SQL_SERVER_PASSWORD: "YourPassword123!"
+      SQL_DATABASE: FlashDB
+      INSTANCE_ID: api-primary-001
+      INSTANCE_ROLE: primary
+      INSTANCE_HOST: api-primary
+      CLUSTER_ENABLED: "true"
+      QUEUE_PERSIST_MODE: db
+      FLASHDB_MODULE_PATH: /app/src/FlashDB/FlashDB.psm1
+    ports:
+      - "3001:3001"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - flashdb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Replica API instance 1
+  api-replica-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: flashdb-api-replica-1
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      PORT: 3002
+      SQL_SERVER_HOST: sqlserver
+      SQL_SERVER_PORT: 1433
+      SQL_SERVER_USER: sa
+      SQL_SERVER_PASSWORD: "YourPassword123!"
+      SQL_DATABASE: FlashDB
+      INSTANCE_ID: api-replica-001
+      INSTANCE_ROLE: replica
+      INSTANCE_HOST: api-replica-1
+      CLUSTER_ENABLED: "true"
+      QUEUE_PERSIST_MODE: db
+      FLASHDB_MODULE_PATH: /app/src/FlashDB/FlashDB.psm1
+    ports:
+      - "3002:3001"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - flashdb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Replica API instance 2
+  api-replica-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: flashdb-api-replica-2
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      PORT: 3003
+      SQL_SERVER_HOST: sqlserver
+      SQL_SERVER_PORT: 1433
+      SQL_SERVER_USER: sa
+      SQL_SERVER_PASSWORD: "YourPassword123!"
+      SQL_DATABASE: FlashDB
+      INSTANCE_ID: api-replica-002
+      INSTANCE_ROLE: replica
+      INSTANCE_HOST: api-replica-2
+      CLUSTER_ENABLED: "true"
+      QUEUE_PERSIST_MODE: db
+      FLASHDB_MODULE_PATH: /app/src/FlashDB/FlashDB.psm1
+    ports:
+      - "3003:3001"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - flashdb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+
+networks:
+  flashdb-network:
+    driver: bridge

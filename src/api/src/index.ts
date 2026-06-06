@@ -36,6 +36,8 @@ import { initializePgLockManager } from './services/pgLockManager';
 import { initializePgStateSync } from './services/pgStateSync';
 import { initializePgQueueManager } from './services/pgQueueManager';
 import queueRoutes from './routes/queue';
+import { initializeInstanceConfig, shutdownInstanceConfig, getInstanceConfig } from './config/instanceConfig';
+import adminRoutes from './routes/admin';
 
 dotenv.config();
 
@@ -159,6 +161,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/queue', queueRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Swagger/OpenAPI endpoint (can be expanded later)
 app.get('/api/docs', (_req: Request, res: Response) => {
@@ -211,6 +214,13 @@ app.get('/api/docs', (_req: Request, res: Response) => {
         getTask: 'GET /api/queue/tasks/{taskId}',
         clearCompleted: 'POST /api/queue/clear/completed',
         clearFailed: 'POST /api/queue/clear/failed'
+      },
+      admin: {
+        instance: 'GET /api/admin/instance (current instance info)',
+        instances: 'GET /api/admin/instances (all active instances)',
+        clusterStatus: 'GET /api/admin/cluster-status (cluster health)',
+        heartbeat: 'POST /api/admin/heartbeat (manual heartbeat)',
+        cleanup: 'POST /api/admin/cleanup (cleanup stale instances)'
       },
       monitoring: {
         operationMetrics: 'GET /metrics (Prometheus format)',
@@ -327,6 +337,14 @@ const server = app.listen(port, async () => {
   // Initialize SQL client
   await initializeSql();
 
+  // Initialize multi-instance configuration (Phase 5b.4)
+  try {
+    await initializeInstanceConfig();
+    logger.info('Multi-instance configuration initialized');
+  } catch (error: any) {
+    logger.warn(`Multi-instance initialization warning: ${error.message}. Continuing without cluster mode.`);
+  }
+
   logger.info('='.repeat(60));
   logger.info(`FlashDB API Started on http://localhost:${port}`);
   logger.info(`Environment: ${env}`);
@@ -370,6 +388,25 @@ const server = app.listen(port, async () => {
     logger.info('  Queue Manager: Not initialized (using file persistence fallback)');
   }
   logger.info('');
+  logger.info('Multi-Instance Cluster (Phase 5b.4):');
+  try {
+    const instanceConfig = getInstanceConfig();
+    const clusterEnabled = instanceConfig.isClusterMode();
+    if (clusterEnabled) {
+      const info = instanceConfig.getInstanceInfo();
+      logger.info('  Cluster Mode: Enabled');
+      logger.info(`  Instance ID: ${info.instanceId}`);
+      logger.info(`  Instance Role: ${info.role}`);
+      logger.info(`  Instance Status: ${info.status}`);
+      logger.info(`  Host: ${info.host}:${info.port}`);
+      logger.info('  Features: Instance discovery, health monitoring, shared state');
+    } else {
+      logger.info('  Cluster Mode: Disabled (CLUSTER_ENABLED=false)');
+    }
+  } catch (error: any) {
+    logger.info('  Multi-Instance: Not initialized (optional)');
+  }
+  logger.info('');
   logger.info('Connection Pool Status:');
   logger.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
   logger.info(`  Available: ${connectionPool.getMetrics().available}`);
@@ -397,6 +434,13 @@ process.on('SIGTERM', async () => {
     logger.info('Task worker shut down');
     if (queueManager) {
       logger.info('Queue manager (no shutdown needed)');
+    }
+    // Deregister instance from cluster (Phase 5b.4)
+    try {
+      await shutdownInstanceConfig();
+      logger.info('Instance deregistered from cluster');
+    } catch (error: any) {
+      logger.warn(`Instance deregistration warning: ${error.message}`);
     }
     if (stateSync) {
       await stateSync.shutdown();
@@ -428,6 +472,13 @@ process.on('SIGINT', async () => {
     logger.info('Task worker shut down');
     if (queueManager) {
       logger.info('Queue manager (no shutdown needed)');
+    }
+    // Deregister instance from cluster (Phase 5b.4)
+    try {
+      await shutdownInstanceConfig();
+      logger.info('Instance deregistered from cluster');
+    } catch (error: any) {
+      logger.warn(`Instance deregistration warning: ${error.message}`);
     }
     if (stateSync) {
       await stateSync.shutdown();

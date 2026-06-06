@@ -47,6 +47,9 @@ export async function initializeDatabaseSchema(): Promise<void> {
 
     // Initialize queue schema (Phase 5b.3)
     await initializeQueueSchema();
+
+    // Initialize instance schema (Phase 5b.4)
+    await initializeInstanceSchema();
   } catch (error: any) {
     logger.error(`Error initializing database schema: ${error.message}`);
     throw error;
@@ -180,6 +183,47 @@ export async function checkStateManagementTables(): Promise<boolean> {
   } catch (error: any) {
     logger.error(`Error checking state management tables: ${error.message}`);
     return false;
+  }
+}
+
+/**
+ * Initialize the instance cluster schema
+ * Creates tables for multi-instance deployment if they don't exist
+ */
+export async function initializeInstanceSchema(): Promise<void> {
+  try {
+    const sqlClient = getSqlClient();
+
+    // Read instance schema file
+    const instanceSchemaPath = path.join(__dirname, 'instanceSchema.sql');
+    if (!fs.existsSync(instanceSchemaPath)) {
+      logger.warn(`Instance schema file not found: ${instanceSchemaPath}. Multi-instance tables may need manual creation.`);
+      return;
+    }
+
+    const instanceSchemaSQL = fs.readFileSync(instanceSchemaPath, 'utf-8');
+
+    // Split by GO statements and execute each batch
+    const batches = instanceSchemaSQL.split(/\nGO\n/i);
+
+    for (const batch of batches) {
+      const trimmedBatch = batch.trim();
+      if (trimmedBatch.length > 0) {
+        try {
+          await sqlClient.execute(trimmedBatch);
+        } catch (error: any) {
+          // Ignore errors about objects that already exist
+          if (!error.message.includes('already exists')) {
+            logger.warn(`Instance schema execution warning: ${error.message}`);
+          }
+        }
+      }
+    }
+
+    logger.info('Instance cluster schema initialized successfully');
+  } catch (error: any) {
+    logger.error(`Error initializing instance schema: ${error.message}`);
+    // Don't throw - instance management is optional and can degrade gracefully
   }
 }
 
