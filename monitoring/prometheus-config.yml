@@ -1,0 +1,101 @@
+# Prometheus Configuration for FlashDB
+# Monitors API performance, health, and operational metrics
+
+global:
+  # Scrape interval: 30 seconds
+  scrape_interval: 30s
+
+  # Evaluation interval for alert rules
+  evaluation_interval: 30s
+
+  # Timeout for each scrape request
+  scrape_timeout: 10s
+
+  # Labels applied to all timeseries
+  external_labels:
+    cluster: 'flashdb-cluster'
+    environment: 'production'
+    service: 'flashdb-api'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - localhost:9093
+
+# Alert rules file
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # FlashDB API metrics
+  - job_name: 'flashdb-api'
+    static_configs:
+      - targets: ['localhost:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+    # Relabeling rules
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__scheme__]
+        target_label: scheme
+
+    # Metric path
+    metric_relabeling:
+      # Drop sensitive metrics
+      - source_labels: [__name__]
+        regex: '.*_token.*|.*_secret.*|.*_password.*'
+        action: drop
+
+  # FlashDB Health Check endpoint
+  - job_name: 'flashdb-health'
+    static_configs:
+      - targets: ['localhost:3001']
+    metrics_path: '/health'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Node Exporter (system metrics - optional)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 30s
+
+  # Windows Exporter (if available)
+  - job_name: 'windows'
+    static_configs:
+      - targets: ['localhost:9182']
+    scrape_interval: 30s
+
+# Storage configuration
+storage:
+  # Time series database
+  tsdb:
+    # Data directory
+    path: /prometheus/data
+    # Retention: 15 days
+    retention: 15d
+    # Maximum size: 500GB
+    max_bytes: 536870912000
+
+# Web UI configuration
+web:
+  listen_address: ':9090'
+  max_connections: 512
+
+  # Enable CORS for dashboard
+  cors_origin: '.*'
+
+# Logging configuration
+logging:
+  level: info
+
+# Service discovery (optional for service mesh environments)
+# discovery:
+#   consul:
+#     server: 'localhost:8500'

@@ -1,0 +1,1909 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "FlashDB REST API",
+    "description": "FlashDB - Database Virtualization Tool REST API. Provides endpoints for managing golden images, clones, checkpoints, search operations, batch operations, and metrics.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "FlashDB Support",
+      "url": "https://github.com/flashdb/flashdb"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/api",
+      "description": "Development server"
+    },
+    {
+      "url": "https://flashdb-server:3001/api",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Golden Images",
+      "description": "Create and manage golden images"
+    },
+    {
+      "name": "Clones",
+      "description": "Create and manage database clones"
+    },
+    {
+      "name": "Checkpoints",
+      "description": "Create and manage clone checkpoints"
+    },
+    {
+      "name": "Search",
+      "description": "Search operations, clones, and checkpoints"
+    },
+    {
+      "name": "Batch Operations",
+      "description": "Execute batch operations on multiple items"
+    },
+    {
+      "name": "Metrics",
+      "description": "View system metrics and performance data"
+    },
+    {
+      "name": "Health",
+      "description": "Health check endpoints"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Check if the API server is running and healthy",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/golden-images": {
+      "get": {
+        "tags": ["Golden Images"],
+        "summary": "List all golden images",
+        "description": "Retrieve a list of all available golden images",
+        "operationId": "listGoldenImages",
+        "responses": {
+          "200": {
+            "description": "List of golden images",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GoldenImage"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Golden Images"],
+        "summary": "Create a new golden image",
+        "description": "Create a new golden image from a backup, replica, or table-by-table copy",
+        "operationId": "createGoldenImage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoldenImageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Golden image created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GoldenImage"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/golden-images/{imageId}": {
+      "get": {
+        "tags": ["Golden Images"],
+        "summary": "Get golden image by ID",
+        "description": "Retrieve details of a specific golden image",
+        "operationId": "getGoldenImage",
+        "parameters": [
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Golden image identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Golden image details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GoldenImage"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Golden Images"],
+        "summary": "Delete golden image",
+        "description": "Delete a golden image by ID",
+        "operationId": "deleteGoldenImage",
+        "parameters": [
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Golden image deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/clones": {
+      "get": {
+        "tags": ["Clones"],
+        "summary": "List all clones",
+        "description": "Retrieve a list of all database clones",
+        "operationId": "listClones",
+        "responses": {
+          "200": {
+            "description": "List of clones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Clone"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Clones"],
+        "summary": "Create a new clone",
+        "description": "Create a new database clone from a golden image",
+        "operationId": "createClone",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCloneRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Clone created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Clone"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/clones/{cloneId}": {
+      "get": {
+        "tags": ["Clones"],
+        "summary": "Get clone by ID",
+        "description": "Retrieve details of a specific clone",
+        "operationId": "getClone",
+        "parameters": [
+          {
+            "name": "cloneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clone details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Clone"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Clones"],
+        "summary": "Delete clone",
+        "description": "Delete a clone and free its storage",
+        "operationId": "deleteClone",
+        "parameters": [
+          {
+            "name": "cloneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clone deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/clones/{cloneId}/checkpoints": {
+      "get": {
+        "tags": ["Checkpoints"],
+        "summary": "List checkpoints for a clone",
+        "description": "Get all checkpoints created for a specific clone",
+        "operationId": "listCheckpoints",
+        "parameters": [
+          {
+            "name": "cloneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of checkpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Checkpoint"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Checkpoints"],
+        "summary": "Create a checkpoint",
+        "description": "Create a new checkpoint (snapshot) of a clone's current state",
+        "operationId": "createCheckpoint",
+        "parameters": [
+          {
+            "name": "cloneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCheckpointRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Checkpoint created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Checkpoint"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/clones/{cloneId}/checkpoints/{checkpointId}": {
+      "get": {
+        "tags": ["Checkpoints"],
+        "summary": "Get checkpoint details",
+        "description": "Retrieve details of a specific checkpoint",
+        "operationId": "getCheckpoint",
+        "parameters": [
+          {
+            "name": "cloneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "checkpointId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkpoint details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Checkpoint"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Checkpoints"],
+        "summary": "Restore a checkpoint",
+        "description": "Restore a clone to a previous checkpoint state",
+        "operationId": "restoreCheckpoint",
+        "parameters": [
+          {
+            "name": "cloneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "checkpointId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkpoint restored successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Checkpoints"],
+        "summary": "Delete checkpoint",
+        "description": "Delete a checkpoint and free its storage",
+        "operationId": "deleteCheckpoint",
+        "parameters": [
+          {
+            "name": "cloneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "checkpointId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkpoint deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/search/operations": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search operations",
+        "description": "Search recent operations with filters",
+        "operationId": "searchOperations",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search query"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "running", "completed", "failed"]
+            },
+            "description": "Filter by operation status"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Operation"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/search/clones": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search clones",
+        "description": "Search for clones by name, status, or other criteria",
+        "operationId": "searchClones",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Clone"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search/checkpoints": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search checkpoints",
+        "description": "Search for checkpoints across all clones",
+        "operationId": "searchCheckpoints",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Checkpoint"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search/advanced": {
+      "post": {
+        "tags": ["Search"],
+        "summary": "Advanced search",
+        "description": "Execute advanced search with complex filters",
+        "operationId": "advancedSearch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvancedSearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array"
+                    },
+                    "facets": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/batches": {
+      "get": {
+        "tags": ["Batch Operations"],
+        "summary": "List batch operations",
+        "description": "Get all batch operations",
+        "operationId": "listBatches",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "running", "completed", "failed"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of batch operations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BatchOperation"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Batch Operations"],
+        "summary": "Create batch operation",
+        "description": "Create a new batch operation for multiple clones or checkpoints",
+        "operationId": "createBatch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Batch operation created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BatchOperation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/batches/{batchId}": {
+      "get": {
+        "tags": ["Batch Operations"],
+        "summary": "Get batch status",
+        "description": "Get the status of a batch operation",
+        "operationId": "getBatchStatus",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch operation details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BatchOperation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/batches/{batchId}/start": {
+      "post": {
+        "tags": ["Batch Operations"],
+        "summary": "Start batch operation",
+        "description": "Start executing a batch operation",
+        "operationId": "startBatch",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch operation started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/batches/{batchId}/cancel": {
+      "post": {
+        "tags": ["Batch Operations"],
+        "summary": "Cancel batch operation",
+        "description": "Cancel a running or pending batch operation",
+        "operationId": "cancelBatch",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch operation cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/batches/{batchId}/results": {
+      "get": {
+        "tags": ["Batch Operations"],
+        "summary": "Get batch results",
+        "description": "Get the results of a completed batch operation",
+        "operationId": "getBatchResults",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch operation results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BatchResult"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/batches/{batchId}/progress": {
+      "get": {
+        "tags": ["Batch Operations"],
+        "summary": "Get batch progress",
+        "description": "Get real-time progress of a running batch operation",
+        "operationId": "getBatchProgress",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch progress information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BatchProgress"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/overview": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get metrics overview",
+        "description": "Get high-level system metrics",
+        "operationId": "getMetricsOverview",
+        "responses": {
+          "200": {
+            "description": "Metrics overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MetricsOverview"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/clones": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get clone metrics",
+        "description": "Get metrics for all clones",
+        "operationId": "getCloneMetrics",
+        "responses": {
+          "200": {
+            "description": "Clone metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CloneMetrics"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/storage": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get storage metrics",
+        "description": "Get storage usage and allocation metrics",
+        "operationId": "getStorageMetrics",
+        "responses": {
+          "200": {
+            "description": "Storage metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StorageMetrics"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/operations": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get operation metrics",
+        "description": "Get metrics about recent operations",
+        "operationId": "getOperationMetrics",
+        "responses": {
+          "200": {
+            "description": "Operation metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OperationMetrics"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/timeline": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get metrics timeline",
+        "description": "Get historical metrics data",
+        "operationId": "getMetricsTimeline",
+        "parameters": [
+          {
+            "name": "timeRange",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["1h", "24h", "7d", "30d"],
+              "default": "24h"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Timeline metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TimelineMetrics"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/all": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Get all metrics",
+        "description": "Get comprehensive metrics data",
+        "operationId": "getAllMetrics",
+        "responses": {
+          "200": {
+            "description": "All metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GoldenImage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique golden image identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Golden image name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version identifier"
+          },
+          "path": {
+            "type": "string",
+            "description": "File system path to the VHDX file"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Size in bytes"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["BackupRestore", "ReplicaBackup", "TableByTableCopy"],
+            "description": "Creation method"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": ["pending", "verified", "failed"],
+            "description": "Verification status"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "Clone": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique clone identifier"
+          },
+          "name": {
+            "type": "string"
+          },
+          "goldenImageId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["creating", "ready", "in-use", "deleted"],
+            "description": "Clone status"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checkpointCount": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "Checkpoint": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cloneId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "Operation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["create", "delete", "restore", "checkpoint", "backup"]
+          },
+          "target": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "completed", "failed"]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duration": {
+            "type": "integer",
+            "description": "Duration in milliseconds"
+          }
+        }
+      },
+      "BatchOperation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["create-clones", "delete-clones", "create-checkpoints", "restore-checkpoints"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "completed", "failed", "cancelled"]
+          },
+          "itemCount": {
+            "type": "integer"
+          },
+          "completedCount": {
+            "type": "integer"
+          },
+          "failedCount": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BatchResult": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "failed"]
+          },
+          "message": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer"
+          }
+        }
+      },
+      "BatchProgress": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalItems": {
+            "type": "integer"
+          },
+          "completedItems": {
+            "type": "integer"
+          },
+          "failedItems": {
+            "type": "integer"
+          },
+          "progressPercent": {
+            "type": "number",
+            "format": "float"
+          },
+          "estimatedTimeRemaining": {
+            "type": "integer",
+            "description": "Milliseconds"
+          }
+        }
+      },
+      "MetricsOverview": {
+        "type": "object",
+        "properties": {
+          "totalClones": {
+            "type": "integer"
+          },
+          "totalGoldenImages": {
+            "type": "integer"
+          },
+          "totalCheckpoints": {
+            "type": "integer"
+          },
+          "totalStorageBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "usedStorageBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "operationsInProgress": {
+            "type": "integer"
+          },
+          "averageCloneCreationTime": {
+            "type": "integer",
+            "description": "Milliseconds"
+          }
+        }
+      },
+      "CloneMetrics": {
+        "type": "object",
+        "properties": {
+          "cloneId": {
+            "type": "string"
+          },
+          "cloneName": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "checkpointCount": {
+            "type": "integer"
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "accessCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "StorageMetrics": {
+        "type": "object",
+        "properties": {
+          "totalCapacity": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "usedCapacity": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "availableCapacity": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "usagePercent": {
+            "type": "number",
+            "format": "float"
+          },
+          "byCategory": {
+            "type": "object",
+            "properties": {
+              "goldenImages": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "clones": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "checkpoints": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        }
+      },
+      "OperationMetrics": {
+        "type": "object",
+        "properties": {
+          "totalOperations": {
+            "type": "integer"
+          },
+          "successfulOperations": {
+            "type": "integer"
+          },
+          "failedOperations": {
+            "type": "integer"
+          },
+          "averageOperationTime": {
+            "type": "integer"
+          },
+          "byType": {
+            "type": "object"
+          }
+        }
+      },
+      "TimelineMetrics": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "totalClones": {
+            "type": "integer"
+          },
+          "usedStorage": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "operationCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "CreateGoldenImageRequest": {
+        "type": "object",
+        "required": ["name", "version", "method", "outputPath"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["BackupRestore", "ReplicaBackup", "TableByTableCopy"]
+          },
+          "outputPath": {
+            "type": "string"
+          },
+          "backupFile": {
+            "type": "string"
+          },
+          "sourceConnection": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateCloneRequest": {
+        "type": "object",
+        "required": ["name", "goldenImageId"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "goldenImageId": {
+            "type": "string"
+          },
+          "compress": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "CreateCheckpointRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateBatchRequest": {
+        "type": "object",
+        "required": ["name", "type", "items"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["create-clones", "delete-clones", "create-checkpoints", "restore-checkpoints"]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "options": {
+            "type": "object"
+          }
+        }
+      },
+      "AdvancedSearchRequest": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "operator": {
+                  "type": "string",
+                  "enum": ["equals", "contains", "gt", "lt", "gte", "lte"]
+                },
+                "value": {}
+              }
+            }
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": ["asc", "desc"]
+                }
+              }
+            }
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+# PowerShell 7 Docker image with FlashDB module and SQL tools
+# For running backup and maintenance operations
+
+FROM mcr.microsoft.com/powershell:7.4-alpine
+
+WORKDIR /app
+
+# Install additional dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    openssl \
+    curl \
+    git \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S pwsh && \
+    adduser -S pwsh -u 1001
+
+# Copy SQL Server tools and scripts
+COPY scripts/sql-tools/ /opt/sql-tools/
+COPY services/ /app/services/
+
+# Copy FlashDB module for PowerShell usage
+COPY src/FlashDB /app/src/FlashDB
+
+# Create directories with proper permissions
+RUN mkdir -p /app/logs /app/backups /app/config && \
+    chown -R pwsh:pwsh /app /opt
+
+# Grant execute permissions on scripts
+RUN chmod +x /app/services/*.ps1 /opt/sql-tools/*.ps1
+
+# Install PowerShell modules for database operations
+RUN pwsh -Command \
+    Install-Module -Name SqlServer -Force -Confirm:$false -ErrorAction SilentlyContinue; \
+    Install-Module -Name Az.Storage -Force -Confirm:$false -ErrorAction SilentlyContinue
+
+# Set working directory
+WORKDIR /app
+
+# User context
+USER pwsh
+
+# Expose port for potential monitoring
+EXPOSE 5985 5986
+
+# Health check - Check if PowerShell runtime is available
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD pwsh -Command "Get-Host | Out-Null; exit 0" || exit 1
+
+# Default command - Keep container running for scheduled tasks
+CMD ["pwsh", "-NoExit", "-Command", "Write-Host 'FlashDB PowerShell container ready for operations'"]

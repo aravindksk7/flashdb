@@ -1,0 +1,460 @@
+version: '3.8'
+
+# Production Docker Compose for FlashDB
+# Multi-instance scaling with load balancing and persistent storage
+# API: 5 replicas with health checks
+# GUI: Single instance behind reverse proxy
+# SQL Server: Primary database instance
+# Backup: Scheduled backup service
+
+services:
+  # ============================================================================
+  # SQL Server Database - Production Instance
+  # ============================================================================
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: flashdb-sql-prod
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "${DB_PASSWORD:-FlashDB@Prod123}"
+      MSSQL_PID: "Developer"
+      MSSQL_DATA_DIR: /var/opt/mssql/data
+      MSSQL_BACKUP_DIR: /var/opt/mssql/backup
+      MSSQL_AGENT_ENABLED: "true"
+      MSSQL_TCP_PORT: 1433
+    ports:
+      - "1433:1433"
+    volumes:
+      # Persistent data volume for databases
+      - sql-data:/var/opt/mssql/data
+      # Backup volume for scheduled backups
+      - sql-backups:/var/opt/mssql/backup
+      # Initialization scripts
+      - ./docker/init-prod.sql:/init-prod.sql
+    networks:
+      - flashdb-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P ${DB_PASSWORD:-FlashDB@Prod123} -Q 'SELECT 1' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    # Resource limits to prevent runaway container
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ============================================================================
+  # FlashDB API - 5 Replicas with Load Balancing
+  # ============================================================================
+  api-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.prod
+    container_name: flashdb-api-1
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: sql-server
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: "${DB_PASSWORD:-FlashDB@Prod123}"
+      INSTANCE_ID: "api-1"
+      LOG_LEVEL: info
+    expose:
+      - "3001"
+    volumes:
+      - api-logs-1:/app/logs
+    networks:
+      - flashdb-internal
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  api-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.prod
+    container_name: flashdb-api-2
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: sql-server
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: "${DB_PASSWORD:-FlashDB@Prod123}"
+      INSTANCE_ID: "api-2"
+      LOG_LEVEL: info
+    expose:
+      - "3001"
+    volumes:
+      - api-logs-2:/app/logs
+    networks:
+      - flashdb-internal
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  api-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.prod
+    container_name: flashdb-api-3
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: sql-server
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: "${DB_PASSWORD:-FlashDB@Prod123}"
+      INSTANCE_ID: "api-3"
+      LOG_LEVEL: info
+    expose:
+      - "3001"
+    volumes:
+      - api-logs-3:/app/logs
+    networks:
+      - flashdb-internal
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  api-4:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.prod
+    container_name: flashdb-api-4
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: sql-server
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: "${DB_PASSWORD:-FlashDB@Prod123}"
+      INSTANCE_ID: "api-4"
+      LOG_LEVEL: info
+    expose:
+      - "3001"
+    volumes:
+      - api-logs-4:/app/logs
+    networks:
+      - flashdb-internal
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  api-5:
+    build:
+      context: .
+      dockerfile: Dockerfile.api.prod
+    container_name: flashdb-api-5
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: sql-server
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: "${DB_PASSWORD:-FlashDB@Prod123}"
+      INSTANCE_ID: "api-5"
+      LOG_LEVEL: info
+    expose:
+      - "3001"
+    volumes:
+      - api-logs-5:/app/logs
+    networks:
+      - flashdb-internal
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ============================================================================
+  # FlashDB GUI - Web Interface (Single Instance)
+  # ============================================================================
+  gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.gui.prod
+    container_name: flashdb-gui-prod
+    depends_on:
+      sql-server:
+        condition: service_healthy
+      api-1:
+        condition: service_healthy
+    environment:
+      VITE_API_URL: http://reverse-proxy:8080/api
+    expose:
+      - "3000"
+    volumes:
+      - gui-logs:/var/log/nginx
+    networks:
+      - flashdb-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # ============================================================================
+  # Reverse Proxy & Load Balancer (Nginx)
+  # ============================================================================
+  reverse-proxy:
+    image: nginx:1.25-alpine
+    container_name: flashdb-reverse-proxy
+    depends_on:
+      - gui
+      - api-1
+      - api-2
+      - api-3
+      - api-4
+      - api-5
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - ./docker/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+      - proxy-logs:/var/log/nginx
+    networks:
+      - flashdb-internal
+      - flashdb-external
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # ============================================================================
+  # Backup Service - Scheduled Backups (PowerShell)
+  # ============================================================================
+  backup-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.powershell
+    container_name: flashdb-backup-service
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      DB_HOST: sql-server
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASSWORD: "${DB_PASSWORD:-FlashDB@Prod123}"
+      BACKUP_RETENTION_DAYS: 30
+      BACKUP_INTERVAL_HOURS: 4
+      TZ: UTC
+    volumes:
+      - sql-backups:/app/backups
+      - backup-logs:/app/logs
+      - ./services/BackupService.ps1:/app/services/BackupService.ps1:ro
+    networks:
+      - flashdb-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pwsh", "-Command", "Get-Host | Out-Null; exit 0"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # Run backup service
+    entrypoint: ["pwsh", "-NoExit", "-Command", ". /app/services/BackupService.ps1"]
+
+# ============================================================================
+# Volumes - Persistent Storage
+# ============================================================================
+volumes:
+  # SQL Server data and backups
+  sql-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${SQL_DATA_PATH:-./data/sql}
+
+  sql-backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${BACKUP_PATH:-./data/backups}
+
+  # API instance logs
+  api-logs-1:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-./logs}/api-1
+
+  api-logs-2:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-./logs}/api-2
+
+  api-logs-3:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-./logs}/api-3
+
+  api-logs-4:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-./logs}/api-4
+
+  api-logs-5:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-./logs}/api-5
+
+  # GUI and proxy logs
+  gui-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-./logs}/gui
+
+  proxy-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-./logs}/proxy
+
+  # Backup service logs
+  backup-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-./logs}/backup
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  # Internal network for service-to-service communication
+  flashdb-internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+  # External network for reverse proxy to expose services
+  flashdb-external:
+    driver: bridge

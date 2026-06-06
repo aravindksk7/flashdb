@@ -1,0 +1,331 @@
+# Alert Rules for FlashDB Operational Monitoring
+# These rules define alert conditions and notification policies
+
+groups:
+  # API Performance Alerts
+  - name: flashdb_api_alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: HighAPIErrorRate
+        expr: |
+          (sum(rate(http_requests_total{job="flashdb-api",status=~"5.."}[5m])) /
+           sum(rate(http_requests_total{job="flashdb-api"}[5m]))) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High API error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#high-error-rate"
+
+      # Slow API responses
+      - alert: SlowAPIResponse
+        expr: |
+          histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="flashdb-api"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Slow API response times detected"
+          description: "P95 response time is {{ $value }}s (threshold: 2s)"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#slow-responses"
+
+      # API response time SLO violation
+      - alert: APIResponseTimeSLOViolation
+        expr: |
+          histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="flashdb-api"}[5m])) > 5
+        for: 10m
+        labels:
+          severity: critical
+          component: api
+          slo: "true"
+        annotations:
+          summary: "API SLO violation: response time"
+          description: "P99 response time is {{ $value }}s (SLO: 5s)"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#slo-violations"
+
+  # Health Check Alerts
+  - name: flashdb_health_alerts
+    interval: 30s
+    rules:
+      # API health check failing
+      - alert: APIHealthCheckFailing
+        expr: |
+          up{job="flashdb-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: health
+        annotations:
+          summary: "API health check is failing"
+          description: "API endpoint has been down for 2+ minutes"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#api-down"
+
+      # Database connectivity issue
+      - alert: DatabaseConnectionIssue
+        expr: |
+          flashdb_database_connection_errors_total > 0 or
+          flashdb_database_connection_pool_available < 2
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connectivity issue detected"
+          description: "Check database connection pool and network"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#db-connection"
+
+      # PowerShell integration degraded
+      - alert: PowerShellIntegrationDegraded
+        expr: |
+          flashdb_powershell_execution_errors_total > 10 or
+          rate(flashdb_powershell_execution_errors_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: powershell
+        annotations:
+          summary: "PowerShell integration experiencing errors"
+          description: "Error rate: {{ $value }}/s"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#powershell-errors"
+
+  # Resource Utilization Alerts
+  - name: flashdb_resource_alerts
+    interval: 30s
+    rules:
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          flashdb_process_memory_heap_used_bytes / flashdb_process_memory_heap_total_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: memory
+        annotations:
+          summary: "High memory usage detected"
+          description: "Heap usage is {{ humanize $value | humanizePercentage }} (threshold: 85%)"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#memory-pressure"
+
+      # Memory usage critical
+      - alert: CriticalMemoryUsage
+        expr: |
+          flashdb_process_memory_heap_used_bytes / flashdb_process_memory_heap_total_bytes > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: memory
+        annotations:
+          summary: "Critical memory usage detected"
+          description: "Heap usage is {{ humanize $value | humanizePercentage }} (threshold: 95%)"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#memory-crisis"
+
+      # Low disk space
+      - alert: LowDiskSpace
+        expr: |
+          (flashdb_disk_space_available_bytes / flashdb_disk_space_total_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: disk
+        annotations:
+          summary: "Low disk space warning"
+          description: "Only {{ humanize $value | humanizePercentage }} disk space available"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#disk-space"
+
+      # Disk space critical
+      - alert: CriticalDiskSpace
+        expr: |
+          (flashdb_disk_space_available_bytes / flashdb_disk_space_total_bytes) < 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: disk
+        annotations:
+          summary: "Critical disk space shortage"
+          description: "Only {{ humanize $value | humanizePercentage }} disk space available"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#disk-critical"
+
+  # Operation Performance Alerts
+  - name: flashdb_operation_alerts
+    interval: 30s
+    rules:
+      # Clone creation is slow
+      - alert: SlowCloneCreation
+        expr: |
+          rate(flashdb_operation_duration_seconds_sum{operation="create-clone"}[5m]) /
+          rate(flashdb_operation_duration_seconds_count{operation="create-clone"}[5m]) > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: clones
+        annotations:
+          summary: "Clone creation is taking longer than expected"
+          description: "Average duration: {{ $value }}s (expected: < 30s)"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#slow-clones"
+
+      # Checkpoint creation failures
+      - alert: CheckpointCreationFailures
+        expr: |
+          rate(flashdb_checkpoint_failures_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: checkpoints
+        annotations:
+          summary: "Checkpoint creation failures detected"
+          description: "Failure rate: {{ $value }}/s"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#checkpoint-failures"
+
+      # Batch operation failures
+      - alert: BatchOperationFailures
+        expr: |
+          rate(flashdb_batch_failures_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: batch
+        annotations:
+          summary: "Batch operation failures detected"
+          description: "Failure rate: {{ $value }}/s"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#batch-failures"
+
+  # Logging & Monitoring Alerts
+  - name: flashdb_logging_alerts
+    interval: 30s
+    rules:
+      # High error log volume
+      - alert: HighErrorLogVolume
+        expr: |
+          rate(flashdb_log_entries_total{level="error"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: logging
+        annotations:
+          summary: "High error log volume"
+          description: "Error rate: {{ $value }}/s (threshold: 10/s)"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#error-log-spike"
+
+      # Prometheus scrape failures
+      - alert: PrometheusScrapeFailing
+        expr: |
+          rate(prometheus_tsdb_symbol_table_size_bytes[5m]) == 0 or
+          up{job="flashdb-api"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "Prometheus unable to scrape metrics"
+          description: "Metrics collection may be failing"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#scrape-failures"
+
+# Alert routing and notification configuration
+global_config:
+  # Alertmanager configuration
+  resolve_timeout: 5m
+
+route:
+  receiver: 'default'
+  group_by: ['severity', 'component']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 4h
+
+  routes:
+    # Critical alerts
+    - receiver: 'critical'
+      match:
+        severity: critical
+      group_wait: 0s
+      repeat_interval: 30m
+
+    # Warning alerts
+    - receiver: 'warnings'
+      match:
+        severity: warning
+      group_wait: 30s
+      repeat_interval: 2h
+
+    # SLO violations
+    - receiver: 'slo-violations'
+      match:
+        slo: 'true'
+      repeat_interval: 1h
+
+# Receivers (notification endpoints)
+receivers:
+  - name: 'default'
+    # Email notifications
+    email_configs:
+      - to: 'ops-team@company.com'
+        from: 'flashdb-alerts@company.com'
+        smarthost: 'smtp.company.com:587'
+        auth_username: 'flashdb-alerts@company.com'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+
+  - name: 'critical'
+    # Critical alerts go to PagerDuty + Email
+    email_configs:
+      - to: 'oncall@company.com'
+        from: 'flashdb-alerts@company.com'
+        smarthost: 'smtp.company.com:587'
+        auth_username: 'flashdb-alerts@company.com'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+    # PagerDuty notification
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        client: 'FlashDB Alerts'
+        client_url: 'http://prometheus:9090'
+
+  - name: 'warnings'
+    # Warning emails
+    email_configs:
+      - to: 'ops-team@company.com'
+        from: 'flashdb-alerts@company.com'
+        smarthost: 'smtp.company.com:587'
+        auth_username: 'flashdb-alerts@company.com'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+    # Slack notification
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#flashdb-warnings'
+        title: 'FlashDB Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}'
+
+  - name: 'slo-violations'
+    # SLO violations get high priority
+    email_configs:
+      - to: 'engineering-lead@company.com'
+        from: 'flashdb-alerts@company.com'
+        smarthost: 'smtp.company.com:587'
+        auth_username: 'flashdb-alerts@company.com'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#flashdb-slo-violations'
+        title: 'SLO VIOLATION'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}'
+
+# Inhibition rules (suppress certain alerts under conditions)
+inhibit_rules:
+  # Inhibit "slow response" warnings if we're already critical
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['instance', 'component']
+
+  # Inhibit low-priority warnings during outages
+  - source_match:
+      severity: 'critical'
+      component: 'api'
+    target_match:
+      severity: 'warning'
