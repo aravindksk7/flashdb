@@ -1,9 +1,8 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import logger from './logger';
-import { PowerShellService } from './services/powershellService';
 import goldImageRoutes from './routes/goldenImages';
 import cloneRoutes from './routes/clones';
 import checkpointRoutes from './routes/checkpoints';
@@ -12,7 +11,6 @@ dotenv.config();
 
 const app: Express = express();
 const port = process.env.PORT || 3001;
-const psService = new PowerShellService();
 
 // Middleware
 app.use(express.json());
@@ -24,7 +22,7 @@ app.use(cors({
 app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
 
 // Health check
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
@@ -34,7 +32,7 @@ app.use('/api/clones', cloneRoutes);
 app.use('/api/clones/:cloneId/checkpoints', checkpointRoutes);
 
 // Swagger/OpenAPI endpoint (can be expanded later)
-app.get('/api/docs', (req: Request, res: Response) => {
+app.get('/api/docs', (_req: Request, res: Response) => {
   res.json({
     info: {
       title: 'FlashDB API',
@@ -50,7 +48,7 @@ app.get('/api/docs', (req: Request, res: Response) => {
 });
 
 // Error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, _req: Request, res: Response) => {
   logger.error('Unhandled error:', err);
   res.status(err.status || 500).json({
     success: false,
@@ -60,10 +58,10 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
-    message: `Route not found: ${req.method} ${req.path}`
+    message: 'Route not found'
   });
 });
 

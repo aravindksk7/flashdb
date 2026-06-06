@@ -28,14 +28,14 @@ router.post('/', async (req: Request, res: Response) => {
       Force: force || false
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: checkpoint,
       message: 'Checkpoint created successfully'
     });
   } catch (error: any) {
     logger.error(`Error creating checkpoint: ${error.message}`);
-    res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 });
 
@@ -47,13 +47,13 @@ router.get('/', async (req: Request, res: Response) => {
       CloneId: cloneId
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: Array.isArray(checkpoints) ? checkpoints : [checkpoints]
     });
   } catch (error: any) {
     logger.error(`Error retrieving checkpoints: ${error.message}`);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -71,13 +71,13 @@ router.post('/:checkpointId/restore', async (req: Request, res: Response) => {
       ReattachAfter: reattachAfter !== false
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Checkpoint restored successfully'
     });
   } catch (error: any) {
     logger.error(`Error restoring checkpoint: ${error.message}`);
-    res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 });
 
@@ -94,13 +94,13 @@ router.patch('/:checkpointId', async (req: Request, res: Response) => {
       Labels: labels
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Checkpoint updated successfully'
     });
   } catch (error: any) {
     logger.error(`Error updating checkpoint: ${error.message}`);
-    res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 });
 
@@ -114,13 +114,13 @@ router.delete('/:checkpointId', async (req: Request, res: Response) => {
       CheckpointId: checkpointId
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Checkpoint deleted successfully'
     });
   } catch (error: any) {
     logger.error(`Error deleting checkpoint: ${error.message}`);
-    res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 });
 

@@ -25,28 +25,28 @@ router.post('/', async (req: Request, res: Response) => {
 
     const image = await psService.executeCommand('New-FlashdbGoldenImage', params);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: image,
       message: 'Golden image created successfully'
     });
   } catch (error: any) {
     logger.error(`Error creating golden image: ${error.message}`);
-    res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 });
 
 // GET - List golden images
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const images = await psService.executeCommand('Get-FlashdbGoldenImage', {});
-    res.json({
+    return res.json({
       success: true,
       data: Array.isArray(images) ? images : [images]
     });
   } catch (error: any) {
     logger.error(`Error retrieving golden images: ${error.message}`);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -64,10 +64,10 @@ router.get('/:imageId', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({ success: true, data: image });
+    return res.json({ success: true, data: image });
   } catch (error: any) {
     logger.error(`Error retrieving golden image: ${error.message}`);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -77,10 +77,10 @@ router.delete('/:imageId', async (req: Request, res: Response) => {
     await psService.executeCommandRaw('Remove-FlashdbGoldenImage', {
       GoldenImageId: req.params.imageId
     });
-    res.json({ success: true, message: 'Golden image deleted successfully' });
+    return res.json({ success: true, message: 'Golden image deleted successfully' });
   } catch (error: any) {
     logger.error(`Error deleting golden image: ${error.message}`);
-    res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 });
 

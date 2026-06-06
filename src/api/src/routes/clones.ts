@@ -26,14 +26,14 @@ router.post('/', async (req: Request, res: Response) => {
       StoragePath: storagePath
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: clone,
       message: 'Clone created successfully'
     });
   } catch (error: any) {
     logger.error(`Error creating clone: ${error.message}`);
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: error.message
     });
@@ -41,20 +41,20 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // GET - List all clones
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     logger.info('Retrieving all clones');
 
     const clones = await psService.executeCommand('Get-FlashdbClone', {});
 
-    res.json({
+    return res.json({
       success: true,
       data: Array.isArray(clones) ? clones : [clones],
       message: 'Clones retrieved successfully'
     });
   } catch (error: any) {
     logger.error(`Error retrieving clones: ${error.message}`);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message
     });
@@ -78,13 +78,13 @@ router.get('/:cloneId', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: clone
     });
   } catch (error: any) {
     logger.error(`Error retrieving clone: ${error.message}`);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message
     });
@@ -111,13 +111,13 @@ router.post('/:cloneId/attach', async (req: Request, res: Response) => {
       InstancePath: instancePath
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Clone attached successfully'
     });
   } catch (error: any) {
     logger.error(`Error attaching clone: ${error.message}`);
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: error.message
     });
@@ -134,13 +134,13 @@ router.post('/:cloneId/detach', async (req: Request, res: Response) => {
       CloneId: cloneId
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Clone detached successfully'
     });
   } catch (error: any) {
     logger.error(`Error detaching clone: ${error.message}`);
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: error.message
     });
@@ -160,13 +160,13 @@ router.delete('/:cloneId', async (req: Request, res: Response) => {
       DeleteVhdx: deleteVhdx === 'true'
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Clone deleted successfully'
     });
   } catch (error: any) {
     logger.error(`Error deleting clone: ${error.message}`);
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: error.message
     });
