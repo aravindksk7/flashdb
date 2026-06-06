@@ -17,6 +17,12 @@ import {
   getPerformanceMetrics
 } from './middleware/logging';
 import {
+  securityHeadersMiddleware,
+  rateLimitMiddleware,
+  requestValidationMiddleware,
+  httpsEnforcementMiddleware
+} from './middleware/security';
+import {
   healthCheckEndpoint,
   livelinessProbe,
   readinessProbe
@@ -38,6 +44,10 @@ import { initializePgQueueManager } from './services/pgQueueManager';
 import queueRoutes from './routes/queue';
 import { initializeInstanceConfig, shutdownInstanceConfig, getInstanceConfig } from './config/instanceConfig';
 import adminRoutes from './routes/admin';
+import authRoutes from './routes/auth';
+import rbacRoutes from './routes/rbac';
+import { attachUserContext } from './middleware/authMiddleware';
+import { bootstrapRbac } from './services/rbacBootstrap';
 
 dotenv.config();
 
@@ -96,6 +106,14 @@ const initializeSql = async () => {
       logger.warn(`Queue manager initialization warning: ${error.message}. Continuing with file-only persistence.`);
       // Queue persistence is optional - continue with file fallback
     }
+
+    // Bootstrap RBAC with default users (Phase 5b.5)
+    try {
+      await bootstrapRbac();
+      logger.info('RBAC bootstrap completed');
+    } catch (error: any) {
+      logger.warn(`RBAC bootstrap warning: ${error.message}. Continuing without default users.`);
+    }
   } catch (error: any) {
     logger.error(`SQL initialization failed: ${error.message}`);
     // Continue with PowerShell fallback for backward compatibility
@@ -121,6 +139,12 @@ app.use(cors({
   credentials: true
 }));
 
+// Security middleware (Phase 5c)
+app.use(httpsEnforcementMiddleware);
+app.use(securityHeadersMiddleware);
+app.use(rateLimitMiddleware);
+app.use(requestValidationMiddleware);
+
 // Logging middleware
 app.use(structuredLoggingMiddleware);
 app.use(bodyLoggingMiddleware);
@@ -134,6 +158,9 @@ app.use(cacheMiddleware);
 
 // Lock middleware (attach lock helpers to request)
 app.use(lockMiddleware);
+
+// User context attachment (optional auth)
+app.use(attachUserContext);
 
 // Health check endpoints
 app.get('/live', livelinessProbe);
@@ -154,6 +181,8 @@ app.get('/', (_req: Request, res: Response) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/rbac', rbacRoutes);
 app.use('/api/golden-images', goldImageRoutes);
 app.use('/api/clones', cloneRoutes);
 app.use('/api/clones/:cloneId/checkpoints', checkpointRoutes);
@@ -176,6 +205,33 @@ app.get('/api/docs', (_req: Request, res: Response) => {
         live: 'GET /live (liveness probe)',
         ready: 'GET /ready (readiness probe)',
         health: 'GET /health (deep health check)'
+      },
+      auth: {
+        login: 'POST /api/auth/login',
+        logout: 'POST /api/auth/logout',
+        me: 'GET /api/auth/me',
+        permissions: 'GET /api/auth/permissions',
+        refresh: 'POST /api/auth/refresh',
+        validate: 'POST /api/auth/validate'
+      },
+      rbac: {
+        users: {
+          create: 'POST /api/rbac/users (admin only)',
+          list: 'GET /api/rbac/users (admin only)',
+          get: 'GET /api/rbac/users/{userId}',
+          update: 'PUT /api/rbac/users/{userId}',
+          delete: 'DELETE /api/rbac/users/{userId} (admin only)'
+        },
+        roles: {
+          create: 'POST /api/rbac/roles (admin only)',
+          list: 'GET /api/rbac/roles',
+          get: 'GET /api/rbac/roles/{roleId}'
+        },
+        assignments: {
+          assign: 'POST /api/rbac/assign-role (admin only)',
+          revoke: 'POST /api/rbac/revoke-role (admin only)'
+        },
+        permissions: 'GET /api/rbac/permissions'
       },
       goldenImages: '/api/golden-images',
       clones: '/api/clones',
@@ -407,6 +463,13 @@ const server = app.listen(port, async () => {
     logger.info('  Multi-Instance: Not initialized (optional)');
   }
   logger.info('');
+  logger.info('Authentication & Authorization (Phase 5b.5):');
+  logger.info('  JWT Authentication: Enabled');
+  logger.info(`  JWT Expiry: ${process.env.JWT_EXPIRY_HOURS || 24}h`);
+  logger.info('  RBAC System: Enabled (PostgreSQL-backed)');
+  logger.info('  Default Roles: admin, operator, viewer, system');
+  logger.info('  Features: User management, role assignment, permission control');
+  logger.info('');
   logger.info('Connection Pool Status:');
   logger.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
   logger.info(`  Available: ${connectionPool.getMetrics().available}`);
@@ -460,7 +523,13 @@ process.on('SIGTERM', async () => {
     }
     await shutdownConnectionPool();
     logger.info('Connection pool shut down');
-    process.exit(0);
+
+    // Close logger transports (Phase 5c)
+    logger.info('Closing logger transports');
+    logger.on('finish', () => {
+      process.exit(0);
+    });
+    logger.end();
   });
 });
 
@@ -498,7 +567,13 @@ process.on('SIGINT', async () => {
     }
     await shutdownConnectionPool();
     logger.info('Connection pool shut down');
-    process.exit(0);
+
+    // Close logger transports (Phase 5c)
+    logger.info('Closing logger transports');
+    logger.on('finish', () => {
+      process.exit(0);
+    });
+    logger.end();
   });
 });
 
