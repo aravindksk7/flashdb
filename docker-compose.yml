@@ -9,18 +9,20 @@ services:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "FlashDB@Password123"
       MSSQL_PID: "Developer"
+      MSSQL_DATA_DIR: /var/opt/mssql/data
     ports:
       - "1433:1433"
     volumes:
       - sql-data:/var/opt/mssql/data
-      - ./docker/init-testdb.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "FlashDB@Password123", "-Q", "SELECT 1"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
+      - ./docker/init-testdb.sql:/init-testdb.sql
     networks:
       - flashdb-network
+    healthcheck:
+      test: ["CMD", "bash", "-c", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P FlashDB@Password123 -Q 'SELECT 1' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   # REST API Server
   api:
@@ -32,7 +34,7 @@ services:
       sql-server:
         condition: service_healthy
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3001
       LOG_LEVEL: info
       FLASHDB_MODULE_PATH: /app/flashdb/src/FlashDB/FlashDB.psm1
@@ -48,6 +50,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+      start_period: 10s
 
   # GUI Dashboard
   gui:
