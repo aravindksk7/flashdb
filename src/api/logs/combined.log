@@ -279,3 +279,1032 @@
 {"level":"info","message":"FlashDB API running on http://localhost:3001","service":"flashdb-api","timestamp":"2026-06-06 16:16:41"}
 {"level":"info","message":"Environment: development","service":"flashdb-api","timestamp":"2026-06-06 16:16:41"}
 {"level":"info","message":"FlashDB Module: C:\\flashdb\\src\\FlashDB\\FlashDB.psm1","service":"flashdb-api","timestamp":"2026-06-06 16:16:41"}
+{"level":"info","message":"Created data directory: C:\\flashdb\\src\\api\\data","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 19e0906d-649f-4fcd-b0aa-3d2bdc36ed97 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 1 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 6c5eb542-c331-4e3a-894e-ee6ba4cce1a1 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 19e0906d-649f-4fcd-b0aa-3d2bdc36ed97 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 2 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 6c5eb542-c331-4e3a-894e-ee6ba4cce1a1 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 2 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 3a9fef68-c136-40ca-8166-22942a37db59 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 3bf021d6-b409-4855-8669-6850e19f056b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 3f4ec161-bd5a-430b-b59e-3f3421032b3a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 3a9fef68-c136-40ca-8166-22942a37db59 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 3bf021d6-b409-4855-8669-6850e19f056b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 37a8cab7-1c3b-4c22-98e1-e66d297b8601 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 3f4ec161-bd5a-430b-b59e-3f3421032b3a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 37a8cab7-1c3b-4c22-98e1-e66d297b8601 (create-clone), processing time: 1780733332152ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 1 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 0c669667-4b6b-4866-baac-a6eca38c1cb6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 0c669667-4b6b-4866-baac-a6eca38c1cb6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 0c669667-4b6b-4866-baac-a6eca38c1cb6 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 1 completed, 1 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 99868286-68a2-4f4f-b9b4-53e9ffa50813 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 99868286-68a2-4f4f-b9b4-53e9ffa50813 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 99868286-68a2-4f4f-b9b4-53e9ffa50813 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 2 completed, 1 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: d090990e-6bd5-4bd5-98e8-c3d44b346777 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: d090990e-6bd5-4bd5-98e8-c3d44b346777 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: d090990e-6bd5-4bd5-98e8-c3d44b346777 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 2 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 0a81819f-6891-4b8f-968c-5cc509d5cac9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 0a81819f-6891-4b8f-968c-5cc509d5cac9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 0a81819f-6891-4b8f-968c-5cc509d5cac9 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: b619861b-29e6-4eb2-a2f1-9a783f058a0a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 87c6aa88-e32e-47c9-a465-bd66aa976331 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 98947b24-de85-4151-8d7d-61b58bc263ab (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 8 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 652f1164-0b31-4eca-ac39-6788a1ca3f48 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 9233c8e8-668b-447f-9188-9a234fa7637c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 92bbcefe-e05b-41ad-bcee-88b35e8a6e47 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: b619861b-29e6-4eb2-a2f1-9a783f058a0a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 87c6aa88-e32e-47c9-a465-bd66aa976331 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 7c15a4b1-d9b2-4c8f-94f9-b8621902d65a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 5a6bcd0a-a185-409f-8f68-e0231ddf8533 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 98947b24-de85-4151-8d7d-61b58bc263ab (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 7c15a4b1-d9b2-4c8f-94f9-b8621902d65a (create-clone), processing time: 1780733332208ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 652f1164-0b31-4eca-ac39-6788a1ca3f48 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 5a6bcd0a-a185-409f-8f68-e0231ddf8533 (create-clone), processing time: 1780733332210ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 5 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 8ccdabe8-9016-459b-878e-29e1e204c8f5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 7a740ba8-c9f4-4098-9b2f-6e93cf810366 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 1f5b1331-9e7d-44d1-b7cf-e4e7cc86b5b4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 9233c8e8-668b-447f-9188-9a234fa7637c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 8ccdabe8-9016-459b-878e-29e1e204c8f5 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 92bbcefe-e05b-41ad-bcee-88b35e8a6e47 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 7a740ba8-c9f4-4098-9b2f-6e93cf810366 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 1f5b1331-9e7d-44d1-b7cf-e4e7cc86b5b4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 1f5b1331-9e7d-44d1-b7cf-e4e7cc86b5b4 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 6 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 4098459a-f29e-4929-a4aa-87dfa99a8db5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 3264e877-7b98-4125-ba14-268d4778b7a3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 4098459a-f29e-4929-a4aa-87dfa99a8db5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 4098459a-f29e-4929-a4aa-87dfa99a8db5 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 3264e877-7b98-4125-ba14-268d4778b7a3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 3264e877-7b98-4125-ba14-268d4778b7a3 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 992b0689-05c7-4f1e-b005-f0ade10fe1f8 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: eb6c8162-fe24-4267-844b-494cb4fc60f6 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 13 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 4d2206cc-33e3-481b-a9f5-41cd80762703 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 513beb89-ecbd-437c-9689-6a9d87dfc3eb (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 1ed03f82-0450-4460-a31f-4ff34177747e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 992b0689-05c7-4f1e-b005-f0ade10fe1f8 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 1ed03f82-0450-4460-a31f-4ff34177747e (create-clone), processing time: 1780733332258ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 9 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 9 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 23af6693-f748-4c50-bf27-bcd5187bd1d0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 1d686d53-473d-465e-af70-33dc904e4e2d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: eb6c8162-fe24-4267-844b-494cb4fc60f6 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 23af6693-f748-4c50-bf27-bcd5187bd1d0 (create-clone), processing time: 1780733332266ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 4d2206cc-33e3-481b-a9f5-41cd80762703 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 1d686d53-473d-465e-af70-33dc904e4e2d (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: cc1e475e-e0a1-41c2-8667-2f6a2bf02736 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: e04d3e72-40ac-4d83-96fa-af9c294bd5a0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 513beb89-ecbd-437c-9689-6a9d87dfc3eb (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: cc1e475e-e0a1-41c2-8667-2f6a2bf02736 (create-clone), processing time: 1780733332281ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: e04d3e72-40ac-4d83-96fa-af9c294bd5a0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: e04d3e72-40ac-4d83-96fa-af9c294bd5a0 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 29f9f68c-d34e-47b6-8c2e-94f1dd0e1df0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"warn","message":"Task not found: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: ae957af1-52d4-4d1c-8fc0-6d5e3393726e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: e471b4d0-364f-4f39-8fc1-aed6198ca53c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 29f9f68c-d34e-47b6-8c2e-94f1dd0e1df0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: ae957af1-52d4-4d1c-8fc0-6d5e3393726e (create-clone), processing time: 1780733332300ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: e471b4d0-364f-4f39-8fc1-aed6198ca53c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: e471b4d0-364f-4f39-8fc1-aed6198ca53c (create-clone), processing time: 0ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 14 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 4c9c6219-64ee-432a-9fd7-33042992070b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 3e460efa-9ec5-4558-9041-30b37e80770f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 4c9c6219-64ee-432a-9fd7-33042992070b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 4c9c6219-64ee-432a-9fd7-33042992070b (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 3e460efa-9ec5-4558-9041-30b37e80770f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 3e460efa-9ec5-4558-9041-30b37e80770f (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: e8d3904b-e04d-4ca9-9eb7-51e3bb6e05f3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: e8d3904b-e04d-4ca9-9eb7-51e3bb6e05f3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task moved back to pending for retry: e8d3904b-e04d-4ca9-9eb7-51e3bb6e05f3","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 17 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"warn","message":"Task not found for retry: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 17 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 64f72b7c-5211-4b14-8259-a02ce6d9c8c9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"warn","message":"Cannot retry task 64f72b7c-5211-4b14-8259-a02ce6d9c8c9 with status pending","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 18 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 4d226c2d-f730-4a8c-ab23-3f0b38d5388d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 0a5a8687-e738-4665-817b-a845550e4cd5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: e8d3904b-e04d-4ca9-9eb7-51e3bb6e05f3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: 0a5a8687-e738-4665-817b-a845550e4cd5 (create-clone), processing time: 1780733332333ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 210d0ab8-3929-4c86-8a35-66ce1b5557a7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 64f72b7c-5211-4b14-8259-a02ce6d9c8c9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 210d0ab8-3929-4c86-8a35-66ce1b5557a7 (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: aee90f8c-9a3b-4981-8c51-adc41a35d713 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 19505c5f-8d00-4f92-afd0-866218ef4262 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task dequeued: 4d226c2d-f730-4a8c-ab23-3f0b38d5388d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task completed: aee90f8c-9a3b-4981-8c51-adc41a35d713 (create-clone), processing time: 1780733332348ms","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 20 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: ada22d5f-c375-4e97-886c-adb8542b9f0f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 21 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 3c599769-5fd0-4e89-98a9-6beab95a9b79 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 22 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: 1034f4a0-da6b-437e-9ecf-e98e45ef3436 (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 23 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Task enqueued: daf0ad45-cac8-4952-a457-ab9bcd03ff22 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"info","message":"Loaded queue from file: 24 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: d0f43ace-7706-49aa-9a2c-57e4c4d59825 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 25 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 0e018f56-4617-438e-a201-47b0268356f9 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 19505c5f-8d00-4f92-afd0-866218ef4262 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 26 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: ada22d5f-c375-4e97-886c-adb8542b9f0f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 26 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: e28c92da-3c28-4e6b-a1c8-c2b84ad1203f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 205feb23-7b2d-4ca1-9ab4-94129b0bb156 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 99365a31-a66e-4109-a8c2-09cfdd24ac5a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 3c599769-5fd0-4e89-98a9-6beab95a9b79 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 1034f4a0-da6b-437e-9ecf-e98e45ef3436 (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 29 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 262c8687-e677-4000-af09-ed854a4e2844 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: daf0ad45-cac8-4952-a457-ab9bcd03ff22 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 262c8687-e677-4000-af09-ed854a4e2844 (create-clone), processing time: 1780733353253ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 29 pending tasks, 17 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 33916444-1cbc-403e-9d94-2ee0b89ba329 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: d0f43ace-7706-49aa-9a2c-57e4c4d59825 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 33916444-1cbc-403e-9d94-2ee0b89ba329 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 29 pending tasks, 17 completed, 9 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: c1140bc9-b3d0-4a17-ae96-189173bd80ff (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 0e018f56-4617-438e-a201-47b0268356f9 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: c1140bc9-b3d0-4a17-ae96-189173bd80ff (create-clone), processing time: 1780733353265ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 29 pending tasks, 18 completed, 9 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: a1a69f0f-17c3-48c1-82e2-844c7ea1f9d9 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: e28c92da-3c28-4e6b-a1c8-c2b84ad1203f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: a1a69f0f-17c3-48c1-82e2-844c7ea1f9d9 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 29 pending tasks, 18 completed, 10 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 39571bff-36ac-43fa-b839-b1851d228dce (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 205feb23-7b2d-4ca1-9ab4-94129b0bb156 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 39571bff-36ac-43fa-b839-b1851d228dce (create-clone), processing time: 1780733353283ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 29 pending tasks, 19 completed, 10 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: b403b658-6ae0-4af9-935f-639597025278 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 780d5644-357c-43ed-b59a-8bfd821c68d5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: a3a2ca53-961c-4cf5-8638-ba98e92a95f0 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 32 pending tasks, 19 completed, 10 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: ac01fc29-77c0-4d1b-a6bb-a610f29f9d86 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 317ca138-00e3-40e7-a468-dc6c0631a3c6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: bf84fb18-36fd-4ed6-aedf-8326cb9c7675 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 99365a31-a66e-4109-a8c2-09cfdd24ac5a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: b403b658-6ae0-4af9-935f-639597025278 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 35 pending tasks, 19 completed, 10 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 31f001c5-3bb2-4f74-a842-78200b92858a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: c5d7d6c9-4ce9-4e74-8321-bc8c1f6efab3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 780d5644-357c-43ed-b59a-8bfd821c68d5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 31f001c5-3bb2-4f74-a842-78200b92858a (create-clone), processing time: 1780733353305ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: a3a2ca53-961c-4cf5-8638-ba98e92a95f0 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: c5d7d6c9-4ce9-4e74-8321-bc8c1f6efab3 (create-clone), processing time: 1780733353307ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 35 pending tasks, 21 completed, 10 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: e7f5c818-1bc0-4cb5-962f-e0b88071f572 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 44e3490b-eda8-4541-8e2c-1ba00d1b2463 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 28c79cdc-4098-40db-b0f8-547d594b3ec6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: ac01fc29-77c0-4d1b-a6bb-a610f29f9d86 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: e7f5c818-1bc0-4cb5-962f-e0b88071f572 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 317ca138-00e3-40e7-a468-dc6c0631a3c6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 44e3490b-eda8-4541-8e2c-1ba00d1b2463 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: bf84fb18-36fd-4ed6-aedf-8326cb9c7675 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 28c79cdc-4098-40db-b0f8-547d594b3ec6 (create-clone), processing time: 1780733353323ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 35 pending tasks, 22 completed, 12 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 140011f8-e59f-41ab-9c99-4ec6c2898d2d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 9ba4d650-59e8-46e7-a013-541196f655ba (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 140011f8-e59f-41ab-9c99-4ec6c2898d2d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 140011f8-e59f-41ab-9c99-4ec6c2898d2d (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 9ba4d650-59e8-46e7-a013-541196f655ba (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 9ba4d650-59e8-46e7-a013-541196f655ba (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 35 pending tasks, 24 completed, 12 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 831496da-e80f-44ff-afac-9019fab42720 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 052c5b36-43fc-4f50-88a6-50804dafecce (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 37 pending tasks, 24 completed, 12 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 7966665d-9451-4852-9fe5-1de199d21efc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 3c65818e-73e1-4be6-b36c-0a6acc4585ee (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 24 completed, 12 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 24 completed, 12 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: e6208e53-f67b-4f91-93cc-7c06e08a7d84 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 831496da-e80f-44ff-afac-9019fab42720 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: e6208e53-f67b-4f91-93cc-7c06e08a7d84 (create-clone), processing time: 1780733353350ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 25 completed, 12 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 25 completed, 12 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 7eaace94-cdff-47de-aaf8-f35325008016 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 496a1612-3270-40d2-91ea-5668125b1f03 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 052c5b36-43fc-4f50-88a6-50804dafecce (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 7eaace94-cdff-47de-aaf8-f35325008016 (create-clone), processing time: 1780733353358ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 7966665d-9451-4852-9fe5-1de199d21efc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 496a1612-3270-40d2-91ea-5668125b1f03 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 26 completed, 13 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 26 completed, 13 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 26 completed, 13 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 46af4684-698b-4f23-9e13-aeac74ee899a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 8264bfdf-465c-4abf-8cc7-595f8a1feecf (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 3c65818e-73e1-4be6-b36c-0a6acc4585ee (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 46af4684-698b-4f23-9e13-aeac74ee899a (create-clone), processing time: 1780733353382ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 8264bfdf-465c-4abf-8cc7-595f8a1feecf (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 8264bfdf-465c-4abf-8cc7-595f8a1feecf (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 28 completed, 13 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 39 pending tasks, 28 completed, 13 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 1685db94-7643-4ff7-8b8c-4e9ad1200d09 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 40 pending tasks, 28 completed, 13 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"warn","message":"Task not found: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 40 pending tasks, 28 completed, 13 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 3aa1cc50-2876-42b3-a4c9-4e8b88f426c3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: a2e163ce-e325-4d2e-8228-c3ff9d933e84 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 1685db94-7643-4ff7-8b8c-4e9ad1200d09 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 3aa1cc50-2876-42b3-a4c9-4e8b88f426c3 (create-clone), processing time: 1780733353404ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: a2e163ce-e325-4d2e-8228-c3ff9d933e84 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: a2e163ce-e325-4d2e-8228-c3ff9d933e84 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 40 pending tasks, 30 completed, 13 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 5144008b-1150-4fee-ae47-bd2f148f3f00 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 42527945-7d3e-4e68-951b-a735365109c5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 5144008b-1150-4fee-ae47-bd2f148f3f00 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 5144008b-1150-4fee-ae47-bd2f148f3f00 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 42527945-7d3e-4e68-951b-a735365109c5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 42527945-7d3e-4e68-951b-a735365109c5 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 40 pending tasks, 30 completed, 15 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 712ee073-34c7-4959-beb1-d3eb99ea85bd (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 712ee073-34c7-4959-beb1-d3eb99ea85bd (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task moved back to pending for retry: 712ee073-34c7-4959-beb1-d3eb99ea85bd","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 41 pending tasks, 30 completed, 15 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"warn","message":"Task not found for retry: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 41 pending tasks, 30 completed, 15 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: c21585f5-725a-4a2d-8510-ebc923074ed1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"warn","message":"Cannot retry task c21585f5-725a-4a2d-8510-ebc923074ed1 with status pending","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 42 pending tasks, 30 completed, 15 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: ab1a35e9-b15b-4784-9ff0-f8b4d05b54a6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 43 pending tasks, 30 completed, 15 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: cf02ab50-5578-49e8-af09-6efd4cab592a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: 712ee073-34c7-4959-beb1-d3eb99ea85bd (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: cf02ab50-5578-49e8-af09-6efd4cab592a (create-clone), processing time: 1780733353443ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 43 pending tasks, 31 completed, 15 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 7375d8ae-c851-47ce-b106-eef7af1a418a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: c21585f5-725a-4a2d-8510-ebc923074ed1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 7375d8ae-c851-47ce-b106-eef7af1a418a (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 43 pending tasks, 31 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 43 pending tasks, 31 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 0aadb2da-d68d-4cda-ae85-fc06fa809763 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: b2321262-b706-4105-9ca1-bee8046646d0 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task dequeued: ab1a35e9-b15b-4784-9ff0-f8b4d05b54a6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task completed: 0aadb2da-d68d-4cda-ae85-fc06fa809763 (create-clone), processing time: 1780733353458ms","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 44 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 4ea11f6b-ce07-4e1d-ad6b-aa8fd7cb0681 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 45 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 8af8521d-0b53-4c6e-a62f-30fab0e338c4 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 46 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: d4b3d53d-b6fd-4c9d-a093-3e0d972a95ac (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 47 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Task enqueued: 70eaca04-64ce-426e-9c95-9678a5dd2bf0 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"info","message":"Loaded queue from file: 48 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 081389d7-419a-4b53-85d0-289ccf858cea (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 49 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 30e4102e-fb4d-468c-a434-5d0e7952e910 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: b2321262-b706-4105-9ca1-bee8046646d0 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 50 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 4ea11f6b-ce07-4e1d-ad6b-aa8fd7cb0681 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 50 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 0e8cccb5-6750-4523-b263-eff38b6dd375 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 95ccb26c-1dbb-4057-b5c2-9093b94d16ae (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 1a1ebdfb-3a60-4a3f-8068-e3f76041e067 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 8af8521d-0b53-4c6e-a62f-30fab0e338c4 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: d4b3d53d-b6fd-4c9d-a093-3e0d972a95ac (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 53 pending tasks, 32 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 1a9a0fdb-7d19-492b-b76a-52ebb9d16512 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 70eaca04-64ce-426e-9c95-9678a5dd2bf0 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: 1a9a0fdb-7d19-492b-b76a-52ebb9d16512 (create-clone), processing time: 1780733400853ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 53 pending tasks, 33 completed, 16 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 4eb40e8b-4753-4c2d-84a8-491f8a2afa63 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 081389d7-419a-4b53-85d0-289ccf858cea (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: 4eb40e8b-4753-4c2d-84a8-491f8a2afa63 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 53 pending tasks, 33 completed, 17 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: b3316efc-d9f6-435b-9175-5b7072d243e1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 30e4102e-fb4d-468c-a434-5d0e7952e910 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: b3316efc-d9f6-435b-9175-5b7072d243e1 (create-clone), processing time: 1780733400867ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 53 pending tasks, 34 completed, 17 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 0b7efa82-890f-4cfb-8fd3-a59015ecde91 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 0e8cccb5-6750-4523-b263-eff38b6dd375 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: 0b7efa82-890f-4cfb-8fd3-a59015ecde91 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 53 pending tasks, 34 completed, 18 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: e929f065-1e3e-47bd-9dc0-a4f52fac3579 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 95ccb26c-1dbb-4057-b5c2-9093b94d16ae (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: e929f065-1e3e-47bd-9dc0-a4f52fac3579 (create-clone), processing time: 1780733400882ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 53 pending tasks, 35 completed, 18 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: b80159c5-d7a3-439d-9f1d-e35c4c458e1d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 5f9ae85a-507a-45a4-8d9b-1dfda6d7c98d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 1d6bb8f0-e9e9-48bc-ba63-b2e5633c9883 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 56 pending tasks, 35 completed, 18 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: c5d57bf5-b6ec-48e3-8b34-c90b5768b608 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 530a9424-37ae-4a13-96be-db3c47000f05 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 7e31f2c8-1cb5-499a-b928-6a3b7eece8c8 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 1a1ebdfb-3a60-4a3f-8068-e3f76041e067 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: b80159c5-d7a3-439d-9f1d-e35c4c458e1d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 59 pending tasks, 35 completed, 18 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 7b1a1997-e2a9-483c-839b-32026cc2d8f1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 766027f3-ec86-41f9-b231-24652fcc59c0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 5f9ae85a-507a-45a4-8d9b-1dfda6d7c98d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: 7b1a1997-e2a9-483c-839b-32026cc2d8f1 (create-clone), processing time: 1780733400911ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 1d6bb8f0-e9e9-48bc-ba63-b2e5633c9883 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: 766027f3-ec86-41f9-b231-24652fcc59c0 (create-clone), processing time: 1780733400913ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 59 pending tasks, 37 completed, 18 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 1b6a8444-49fb-4e67-a07a-05dc0d02cb6a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: f388d57c-5d03-4cb6-b8aa-ce0149a3211a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: ab16fa99-5055-4b68-ab6e-3cc9dd077546 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: c5d57bf5-b6ec-48e3-8b34-c90b5768b608 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: 1b6a8444-49fb-4e67-a07a-05dc0d02cb6a (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 530a9424-37ae-4a13-96be-db3c47000f05 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: f388d57c-5d03-4cb6-b8aa-ce0149a3211a (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 7e31f2c8-1cb5-499a-b928-6a3b7eece8c8 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: ab16fa99-5055-4b68-ab6e-3cc9dd077546 (create-clone), processing time: 1780733400925ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 59 pending tasks, 38 completed, 20 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: b024f917-83ef-4412-a7e4-39140895dbb5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 717076b1-a8ff-4f9c-9a0c-6e5de861010f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: b024f917-83ef-4412-a7e4-39140895dbb5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: b024f917-83ef-4412-a7e4-39140895dbb5 (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 717076b1-a8ff-4f9c-9a0c-6e5de861010f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: 717076b1-a8ff-4f9c-9a0c-6e5de861010f (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 59 pending tasks, 40 completed, 20 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 6d0894a8-e645-419f-adb1-a43af261cc15 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: d050efcb-e078-49f1-9831-31aca0f872da (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 61 pending tasks, 40 completed, 20 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: b5caac84-9808-4edc-bb3c-3a933b3dcb0d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 0add151d-9320-4cfa-a1fa-6427320c2fe9 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 40 completed, 20 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 40 completed, 20 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: ee799ba0-478b-4478-9b63-e47a731299a8 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 6d0894a8-e645-419f-adb1-a43af261cc15 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: ee799ba0-478b-4478-9b63-e47a731299a8 (create-clone), processing time: 1780733400956ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 41 completed, 20 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 41 completed, 20 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: b1c63c41-13b9-4947-a779-09e75835cd91 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: ad2ba30b-43fb-4be6-be2a-4b6c814f95b2 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: d050efcb-e078-49f1-9831-31aca0f872da (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: b1c63c41-13b9-4947-a779-09e75835cd91 (create-clone), processing time: 1780733400964ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: b5caac84-9808-4edc-bb3c-3a933b3dcb0d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: ad2ba30b-43fb-4be6-be2a-4b6c814f95b2 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 42 completed, 21 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 42 completed, 21 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 42 completed, 21 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 97b72a9f-0bf0-43e7-9705-485ed0e9e060 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 41817ee4-b840-480c-8362-02f7a22676dd (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 0add151d-9320-4cfa-a1fa-6427320c2fe9 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: 97b72a9f-0bf0-43e7-9705-485ed0e9e060 (create-clone), processing time: 1780733400980ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 41817ee4-b840-480c-8362-02f7a22676dd (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: 41817ee4-b840-480c-8362-02f7a22676dd (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 44 completed, 21 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 63 pending tasks, 44 completed, 21 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 386e124a-19bd-43f7-8797-4a39ed83404c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 64 pending tasks, 44 completed, 21 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"warn","message":"Task not found: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Loaded queue from file: 64 pending tasks, 44 completed, 21 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 8566991f-f010-488c-a657-4df5547f4476 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task enqueued: 016a0015-b9b3-4a4e-9abd-4c97e583d3a0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 386e124a-19bd-43f7-8797-4a39ed83404c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task completed: 8566991f-f010-488c-a657-4df5547f4476 (create-clone), processing time: 1780733400999ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"info","message":"Task dequeued: 016a0015-b9b3-4a4e-9abd-4c97e583d3a0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task completed: 016a0015-b9b3-4a4e-9abd-4c97e583d3a0 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 64 pending tasks, 46 completed, 21 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 08dae169-9679-4607-8360-b4bb252894d4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 5268fd2a-bce3-4ced-97ef-978856db3dea (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task dequeued: 08dae169-9679-4607-8360-b4bb252894d4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"error","message":"Task failed: 08dae169-9679-4607-8360-b4bb252894d4 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task dequeued: 5268fd2a-bce3-4ced-97ef-978856db3dea (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"error","message":"Task failed: 5268fd2a-bce3-4ced-97ef-978856db3dea (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 64 pending tasks, 46 completed, 23 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: f6cf7cf3-4896-4522-995a-66c3b1fba91c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task dequeued: f6cf7cf3-4896-4522-995a-66c3b1fba91c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task moved back to pending for retry: f6cf7cf3-4896-4522-995a-66c3b1fba91c","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 65 pending tasks, 46 completed, 23 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"warn","message":"Task not found for retry: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 65 pending tasks, 46 completed, 23 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: d0cc46bc-b4c5-47d2-8cb0-4cd18cd0bb2e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"warn","message":"Cannot retry task d0cc46bc-b4c5-47d2-8cb0-4cd18cd0bb2e with status pending","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 66 pending tasks, 46 completed, 23 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: e6b4f871-03d3-4d7c-8e8e-b2f92c7e5b82 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 67 pending tasks, 46 completed, 23 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 7a14bfd1-697b-422d-9fcd-1064c8cb8a73 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task dequeued: f6cf7cf3-4896-4522-995a-66c3b1fba91c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task completed: 7a14bfd1-697b-422d-9fcd-1064c8cb8a73 (create-clone), processing time: 1780733401031ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 67 pending tasks, 47 completed, 23 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 3aea3949-a922-4f7d-bb92-0b24a84faa27 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task dequeued: d0cc46bc-b4c5-47d2-8cb0-4cd18cd0bb2e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"error","message":"Task failed: 3aea3949-a922-4f7d-bb92-0b24a84faa27 (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 67 pending tasks, 47 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 67 pending tasks, 47 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 6266f420-0853-4e97-9a23-1178af49b777 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 32846127-c67f-4959-ab93-0f0fda53883d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task dequeued: e6b4f871-03d3-4d7c-8e8e-b2f92c7e5b82 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task completed: 6266f420-0853-4e97-9a23-1178af49b777 (create-clone), processing time: 1780733401044ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 68 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 2e72d13d-826c-4833-9cb8-67d30b39d67b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 69 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 2ada9a0e-4db8-425a-9d0b-be95e96f13bd (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 70 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 46e3a602-58f2-4798-9e41-f453fde00951 (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 71 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Task enqueued: 739279aa-decd-42dc-929a-eedea3f8a383 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"info","message":"Loaded queue from file: 72 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: bbdd0041-661d-4da9-b065-1e4a890a4917 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 73 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 5ff36acb-8bf0-4cc1-89bb-c1ea07b75c3c (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 32846127-c67f-4959-ab93-0f0fda53883d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 74 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 2e72d13d-826c-4833-9cb8-67d30b39d67b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 74 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 2bb136e4-dd4f-49b7-9ebc-a66afe37c389 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 9b573652-e1c6-4074-9e4c-9485f75569f0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 9de44301-cd85-4244-a27b-dc213b15affc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 2ada9a0e-4db8-425a-9d0b-be95e96f13bd (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 46e3a602-58f2-4798-9e41-f453fde00951 (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 77 pending tasks, 48 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 7c41e72b-c42f-41cb-bd68-a102c3745746 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 739279aa-decd-42dc-929a-eedea3f8a383 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 7c41e72b-c42f-41cb-bd68-a102c3745746 (create-clone), processing time: 1780733421075ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 77 pending tasks, 49 completed, 24 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 6b4a9a17-0a80-4677-9642-6b929e763008 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: bbdd0041-661d-4da9-b065-1e4a890a4917 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 6b4a9a17-0a80-4677-9642-6b929e763008 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 77 pending tasks, 49 completed, 25 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 499f1cd9-8794-4a15-a083-d5f32d51f4f1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 5ff36acb-8bf0-4cc1-89bb-c1ea07b75c3c (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 499f1cd9-8794-4a15-a083-d5f32d51f4f1 (create-clone), processing time: 1780733421088ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 77 pending tasks, 50 completed, 25 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 67de8a13-5a25-417e-82e7-4ce8e2b991fc (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 2bb136e4-dd4f-49b7-9ebc-a66afe37c389 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 67de8a13-5a25-417e-82e7-4ce8e2b991fc (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 77 pending tasks, 50 completed, 26 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 8ca1f631-6c2f-48f1-aa2c-6aaea81b21b1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 9b573652-e1c6-4074-9e4c-9485f75569f0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 8ca1f631-6c2f-48f1-aa2c-6aaea81b21b1 (create-clone), processing time: 1780733421104ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 77 pending tasks, 51 completed, 26 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 4caefb4c-98dc-4c58-91dd-683507092135 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 2a4460b7-d831-457c-b44c-b6985b496ae7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 6a44f2dc-6b9e-40f7-a6c5-70709a7890a3 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 80 pending tasks, 51 completed, 26 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: f8fcb0ff-df1c-45ab-ae74-e2afa98a407b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 3bfb5e58-2c8e-4b36-8211-f281745cf154 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 5c222cfa-7f68-4169-b51f-ed4ffbc46c5c (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 9de44301-cd85-4244-a27b-dc213b15affc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 4caefb4c-98dc-4c58-91dd-683507092135 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 83 pending tasks, 51 completed, 26 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 1945178b-4ac9-480b-8e76-ee221e5d384f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: b54a6429-bff4-4ed5-aa9c-3070309a6051 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 2a4460b7-d831-457c-b44c-b6985b496ae7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 1945178b-4ac9-480b-8e76-ee221e5d384f (create-clone), processing time: 1780733421129ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 6a44f2dc-6b9e-40f7-a6c5-70709a7890a3 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: b54a6429-bff4-4ed5-aa9c-3070309a6051 (create-clone), processing time: 1780733421131ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 83 pending tasks, 53 completed, 26 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 531325e3-fcab-4cb2-b78e-5b789292afca (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 1f4e19ef-b8d4-49f3-a0e7-e2c9b3014661 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 0ce0c2f7-c63c-4bd9-b0b1-9ccfbc5549e0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: f8fcb0ff-df1c-45ab-ae74-e2afa98a407b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 531325e3-fcab-4cb2-b78e-5b789292afca (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 3bfb5e58-2c8e-4b36-8211-f281745cf154 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 1f4e19ef-b8d4-49f3-a0e7-e2c9b3014661 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 5c222cfa-7f68-4169-b51f-ed4ffbc46c5c (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 0ce0c2f7-c63c-4bd9-b0b1-9ccfbc5549e0 (create-clone), processing time: 1780733421145ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 83 pending tasks, 54 completed, 28 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: d9d666de-2093-4635-8aed-e027b893a620 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 40a87dee-97ec-410d-864c-fb8b8427856c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: d9d666de-2093-4635-8aed-e027b893a620 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: d9d666de-2093-4635-8aed-e027b893a620 (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 40a87dee-97ec-410d-864c-fb8b8427856c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 40a87dee-97ec-410d-864c-fb8b8427856c (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 83 pending tasks, 56 completed, 28 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 65fd96ca-c3f4-4816-a151-ebb1a7d50035 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 843fda0f-1bcb-403b-9607-55f5feb84624 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 85 pending tasks, 56 completed, 28 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 8748a895-5c06-414d-8262-5423f5b10f99 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: b510a34d-f8a0-426e-83ab-0bab9608ca1c (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 56 completed, 28 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 56 completed, 28 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: aaae1281-ead6-4097-a8ea-dc13442adc3f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 65fd96ca-c3f4-4816-a151-ebb1a7d50035 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: aaae1281-ead6-4097-a8ea-dc13442adc3f (create-clone), processing time: 1780733421179ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 57 completed, 28 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 57 completed, 28 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 51a51c83-1608-471e-acf0-36b50b7bbf35 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 3e569de4-e910-414c-a83e-44fc2ba01b90 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 843fda0f-1bcb-403b-9607-55f5feb84624 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 51a51c83-1608-471e-acf0-36b50b7bbf35 (create-clone), processing time: 1780733421189ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 8748a895-5c06-414d-8262-5423f5b10f99 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 3e569de4-e910-414c-a83e-44fc2ba01b90 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 58 completed, 29 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 58 completed, 29 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 58 completed, 29 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: a68af424-80ed-4a15-a0b4-397544ee93b0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 2dc53e58-2800-4bdc-9f4c-ee5e7a56b1b1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: b510a34d-f8a0-426e-83ab-0bab9608ca1c (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: a68af424-80ed-4a15-a0b4-397544ee93b0 (create-clone), processing time: 1780733421214ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 2dc53e58-2800-4bdc-9f4c-ee5e7a56b1b1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 2dc53e58-2800-4bdc-9f4c-ee5e7a56b1b1 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 60 completed, 29 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 87 pending tasks, 60 completed, 29 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: f347af0a-bf33-4a98-9ab1-1bfa810ab837 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 88 pending tasks, 60 completed, 29 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"warn","message":"Task not found: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 88 pending tasks, 60 completed, 29 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 9b76b258-d7fc-49ff-9e91-ae2b337ecf3d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: ea863157-be3f-4764-9677-0fcbaf3d0cf9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: f347af0a-bf33-4a98-9ab1-1bfa810ab837 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 9b76b258-d7fc-49ff-9e91-ae2b337ecf3d (create-clone), processing time: 1780733421230ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: ea863157-be3f-4764-9677-0fcbaf3d0cf9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: ea863157-be3f-4764-9677-0fcbaf3d0cf9 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 88 pending tasks, 62 completed, 29 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 81c8fcdf-968b-469d-8fb2-e1c04a766ac0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 646f0c4b-e3e8-4a6c-8ddb-1e741ac557a4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 81c8fcdf-968b-469d-8fb2-e1c04a766ac0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 81c8fcdf-968b-469d-8fb2-e1c04a766ac0 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 646f0c4b-e3e8-4a6c-8ddb-1e741ac557a4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 646f0c4b-e3e8-4a6c-8ddb-1e741ac557a4 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 88 pending tasks, 62 completed, 31 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 819d6e8b-6066-4371-8943-4c82a49b6b18 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 819d6e8b-6066-4371-8943-4c82a49b6b18 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task moved back to pending for retry: 819d6e8b-6066-4371-8943-4c82a49b6b18","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 89 pending tasks, 62 completed, 31 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"warn","message":"Task not found for retry: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 89 pending tasks, 62 completed, 31 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: c54f7104-3d61-4b1b-ab2a-8d497164f55b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"warn","message":"Cannot retry task c54f7104-3d61-4b1b-ab2a-8d497164f55b with status pending","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 90 pending tasks, 62 completed, 31 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 52343f63-6344-484a-a796-8d6f2edda6ae (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 91 pending tasks, 62 completed, 31 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 98f3697d-2d5e-49ce-9bf5-85c9fde7369b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 819d6e8b-6066-4371-8943-4c82a49b6b18 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 98f3697d-2d5e-49ce-9bf5-85c9fde7369b (create-clone), processing time: 1780733421265ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 91 pending tasks, 63 completed, 31 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 7dcdbe29-9cf0-420f-8a97-b78247ea3949 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: c54f7104-3d61-4b1b-ab2a-8d497164f55b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 7dcdbe29-9cf0-420f-8a97-b78247ea3949 (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 91 pending tasks, 63 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 91 pending tasks, 63 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 21dfccc9-5e9e-4577-9e51-55aba51adac3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: ba78a096-d03f-4f5d-ad81-9a35932b78fe (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task dequeued: 52343f63-6344-484a-a796-8d6f2edda6ae (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task completed: 21dfccc9-5e9e-4577-9e51-55aba51adac3 (create-clone), processing time: 1780733421281ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 92 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: a2ab1989-b960-46dc-85d3-2280a3c35abc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 93 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: dfe7034e-e72c-4d52-a4af-0f71f7371e3d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 94 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 5efab73e-bb9a-413e-a8cb-1d860fd35cf1 (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 95 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Task enqueued: 432ff922-fd59-463a-8480-797aa47fb934 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"info","message":"Loaded queue from file: 96 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:30"}
+{"level":"info","message":"Task enqueued: 48619f5e-a8ac-45f9-ac8e-88ba505902d5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:30"}
+{"level":"info","message":"Loaded queue from file: 97 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:30"}
+{"level":"info","message":"Task enqueued: ccaa3746-02ea-4eb2-966f-adce9fb52253 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:30"}
+{"level":"info","message":"Task dequeued: ba78a096-d03f-4f5d-ad81-9a35932b78fe (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:30"}
+{"level":"info","message":"Loaded queue from file: 98 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:30"}
+{"level":"info","message":"Task dequeued: a2ab1989-b960-46dc-85d3-2280a3c35abc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:30"}
+{"level":"info","message":"Loaded queue from file: 98 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 76c129aa-9ba1-40fa-8b77-90d7874118c6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 1e4b552a-15eb-4246-b1d2-0b824ee7927d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 1e467fa9-8a7a-4b36-9f1b-6d6224a9fe34 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: dfe7034e-e72c-4d52-a4af-0f71f7371e3d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 5efab73e-bb9a-413e-a8cb-1d860fd35cf1 (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 101 pending tasks, 64 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: e10d8244-27ec-41ef-a1e5-5e388901ed75 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 432ff922-fd59-463a-8480-797aa47fb934 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: e10d8244-27ec-41ef-a1e5-5e388901ed75 (create-clone), processing time: 1780733431018ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 101 pending tasks, 65 completed, 32 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 263763d4-f455-42e0-bf03-7f1609292f28 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 48619f5e-a8ac-45f9-ac8e-88ba505902d5 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 263763d4-f455-42e0-bf03-7f1609292f28 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 101 pending tasks, 65 completed, 33 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 0e0cd1e5-237a-40cb-8368-0056d3991e07 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: ccaa3746-02ea-4eb2-966f-adce9fb52253 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: 0e0cd1e5-237a-40cb-8368-0056d3991e07 (create-clone), processing time: 1780733431034ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 101 pending tasks, 66 completed, 33 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: c099e573-8e2c-4609-b598-62efa78515e4 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 76c129aa-9ba1-40fa-8b77-90d7874118c6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: c099e573-8e2c-4609-b598-62efa78515e4 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 101 pending tasks, 66 completed, 34 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 74cdc163-2808-40b2-924e-921a56a8fd9d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 1e4b552a-15eb-4246-b1d2-0b824ee7927d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: 74cdc163-2808-40b2-924e-921a56a8fd9d (create-clone), processing time: 1780733431051ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 101 pending tasks, 67 completed, 34 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 070d4911-0e16-4cdd-9c87-2e41125c7170 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 808401bc-5ea9-4f61-9987-3c8db9e5bf31 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 2135ea28-dbd8-4c94-8821-c78b6af07752 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 104 pending tasks, 67 completed, 34 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 100bd02d-1b44-4fa9-8645-8736a644b24a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 27e4834f-2aa1-49e0-bd27-73ff6102daf4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: d82a2ab0-eefd-49f1-addc-bbaf93f3d506 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 1e467fa9-8a7a-4b36-9f1b-6d6224a9fe34 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 070d4911-0e16-4cdd-9c87-2e41125c7170 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 107 pending tasks, 67 completed, 34 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: e5fdff52-1ca7-4a2a-a033-6137bccb00b7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: a076eb13-48c0-43e1-8aa5-12564a332c83 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 808401bc-5ea9-4f61-9987-3c8db9e5bf31 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: e5fdff52-1ca7-4a2a-a033-6137bccb00b7 (create-clone), processing time: 1780733431080ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 2135ea28-dbd8-4c94-8821-c78b6af07752 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: a076eb13-48c0-43e1-8aa5-12564a332c83 (create-clone), processing time: 1780733431083ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 107 pending tasks, 69 completed, 34 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 4f9843b1-453a-433b-b134-38500d9096c9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 3aae8000-4f6c-4fcc-b70f-b5d5b4e02e89 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 4d112e5c-4b09-4edd-95a2-a2d859faf0e1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 100bd02d-1b44-4fa9-8645-8736a644b24a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 4f9843b1-453a-433b-b134-38500d9096c9 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 27e4834f-2aa1-49e0-bd27-73ff6102daf4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 3aae8000-4f6c-4fcc-b70f-b5d5b4e02e89 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: d82a2ab0-eefd-49f1-addc-bbaf93f3d506 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: 4d112e5c-4b09-4edd-95a2-a2d859faf0e1 (create-clone), processing time: 1780733431099ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 107 pending tasks, 70 completed, 36 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 73ba3ee5-f1cc-4f19-b0ee-73b9283f986f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: ecea0fcf-f076-47ad-9872-45b29a0ff35b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 73ba3ee5-f1cc-4f19-b0ee-73b9283f986f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: 73ba3ee5-f1cc-4f19-b0ee-73b9283f986f (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: ecea0fcf-f076-47ad-9872-45b29a0ff35b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: ecea0fcf-f076-47ad-9872-45b29a0ff35b (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 107 pending tasks, 72 completed, 36 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: e82e38fd-8f53-406d-8bce-4e274f5d66c3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: a1d16b8a-92b2-4de2-bef6-85c856fb72c0 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 109 pending tasks, 72 completed, 36 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: b7e2a634-3d99-4aaf-9f67-3be40afbec30 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 15b0524f-816c-4211-9f54-033fe5ef0e02 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 72 completed, 36 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 72 completed, 36 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: ccce204e-0dd1-49cd-b147-5f5e9cf8dbdd (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: e82e38fd-8f53-406d-8bce-4e274f5d66c3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: ccce204e-0dd1-49cd-b147-5f5e9cf8dbdd (create-clone), processing time: 1780733431141ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 73 completed, 36 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 73 completed, 36 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: cb1ac986-0261-4883-a890-7a0682d5a10c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 9c4b8b67-f1d7-4242-a24b-5f97cbe75593 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: a1d16b8a-92b2-4de2-bef6-85c856fb72c0 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: cb1ac986-0261-4883-a890-7a0682d5a10c (create-clone), processing time: 1780733431150ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: b7e2a634-3d99-4aaf-9f67-3be40afbec30 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 9c4b8b67-f1d7-4242-a24b-5f97cbe75593 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 74 completed, 37 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 74 completed, 37 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 74 completed, 37 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: cc3e8d62-6938-4c76-a6e8-ee4a33dfbebe (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: be9464f6-1d03-4bb8-954e-f99e433635c7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 15b0524f-816c-4211-9f54-033fe5ef0e02 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: cc3e8d62-6938-4c76-a6e8-ee4a33dfbebe (create-clone), processing time: 1780733431168ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: be9464f6-1d03-4bb8-954e-f99e433635c7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: be9464f6-1d03-4bb8-954e-f99e433635c7 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 76 completed, 37 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 111 pending tasks, 76 completed, 37 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 6c8b917b-a697-4f02-b6c1-dbf41b7119ad (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 112 pending tasks, 76 completed, 37 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"warn","message":"Task not found: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 112 pending tasks, 76 completed, 37 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 179cee1c-8f9a-497d-bee7-a6a5f6f2c9d3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: ff28be4d-32e3-4f49-b4c6-e1bd4569bd0f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 6c8b917b-a697-4f02-b6c1-dbf41b7119ad (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: 179cee1c-8f9a-497d-bee7-a6a5f6f2c9d3 (create-clone), processing time: 1780733431192ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: ff28be4d-32e3-4f49-b4c6-e1bd4569bd0f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: ff28be4d-32e3-4f49-b4c6-e1bd4569bd0f (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 112 pending tasks, 78 completed, 37 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 8f117829-4efb-49a5-be37-f16e79a61259 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 0ed17642-f8b4-4ea0-9fc1-c23c88be6020 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 8f117829-4efb-49a5-be37-f16e79a61259 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 8f117829-4efb-49a5-be37-f16e79a61259 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 0ed17642-f8b4-4ea0-9fc1-c23c88be6020 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 0ed17642-f8b4-4ea0-9fc1-c23c88be6020 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 112 pending tasks, 78 completed, 39 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 39108114-63ef-44c5-934c-ed486e9b1c4c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 39108114-63ef-44c5-934c-ed486e9b1c4c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task moved back to pending for retry: 39108114-63ef-44c5-934c-ed486e9b1c4c","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 113 pending tasks, 78 completed, 39 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"warn","message":"Task not found for retry: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 113 pending tasks, 78 completed, 39 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 8d132e34-3cad-4641-970c-71a705abb718 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"warn","message":"Cannot retry task 8d132e34-3cad-4641-970c-71a705abb718 with status pending","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 114 pending tasks, 78 completed, 39 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 75b96688-126b-46f0-be3f-8a26e0c25f62 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 115 pending tasks, 78 completed, 39 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 4c9ce80d-c84e-4266-973d-5134318f70bd (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 39108114-63ef-44c5-934c-ed486e9b1c4c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: 4c9ce80d-c84e-4266-973d-5134318f70bd (create-clone), processing time: 1780733431231ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 115 pending tasks, 79 completed, 39 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: b012d3ea-12b0-4973-b9ff-d087ac31010f (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 8d132e34-3cad-4641-970c-71a705abb718 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: b012d3ea-12b0-4973-b9ff-d087ac31010f (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 115 pending tasks, 79 completed, 40 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 115 pending tasks, 79 completed, 40 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 20d1a59c-c466-4a22-8be2-48f909bdf2cb (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 0d646e55-9848-4081-a4c7-2a3c083e9490 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task dequeued: 75b96688-126b-46f0-be3f-8a26e0c25f62 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task completed: 20d1a59c-c466-4a22-8be2-48f909bdf2cb (create-clone), processing time: 1780733431249ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 116 pending tasks, 80 completed, 40 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 943ee8a5-a03d-4687-9519-ad41bc9d236e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 117 pending tasks, 80 completed, 40 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 2603cf23-d814-4926-bb46-d5594d37ba2b (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 118 pending tasks, 80 completed, 40 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 9018c84b-e125-4789-b45b-136c7c54dd03 (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Loaded queue from file: 119 pending tasks, 80 completed, 40 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Task enqueued: 1d9015a6-61d5-4a81-953a-d419480b94e9 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"info","message":"Created data directory: C:\\flashdb\\src\\api\\data","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: df0cad89-9ff7-4f18-999e-6fff62ea53e0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 1 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 58a705f4-bf5b-4c77-808d-8e9c90531d0d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: df0cad89-9ff7-4f18-999e-6fff62ea53e0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 2 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 58a705f4-bf5b-4c77-808d-8e9c90531d0d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 2 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: be13e751-caf0-41f1-805d-de3867c72603 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: df36690e-f5ad-45f6-9553-dbe87a6866e1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 8d67c910-6367-4625-9613-834e7f679677 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: be13e751-caf0-41f1-805d-de3867c72603 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: df36690e-f5ad-45f6-9553-dbe87a6866e1 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 23cdfc90-39b2-48e6-8700-2ee259ad5e62 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 8d67c910-6367-4625-9613-834e7f679677 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 23cdfc90-39b2-48e6-8700-2ee259ad5e62 (create-clone), processing time: 1780733453413ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 1 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 396d73a3-f296-4835-bfe9-a9ed102cf25d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 396d73a3-f296-4835-bfe9-a9ed102cf25d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 396d73a3-f296-4835-bfe9-a9ed102cf25d (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 1 completed, 1 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: dd8c9ff2-8932-4b1f-870c-53fc9cd36743 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: dd8c9ff2-8932-4b1f-870c-53fc9cd36743 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: dd8c9ff2-8932-4b1f-870c-53fc9cd36743 (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 2 completed, 1 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: b940d142-ce36-490e-8f05-1a1baee6ff64 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: b940d142-ce36-490e-8f05-1a1baee6ff64 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: b940d142-ce36-490e-8f05-1a1baee6ff64 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 2 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 6593012e-20ea-4deb-850f-93663c4f8f38 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 6593012e-20ea-4deb-850f-93663c4f8f38 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 6593012e-20ea-4deb-850f-93663c4f8f38 (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: daff8a98-5d55-4b68-a5f5-5f5f1ab367b7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 5fe93362-4a45-4ca1-a7d5-290a966ad71d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 4f0177c7-9445-4a77-8130-8870b70bd139 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 8 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 49c614d8-4587-4c58-9b65-0b3f5fe280c9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 55ef8319-0343-4551-bd58-12159c6ee431 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 66b4d0ed-3f7f-40f7-86d4-ede8d7ebd46e (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: daff8a98-5d55-4b68-a5f5-5f5f1ab367b7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 5fe93362-4a45-4ca1-a7d5-290a966ad71d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 3c89520a-03d5-4724-a7ad-b274c954b943 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 919f9365-80ba-4436-8570-028eb7effcd7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 4f0177c7-9445-4a77-8130-8870b70bd139 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 3c89520a-03d5-4724-a7ad-b274c954b943 (create-clone), processing time: 1780733453471ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 49c614d8-4587-4c58-9b65-0b3f5fe280c9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 919f9365-80ba-4436-8570-028eb7effcd7 (create-clone), processing time: 1780733453474ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 5 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 9a181d2e-7efa-4869-949b-9faceb0218af (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 3170ac5a-4b85-4b8c-8f50-184fb03fd685 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 4fe96531-e52e-4d31-bf85-4a3a6a96be16 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 55ef8319-0343-4551-bd58-12159c6ee431 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 9a181d2e-7efa-4869-949b-9faceb0218af (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 66b4d0ed-3f7f-40f7-86d4-ede8d7ebd46e (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 3170ac5a-4b85-4b8c-8f50-184fb03fd685 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 4fe96531-e52e-4d31-bf85-4a3a6a96be16 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 4fe96531-e52e-4d31-bf85-4a3a6a96be16 (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 6 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 13e3eb8d-4bb0-49c8-bb7d-e0341e35420b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: f6c8b0ef-006e-43be-a599-444f2cee9796 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 13e3eb8d-4bb0-49c8-bb7d-e0341e35420b (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 13e3eb8d-4bb0-49c8-bb7d-e0341e35420b (create-clone), processing time: 4ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: f6c8b0ef-006e-43be-a599-444f2cee9796 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: f6c8b0ef-006e-43be-a599-444f2cee9796 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: ad1400bd-c60a-46c5-b09b-e6148bf5a3bf (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 7db3cf07-0ba9-42a0-82b0-590f81552854 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 13 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 4d580a6c-05bc-4420-8810-d214d56b4403 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: dbe2910f-1321-42e5-b05b-87b84ccabd66 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: d6abcce1-4d81-4338-aad3-c1c6a309236d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: ad1400bd-c60a-46c5-b09b-e6148bf5a3bf (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: d6abcce1-4d81-4338-aad3-c1c6a309236d (create-clone), processing time: 1780733453526ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 9 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 9 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 8f287fa8-fc46-4dcc-b223-33b80ee00394 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: d7adf171-6ba8-4f4e-9f1c-a995a8f8602a (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 7db3cf07-0ba9-42a0-82b0-590f81552854 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 8f287fa8-fc46-4dcc-b223-33b80ee00394 (create-clone), processing time: 1780733453537ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 4d580a6c-05bc-4420-8810-d214d56b4403 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: d7adf171-6ba8-4f4e-9f1c-a995a8f8602a (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 85f8d471-1276-4059-9087-7647534a612c (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 2705e120-0bd6-4e64-a026-7b9e28ca0f28 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: dbe2910f-1321-42e5-b05b-87b84ccabd66 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 85f8d471-1276-4059-9087-7647534a612c (create-clone), processing time: 1780733453555ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 2705e120-0bd6-4e64-a026-7b9e28ca0f28 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 2705e120-0bd6-4e64-a026-7b9e28ca0f28 (create-clone), processing time: 2ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 14bd1ff5-1fd3-4e7c-a62d-d9a0e86beb99 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"warn","message":"Task not found: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: c6156357-77c1-4981-9d30-3922b33cd053 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 10d227e9-7b28-4582-a8e8-2f4262e4b9e0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 14bd1ff5-1fd3-4e7c-a62d-d9a0e86beb99 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: c6156357-77c1-4981-9d30-3922b33cd053 (create-clone), processing time: 1780733453579ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 10d227e9-7b28-4582-a8e8-2f4262e4b9e0 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 10d227e9-7b28-4582-a8e8-2f4262e4b9e0 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 14 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 8c91a11e-413b-4b9e-bcd3-bfb25d7d7f27 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 4cffa788-ff4b-40d0-ae38-99c2b5c9bdc3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 8c91a11e-413b-4b9e-bcd3-bfb25d7d7f27 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 8c91a11e-413b-4b9e-bcd3-bfb25d7d7f27 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 4cffa788-ff4b-40d0-ae38-99c2b5c9bdc3 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 4cffa788-ff4b-40d0-ae38-99c2b5c9bdc3 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 4da9c9cc-ca31-42e7-b773-1e2008cac072 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 4da9c9cc-ca31-42e7-b773-1e2008cac072 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task moved back to pending for retry: 4da9c9cc-ca31-42e7-b773-1e2008cac072","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 17 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"warn","message":"Task not found for retry: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 17 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 08a0d408-52a7-491b-805c-06e658bb4d32 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"warn","message":"Cannot retry task 08a0d408-52a7-491b-805c-06e658bb4d32 with status pending","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 18 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 87616da7-73bd-429f-a4d9-79b9051847f8 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 6cfa4ac8-2464-4aec-a3e7-8eab6c10ee38 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 4da9c9cc-ca31-42e7-b773-1e2008cac072 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: 6cfa4ac8-2464-4aec-a3e7-8eab6c10ee38 (create-clone), processing time: 1780733453617ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 74933834-7add-477b-8b15-c7f8d797be9e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 08a0d408-52a7-491b-805c-06e658bb4d32 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 74933834-7add-477b-8b15-c7f8d797be9e (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: a308be2c-4629-41f9-9180-d0b76c444be2 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 35886ca8-4b2a-411f-97aa-7660682ce832 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task dequeued: 87616da7-73bd-429f-a4d9-79b9051847f8 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task completed: a308be2c-4629-41f9-9180-d0b76c444be2 (create-clone), processing time: 1780733453631ms","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 20 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 832a7fb8-ff1e-4566-9b47-40cf7eaaa4bc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 21 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 8f26e9c2-afae-43c8-beec-abfb78fbd0f9 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 22 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 29070d2f-5031-4ba7-8b18-2f7190151e77 (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Loaded queue from file: 23 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Task enqueued: 202fa52f-29c2-492c-9ed8-e1931bb8c6e3 (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"info","message":"Created data directory: C:\\flashdb\\src\\api\\data","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 9b5132f1-fa41-4c6e-8a2a-266717028353 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 1 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 6a9cc2ed-1734-4385-be9a-55fccec66b62 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 9b5132f1-fa41-4c6e-8a2a-266717028353 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 2 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 6a9cc2ed-1734-4385-be9a-55fccec66b62 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 2 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: f5b4380b-c94e-4a78-9931-938b2213f9d4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 65051260-d09b-4b16-8908-610ae99a2a2e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 45d1176e-0ced-4806-a819-eeda13478c6e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: f5b4380b-c94e-4a78-9931-938b2213f9d4 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 65051260-d09b-4b16-8908-610ae99a2a2e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 0 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: d0946404-0d6b-4570-a1a9-4fce4d7f2de2 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 45d1176e-0ced-4806-a819-eeda13478c6e (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: d0946404-0d6b-4570-a1a9-4fce4d7f2de2 (create-clone), processing time: 1780733465526ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 1 completed, 0 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 11af62af-52ee-4be7-8833-fffc743307db (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 11af62af-52ee-4be7-8833-fffc743307db (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 11af62af-52ee-4be7-8833-fffc743307db (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 1 completed, 1 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 7d9c5505-c7ef-4aef-b90f-b591b8c54847 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 7d9c5505-c7ef-4aef-b90f-b591b8c54847 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 7d9c5505-c7ef-4aef-b90f-b591b8c54847 (create-clone), processing time: 0ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 2 completed, 1 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 3709ac16-82f2-401c-80f4-47d3a6aeea0d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 3709ac16-82f2-401c-80f4-47d3a6aeea0d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 3709ac16-82f2-401c-80f4-47d3a6aeea0d (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 2 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 31c8ae7f-6339-4a51-b3ad-c0158250f805 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 31c8ae7f-6339-4a51-b3ad-c0158250f805 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 31c8ae7f-6339-4a51-b3ad-c0158250f805 (create-clone), processing time: 4ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 5 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 0b0a2db6-2288-4281-b05c-dd8134bfd280 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 856e51a7-2650-4ba7-ab72-6ddf4f3228df (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 5007d815-d7b8-42cc-999d-661bc7fe50eb (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 8 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: c28a6947-362b-4d2a-909f-0e01b95b95af (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: dc97a119-c918-4116-82eb-385aec20c69a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: ce286d01-898f-4113-a985-0fa9ddab167d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 0b0a2db6-2288-4281-b05c-dd8134bfd280 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 856e51a7-2650-4ba7-ab72-6ddf4f3228df (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 3 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 8802b6e8-b3cc-4c28-8c40-7b24d06cae56 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 07b5990f-0aa8-47b0-ba95-e8d449b205d6 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 5007d815-d7b8-42cc-999d-661bc7fe50eb (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 8802b6e8-b3cc-4c28-8c40-7b24d06cae56 (create-clone), processing time: 1780733465580ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: c28a6947-362b-4d2a-909f-0e01b95b95af (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 07b5990f-0aa8-47b0-ba95-e8d449b205d6 (create-clone), processing time: 1780733465584ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 5 completed, 2 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 679c5195-c808-43e0-be47-df4c0114fa39 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 624c1a8c-a139-4c09-b0fe-b5fdc0cebef9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 5cfecdaa-9b75-4d44-95a3-19bc815033a7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: dc97a119-c918-4116-82eb-385aec20c69a (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 679c5195-c808-43e0-be47-df4c0114fa39 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: ce286d01-898f-4113-a985-0fa9ddab167d (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 624c1a8c-a139-4c09-b0fe-b5fdc0cebef9 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 5cfecdaa-9b75-4d44-95a3-19bc815033a7 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 5cfecdaa-9b75-4d44-95a3-19bc815033a7 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 6 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: f43b79b8-2d46-4de8-939d-4acb954e22ba (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 2b47fa15-f290-45cf-8783-97c9987c7449 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: f43b79b8-2d46-4de8-939d-4acb954e22ba (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: f43b79b8-2d46-4de8-939d-4acb954e22ba (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 2b47fa15-f290-45cf-8783-97c9987c7449 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 2b47fa15-f290-45cf-8783-97c9987c7449 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 11 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 23aa1d99-11d1-49d2-939a-bc2768712fbc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: ad3209a0-2e67-4d9a-9060-7f7c4ff26444 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 13 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: ff2cd3bf-169c-48da-ae39-07cef6005461 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 17fe4514-2fc1-486e-b319-52e5d82c3b8f (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 8 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: fb70e265-f4ae-443a-b102-664eccb2b023 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 23aa1d99-11d1-49d2-939a-bc2768712fbc (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: fb70e265-f4ae-443a-b102-664eccb2b023 (create-clone), processing time: 1780733465627ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 9 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 9 completed, 4 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 82890e0c-a386-4eae-934d-7d7f46471903 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 2998638c-ee51-4981-9d09-6faf2ee8a8b5 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: ad3209a0-2e67-4d9a-9060-7f7c4ff26444 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 82890e0c-a386-4eae-934d-7d7f46471903 (create-clone), processing time: 1780733465635ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: ff2cd3bf-169c-48da-ae39-07cef6005461 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 2998638c-ee51-4981-9d09-6faf2ee8a8b5 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 10 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 7e22ecdf-e538-43df-9ceb-c75448dcf73d (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 031fc2fc-cb2a-4da5-ae28-4284ce38e358 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 17fe4514-2fc1-486e-b319-52e5d82c3b8f (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 7e22ecdf-e538-43df-9ceb-c75448dcf73d (create-clone), processing time: 1780733465656ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 031fc2fc-cb2a-4da5-ae28-4284ce38e358 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 031fc2fc-cb2a-4da5-ae28-4284ce38e358 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 15 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 357d9ea4-fd10-4b59-a4b7-36b834f4b122 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"warn","message":"Task not found: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 12 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 1c8ac887-57f0-4b8d-9210-563450060a47 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 0bd40df3-4d7b-4b19-b0f1-c63350c44d10 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 357d9ea4-fd10-4b59-a4b7-36b834f4b122 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 1c8ac887-57f0-4b8d-9210-563450060a47 (create-clone), processing time: 1780733465672ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 0bd40df3-4d7b-4b19-b0f1-c63350c44d10 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 0bd40df3-4d7b-4b19-b0f1-c63350c44d10 (create-clone), processing time: 1ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 14 completed, 5 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: c390a699-21fd-4096-a81f-52cb6c650470 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 8c870d3f-b8ef-4f6a-b158-02b0e0799bfe (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: c390a699-21fd-4096-a81f-52cb6c650470 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: c390a699-21fd-4096-a81f-52cb6c650470 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 8c870d3f-b8ef-4f6a-b158-02b0e0799bfe (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 8c870d3f-b8ef-4f6a-b158-02b0e0799bfe (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 16 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: a0ee80a5-2db0-46a4-bba2-b06fa5762a10 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: a0ee80a5-2db0-46a4-bba2-b06fa5762a10 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task moved back to pending for retry: a0ee80a5-2db0-46a4-bba2-b06fa5762a10","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 17 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"warn","message":"Task not found for retry: non-existent-id","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 17 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: a16245c8-9ff8-4a52-b5a1-9ba8a1b19824 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"warn","message":"Cannot retry task a16245c8-9ff8-4a52-b5a1-9ba8a1b19824 with status pending","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 18 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 9e1e282b-560f-43db-a29f-2757088631ec (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 14 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 7a3c7a7e-c0c2-4902-91ec-48482ff1d501 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: a0ee80a5-2db0-46a4-bba2-b06fa5762a10 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 7a3c7a7e-c0c2-4902-91ec-48482ff1d501 (create-clone), processing time: 1780733465711ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 7 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 5d67bb57-d25e-4551-8a80-c0a56c31dc56 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: a16245c8-9ff8-4a52-b5a1-9ba8a1b19824 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 5d67bb57-d25e-4551-8a80-c0a56c31dc56 (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 19 pending tasks, 15 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 401b111e-c33a-46e5-8784-7024ecca0fe9 (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 7836fcac-5045-4bef-8684-547ceeb26c84 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task dequeued: 9e1e282b-560f-43db-a29f-2757088631ec (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task completed: 401b111e-c33a-46e5-8784-7024ecca0fe9 (create-clone), processing time: 1780733465725ms","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 20 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: ad9fb73f-a30f-4ab0-b003-bce7fe96a3ad (create-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 21 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: ea2bbf28-f9f9-42de-a24c-7ef8942a7f68 (delete-clone)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 22 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 0df8e6b8-bc0d-4cc9-9466-312984f6545c (create-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Loaded queue from file: 23 pending tasks, 16 completed, 8 failed","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"info","message":"Task enqueued: 531ff657-5aab-4721-9e18-2c88c69b140f (restore-checkpoint)","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}

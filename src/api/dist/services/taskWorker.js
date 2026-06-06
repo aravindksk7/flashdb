@@ -3,8 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.TaskWorker = void 0;
 exports.getTaskWorker = getTaskWorker;
 exports.initializeTaskWorker = initializeTaskWorker;
+exports.resetTaskWorkerForTesting = resetTaskWorkerForTesting;
 const taskQueue_1 = require("./taskQueue");
 const pooledPowershellService_1 = require("./pooledPowershellService");
 const logger_1 = __importDefault(require("../logger"));
@@ -145,6 +147,7 @@ class TaskWorker {
         return this.inFlightTasks.size;
     }
 }
+exports.TaskWorker = TaskWorker;
 // Singleton instance
 let workerInstance = null;
 function getTaskWorker() {
@@ -155,5 +158,8 @@ function getTaskWorker() {
 }
 function initializeTaskWorker() {
     return getTaskWorker();
+}
+function resetTaskWorkerForTesting() {
+    workerInstance = null;
 }
 //# sourceMappingURL=taskWorker.js.map

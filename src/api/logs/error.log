@@ -90,3 +90,59 @@
 {"level":"error","message":"Error retrieving golden images: PowerShell execution failed: Unexpected token 'W', \"WARNING: E\"... is not valid JSON","service":"flashdb-api","timestamp":"2026-06-06 14:10:40"}
 {"level":"error","message":"PowerShell command failed: Unexpected token 'W', \"WARNING: E\"... is not valid JSON","service":"flashdb-api","timestamp":"2026-06-06 14:10:41"}
 {"level":"error","message":"Error retrieving golden images: PowerShell execution failed: Unexpected token 'W', \"WARNING: E\"... is not valid JSON","service":"flashdb-api","timestamp":"2026-06-06 14:10:41"}
+{"level":"error","message":"Task failed: 0c669667-4b6b-4866-baac-a6eca38c1cb6 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: d090990e-6bd5-4bd5-98e8-c3d44b346777 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 8ccdabe8-9016-459b-878e-29e1e204c8f5 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 7a740ba8-c9f4-4098-9b2f-6e93cf810366 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 1d686d53-473d-465e-af70-33dc904e4e2d (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 4c9c6219-64ee-432a-9fd7-33042992070b (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 3e460efa-9ec5-4558-9041-30b37e80770f (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 210d0ab8-3929-4c86-8a35-66ce1b5557a7 (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:08:52"}
+{"level":"error","message":"Task failed: 33916444-1cbc-403e-9d94-2ee0b89ba329 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: a1a69f0f-17c3-48c1-82e2-844c7ea1f9d9 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: e7f5c818-1bc0-4cb5-962f-e0b88071f572 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 44e3490b-eda8-4541-8e2c-1ba00d1b2463 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 496a1612-3270-40d2-91ea-5668125b1f03 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 5144008b-1150-4fee-ae47-bd2f148f3f00 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 42527945-7d3e-4e68-951b-a735365109c5 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 7375d8ae-c851-47ce-b106-eef7af1a418a (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:09:13"}
+{"level":"error","message":"Task failed: 4eb40e8b-4753-4c2d-84a8-491f8a2afa63 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: 0b7efa82-890f-4cfb-8fd3-a59015ecde91 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: 1b6a8444-49fb-4e67-a07a-05dc0d02cb6a (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: f388d57c-5d03-4cb6-b8aa-ce0149a3211a (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: ad2ba30b-43fb-4be6-be2a-4b6c814f95b2 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:00"}
+{"level":"error","message":"Task failed: 08dae169-9679-4607-8360-b4bb252894d4 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"error","message":"Task failed: 5268fd2a-bce3-4ced-97ef-978856db3dea (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"error","message":"Task failed: 3aea3949-a922-4f7d-bb92-0b24a84faa27 (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:01"}
+{"level":"error","message":"Task failed: 6b4a9a17-0a80-4677-9642-6b929e763008 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 67de8a13-5a25-417e-82e7-4ce8e2b991fc (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 531325e3-fcab-4cb2-b78e-5b789292afca (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 1f4e19ef-b8d4-49f3-a0e7-e2c9b3014661 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 3e569de4-e910-414c-a83e-44fc2ba01b90 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 81c8fcdf-968b-469d-8fb2-e1c04a766ac0 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 646f0c4b-e3e8-4a6c-8ddb-1e741ac557a4 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 7dcdbe29-9cf0-420f-8a97-b78247ea3949 (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:21"}
+{"level":"error","message":"Task failed: 263763d4-f455-42e0-bf03-7f1609292f28 (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: c099e573-8e2c-4609-b598-62efa78515e4 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 4f9843b1-453a-433b-b134-38500d9096c9 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 3aae8000-4f6c-4fcc-b70f-b5d5b4e02e89 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 9c4b8b67-f1d7-4242-a24b-5f97cbe75593 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 8f117829-4efb-49a5-be37-f16e79a61259 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 0ed17642-f8b4-4ea0-9fc1-c23c88be6020 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: b012d3ea-12b0-4973-b9ff-d087ac31010f (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:31"}
+{"level":"error","message":"Task failed: 396d73a3-f296-4835-bfe9-a9ed102cf25d (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: b940d142-ce36-490e-8f05-1a1baee6ff64 (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 9a181d2e-7efa-4869-949b-9faceb0218af (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 3170ac5a-4b85-4b8c-8f50-184fb03fd685 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: d7adf171-6ba8-4f4e-9f1c-a995a8f8602a (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 8c91a11e-413b-4b9e-bcd3-bfb25d7d7f27 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 4cffa788-ff4b-40d0-ae38-99c2b5c9bdc3 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 74933834-7add-477b-8b15-c7f8d797be9e (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:10:53"}
+{"level":"error","message":"Task failed: 11af62af-52ee-4be7-8833-fffc743307db (create-clone), error: Failed to create clone: invalid ID","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 3709ac16-82f2-401c-80f4-47d3a6aeea0d (delete-clone), error: Clone not found","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 679c5195-c808-43e0-be47-df4c0114fa39 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 624c1a8c-a139-4c09-b0fe-b5fdc0cebef9 (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 2998638c-ee51-4981-9d09-6faf2ee8a8b5 (delete-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: c390a699-21fd-4096-a81f-52cb6c650470 (create-clone), error: Error 1","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 8c870d3f-b8ef-4f6a-b158-02b0e0799bfe (create-clone), error: Error 2","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}
+{"level":"error","message":"Task failed: 5d67bb57-d25e-4551-8a80-c0a56c31dc56 (create-clone), error: Test error","service":"flashdb-api","timestamp":"2026-06-06 18:11:05"}

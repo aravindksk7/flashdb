@@ -3,8 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.TaskQueue = void 0;
 exports.getTaskQueue = getTaskQueue;
 exports.initializeTaskQueue = initializeTaskQueue;
+exports.resetTaskQueueForTesting = resetTaskQueueForTesting;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const uuid_1 = require("uuid");
@@ -211,6 +213,7 @@ class TaskQueue {
         return true;
     }
 }
+exports.TaskQueue = TaskQueue;
 // Singleton instance
 let queueInstance = null;
 function getTaskQueue() {
@@ -221,5 +224,8 @@ function getTaskQueue() {
 }
 function initializeTaskQueue() {
     return getTaskQueue();
+}
+function resetTaskQueueForTesting() {
+    queueInstance = null;
 }
 //# sourceMappingURL=taskQueue.js.map

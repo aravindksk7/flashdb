@@ -268,3 +268,9 @@ export function getTaskQueue(): TaskQueue {
 export function initializeTaskQueue(): TaskQueue {
   return getTaskQueue();
 }
+
+export function resetTaskQueueForTesting(): void {
+  queueInstance = null;
+}
+
+export { TaskQueue };

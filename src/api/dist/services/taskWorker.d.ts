@@ -12,5 +12,6 @@ declare class TaskWorker {
 }
 export declare function getTaskWorker(): TaskWorker;
 export declare function initializeTaskWorker(): TaskWorker;
-export {};
+export declare function resetTaskWorkerForTesting(): void;
+export { TaskWorker };
 //# sourceMappingURL=taskWorker.d.ts.map

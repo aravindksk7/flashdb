@@ -172,3 +172,9 @@ export function getTaskWorker(): TaskWorker {
 export function initializeTaskWorker(): TaskWorker {
   return getTaskWorker();
 }
+
+export function resetTaskWorkerForTesting(): void {
+  workerInstance = null;
+}
+
+export { TaskWorker };

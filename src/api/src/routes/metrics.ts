@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { getPooledPowerShellService } from '../services/pooledPowershellService';
 import { getConnectionPool } from '../services/connectionPool';
 import { getTaskQueue } from '../services/taskQueue';
+import { getMetricsRepository } from '../services/repository';
+import { getSqlClient } from '../services/sqlClient';
 import logger from '../logger';
 
 const router = Router();
@@ -16,17 +18,39 @@ router.get('/overview', async (_req: Request, res: Response) => {
   try {
     logger.info('Retrieving metrics overview');
 
-    const metrics = await psService.executeCommand('Get-FlashdbMetrics', {});
+    const sqlClient = getSqlClient();
+    const metricsRepo = getMetricsRepository();
 
-    // Extract overview from metrics
-    const overview = metrics?.overview || {
-      totalClonesCreated: 0,
-      totalStorageSavedGB: 0,
-      avgCloneCreationTimeSeconds: 0,
-      operationSuccessRatePercent: 100,
-      operationsLast24h: 0,
-      activeClonesCount: 0
-    };
+    let overview: any;
+
+    // Try SQL first if available
+    if (sqlClient) {
+      try {
+        overview = await metricsRepo.getOverview();
+      } catch (sqlError: any) {
+        logger.warn(`SQL query failed, falling back to PowerShell: ${sqlError.message}`);
+        const metrics = await psService.executeCommand('Get-FlashdbMetrics', {});
+        overview = metrics?.overview || {
+          totalClonesCreated: 0,
+          totalStorageSavedGB: 0,
+          avgCloneCreationTimeSeconds: 0,
+          operationSuccessRatePercent: 100,
+          operationsLast24h: 0,
+          activeClonesCount: 0
+        };
+      }
+    } else {
+      // Fallback to PowerShell
+      const metrics = await psService.executeCommand('Get-FlashdbMetrics', {});
+      overview = metrics?.overview || {
+        totalClonesCreated: 0,
+        totalStorageSavedGB: 0,
+        avgCloneCreationTimeSeconds: 0,
+        operationSuccessRatePercent: 100,
+        operationsLast24h: 0,
+        activeClonesCount: 0
+      };
+    }
 
     return res.json({
       success: true,
@@ -59,7 +83,22 @@ router.get('/clones', async (_req: Request, res: Response) => {
   try {
     logger.info('Retrieving clone statistics');
 
-    const stats = await psService.executeCommand('Get-CloneCreationStats', {});
+    const sqlClient = getSqlClient();
+    const metricsRepo = getMetricsRepository();
+
+    let stats: any;
+
+    // Try SQL first if available
+    if (sqlClient) {
+      try {
+        stats = await metricsRepo.getCloneStats();
+      } catch (sqlError: any) {
+        logger.warn(`SQL query failed, falling back to PowerShell: ${sqlError.message}`);
+        stats = await psService.executeCommand('Get-CloneCreationStats', {});
+      }
+    } else {
+      stats = await psService.executeCommand('Get-CloneCreationStats', {});
+    }
 
     return res.json({
       success: true,
@@ -93,7 +132,22 @@ router.get('/storage', async (_req: Request, res: Response) => {
   try {
     logger.info('Retrieving storage metrics');
 
-    const storage = await psService.executeCommand('Get-StorageStats', {});
+    const sqlClient = getSqlClient();
+    const metricsRepo = getMetricsRepository();
+
+    let storage: any;
+
+    // Try SQL first if available
+    if (sqlClient) {
+      try {
+        storage = await metricsRepo.getStorageMetrics();
+      } catch (sqlError: any) {
+        logger.warn(`SQL query failed, falling back to PowerShell: ${sqlError.message}`);
+        storage = await psService.executeCommand('Get-StorageStats', {});
+      }
+    } else {
+      storage = await psService.executeCommand('Get-StorageStats', {});
+    }
 
     return res.json({
       success: true,
@@ -130,7 +184,22 @@ router.get('/operations', async (_req: Request, res: Response) => {
   try {
     logger.info('Retrieving operation metrics');
 
-    const operations = await psService.executeCommand('Get-OperationStats', {});
+    const sqlClient = getSqlClient();
+    const metricsRepo = getMetricsRepository();
+
+    let operations: any;
+
+    // Try SQL first if available
+    if (sqlClient) {
+      try {
+        operations = await metricsRepo.getOperationMetrics();
+      } catch (sqlError: any) {
+        logger.warn(`SQL query failed, falling back to PowerShell: ${sqlError.message}`);
+        operations = await psService.executeCommand('Get-OperationStats', {});
+      }
+    } else {
+      operations = await psService.executeCommand('Get-OperationStats', {});
+    }
 
     return res.json({
       success: true,

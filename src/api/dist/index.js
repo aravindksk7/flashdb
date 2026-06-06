@@ -20,10 +20,32 @@ const caching_1 = require("./middleware/caching");
 const connectionPool_1 = require("./services/connectionPool");
 const taskQueue_1 = require("./services/taskQueue");
 const taskWorker_1 = require("./services/taskWorker");
+const sqlClient_1 = require("./services/sqlClient");
+const init_1 = require("./db/init");
 const queue_1 = __importDefault(require("./routes/queue"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3001;
+// Initialize SQL client on startup
+let sqlClient;
+const initializeSql = async () => {
+    try {
+        sqlClient = await (0, sqlClient_1.initializeSqlClient)();
+        logger_1.default.info('SQL client initialized on startup');
+        // Initialize database schema
+        await (0, init_1.initializeDatabaseSchema)();
+        logger_1.default.info('Database schema initialized');
+        // Verify tables exist
+        const tablesExist = await (0, init_1.checkDatabaseTables)();
+        if (!tablesExist) {
+            logger_1.default.warn('Some database tables may not exist. Running schema initialization.');
+        }
+    }
+    catch (error) {
+        logger_1.default.error(`SQL initialization failed: ${error.message}`);
+        // Continue with PowerShell fallback for backward compatibility
+    }
+};
 // Initialize connection pool on startup
 const connectionPool = (0, connectionPool_1.initializeConnectionPool)();
 logger_1.default.info('Connection pool initialized on startup');
@@ -190,6 +212,8 @@ const server = app.listen(port, async () => {
     const env = process.env.NODE_ENV || 'development';
     const logLevel = process.env.LOG_LEVEL || 'info';
     const flashdbModule = process.env.FLASHDB_MODULE_PATH || 'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1';
+    // Initialize SQL client
+    await initializeSql();
     logger_1.default.info('='.repeat(60));
     logger_1.default.info(`FlashDB API Started on http://localhost:${port}`);
     logger_1.default.info(`Environment: ${env}`);
@@ -205,6 +229,16 @@ const server = app.listen(port, async () => {
     logger_1.default.info('  /metrics                   - Prometheus metrics');
     logger_1.default.info('  /api/metrics/performance   - Operation performance stats');
     logger_1.default.info('  /api/docs                  - API documentation');
+    logger_1.default.info('');
+    logger_1.default.info('Database Status:');
+    if (sqlClient) {
+        logger_1.default.info('  SQL Client: Connected');
+        const sqlMetrics = sqlClient.getMetrics();
+        logger_1.default.info(`  Connection Pool: ${sqlMetrics.size} total, ${sqlMetrics.available} available`);
+    }
+    else {
+        logger_1.default.info('  SQL Client: Not initialized (using PowerShell fallback)');
+    }
     logger_1.default.info('');
     logger_1.default.info('Connection Pool Status:');
     logger_1.default.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
@@ -230,6 +264,10 @@ process.on('SIGTERM', async () => {
         logger_1.default.info('HTTP server closed');
         await taskWorker.stopWorker(5000);
         logger_1.default.info('Task worker shut down');
+        if (sqlClient) {
+            await (0, sqlClient_1.shutdownSqlClient)();
+            logger_1.default.info('SQL client shut down');
+        }
         await (0, connectionPool_1.shutdownConnectionPool)();
         logger_1.default.info('Connection pool shut down');
         process.exit(0);
@@ -241,6 +279,10 @@ process.on('SIGINT', async () => {
         logger_1.default.info('HTTP server closed');
         await taskWorker.stopWorker(5000);
         logger_1.default.info('Task worker shut down');
+        if (sqlClient) {
+            await (0, sqlClient_1.shutdownSqlClient)();
+            logger_1.default.info('SQL client shut down');
+        }
         await (0, connectionPool_1.shutdownConnectionPool)();
         logger_1.default.info('Connection pool shut down');
         process.exit(0);

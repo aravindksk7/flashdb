@@ -52,5 +52,6 @@ declare class TaskQueue {
 }
 export declare function getTaskQueue(): TaskQueue;
 export declare function initializeTaskQueue(): TaskQueue;
-export {};
+export declare function resetTaskQueueForTesting(): void;
+export { TaskQueue };
 //# sourceMappingURL=taskQueue.d.ts.map
