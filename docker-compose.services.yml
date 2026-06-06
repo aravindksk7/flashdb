@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # REST API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: flashdb-api
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      LOG_LEVEL: info
+      FLASHDB_MODULE_PATH: /app/flashdb/src/FlashDB/FlashDB.psm1
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app/flashdb
+      - api-logs:/app/logs
+    networks:
+      - flashdb-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      - gui
+
+  # GUI Dashboard
+  gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.gui
+    container_name: flashdb-gui
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://api:3001
+    networks:
+      - flashdb-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  api-logs:
+
+networks:
+  flashdb-network:
+    driver: bridge
