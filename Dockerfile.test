@@ -1,0 +1,37 @@
+# Dockerfile for FlashDB testing environment
+# Uses Windows Server with PowerShell 7.x and SQL Server tools
+
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+# Set shell to PowerShell
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Install PowerShell 7.x
+RUN [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; \
+    $ProgressPreference = 'SilentlyContinue'; \
+    Invoke-WebRequest -Uri https://github.com/PowerShell/PowerShell/releases/download/v7.4.0/PowerShell-7.4.0-win-x64.msi -OutFile PowerShell.msi; \
+    msiexec.exe /i PowerShell.msi /quiet /norestart; \
+    Remove-Item PowerShell.msi -Force
+
+# Install SQL Server Command Line Tools (sqlcmd, bcp)
+RUN powershell -Command \
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; \
+    $ProgressPreference = 'SilentlyContinue'; \
+    Invoke-WebRequest -Uri https://aka.ms/downloadmssqltools -OutFile SQLCMD.msi; \
+    msiexec.exe /i SQLCMD.msi /quiet /norestart; \
+    Remove-Item SQLCMD.msi -Force
+
+# Set working directory
+WORKDIR /app/flashdb
+
+# Create test results directory
+RUN New-Item -ItemType Directory -Path "/app/test-results" -Force | Out-Null
+
+# Copy FlashDB source
+COPY . .
+
+# Install Pester for testing
+RUN pwsh -Command "Install-Module -Name Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck"
+
+# Set entrypoint
+ENTRYPOINT ["pwsh", "-NoExit", "-Command"]

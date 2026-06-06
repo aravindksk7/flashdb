@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: flashdb-sql-server
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "FlashDB@Password123"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql-data:/var/opt/mssql/data
+      - sql-logs:/var/opt/mssql/log
+      - sql-backup:/var/opt/mssql/backup
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "FlashDB@Password123", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - flashdb-network
+
+  flashdb-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: flashdb-test-runner
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      SQL_SERVER_HOST: "sql-server"
+      SQL_SERVER_PORT: "1433"
+      SQL_SERVER_USER: "sa"
+      SQL_SERVER_PASSWORD: "FlashDB@Password123"
+      FLASHDB_HOME: "/app/flashdb"
+    volumes:
+      - .:/app/flashdb
+      - test-results:/app/test-results
+    networks:
+      - flashdb-network
+    command: pwsh -Command "& /app/flashdb/docker/run-tests.ps1"
+
+volumes:
+  sql-data:
+  sql-logs:
+  sql-backup:
+  test-results:
+
+networks:
+  flashdb-network:
+    driver: bridge
