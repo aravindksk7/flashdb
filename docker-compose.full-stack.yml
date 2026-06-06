@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # SQL Server with test database
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: flashdb-sql-server
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "FlashDB@Password123"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql-data:/var/opt/mssql/data
+      - sql-logs:/var/opt/mssql/log
+      - ./docker/init-testdb.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "FlashDB@Password123", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - flashdb-network
+
+  # FlashDB REST API (Node.js)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: flashdb-api
+    depends_on:
+      sql-server:
+        condition: service_healthy
+    environment:
+      NODE_ENV: "development"
+      PORT: "3001"
+      LOG_LEVEL: "info"
+      FLASHDB_MODULE_PATH: "/app/flashdb/src/FlashDB/FlashDB.psm1"
+      SQL_SERVER_HOST: "sql-server"
+      SQL_SERVER_PORT: "1433"
+      SQL_SERVER_USER: "sa"
+      SQL_SERVER_PASSWORD: "FlashDB@Password123"
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app/flashdb
+      - api-logs:/app/logs
+    networks:
+      - flashdb-network
+    command: npm run dev
+
+  # FlashDB React GUI
+  gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.gui
+    container_name: flashdb-gui
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: "http://api:3001"
+    volumes:
+      - .:/app/flashdb
+    networks:
+      - flashdb-network
+    command: npm run dev
+
+  # Test Runner
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: flashdb-test-runner
+    depends_on:
+      sql-server:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      SQL_SERVER_HOST: "sql-server"
+      SQL_SERVER_PORT: "1433"
+      SQL_SERVER_USER: "sa"
+      SQL_SERVER_PASSWORD: "FlashDB@Password123"
+      FLASHDB_HOME: "/app/flashdb"
+      API_URL: "http://api:3001"
+    volumes:
+      - .:/app/flashdb
+      - test-results:/app/test-results
+    networks:
+      - flashdb-network
+    command: pwsh -Command "Write-Host 'Test runner ready. Run test scenarios manually or via API.' ; Read-Host 'Press Enter to keep container running'"
+
+volumes:
+  sql-data:
+  sql-logs:
+  api-logs:
+  test-results:
+
+networks:
+  flashdb-network:
+    driver: bridge
