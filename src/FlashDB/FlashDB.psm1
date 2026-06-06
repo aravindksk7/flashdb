@@ -42,8 +42,17 @@ Write-Verbose "Loading FlashDB Core modules from $script:ModuleRoot..."
 # Import checkpoint management
 . "$script:ModuleRoot\Core\CheckpointManagement.ps1"
 
+# Import batch operations
+. "$script:ModuleRoot\Core\BatchOperations.ps1"
+
 # Import Golden Image Provider
 . "$script:ModuleRoot\Providers\GoldenImageProvider.ps1"
+
+# Import Search Engine
+. "$script:ModuleRoot\Core\SearchEngine.ps1"
+
+# Import Metrics Collector
+. "$script:ModuleRoot\Core\MetricsCollector.ps1"
 
 <#
 .SYNOPSIS
@@ -416,6 +425,27 @@ Export-ModuleMember -Function @(
     'Restore-VhdxSnapshot'
     'Get-VhdxInfo'
     'Test-VhdxIntegrity'
+
+    # Batch Operations
+    'New-FlashdbBatchOperation'
+    'Get-FlashdbBatchOperation'
+    'Get-FlashdbBatchOperations'
+    'Start-FlashdbBatchQueue'
+    'Cancel-FlashdbBatchOperation'
+    'Get-FlashdbBatchResults'
+
+    # Search and Filtering
+    'Search-FlashdbOperations'
+    'Filter-FlashdbClones'
+    'Filter-FlashdbCheckpoints'
+    'Get-FlashdbSearchSuggestions'
+
+    # Metrics and Analytics
+    'Get-FlashdbMetrics'
+    'Get-CloneCreationStats'
+    'Get-StorageStats'
+    'Get-OperationStats'
+    'Get-TimelineData'
 )
 
 # Export module variables

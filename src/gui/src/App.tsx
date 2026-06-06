@@ -4,6 +4,7 @@ import './App.css';
 import { CreateGoldenImageForm } from './components/CreateGoldenImageForm';
 import { CreateCloneForm } from './components/CreateCloneForm';
 import { CreateCheckpointForm } from './components/CreateCheckpointForm';
+import Dashboard from './components/Dashboard';
 
 interface Clone {
   id: string;
@@ -27,6 +28,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedClone, setSelectedClone] = useState<Clone | null>(null);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'management'>('dashboard');
 
   const API_BASE = 'http://localhost:3001/api';
 
@@ -104,7 +106,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🎯 FlashDB Dashboard</h1>
+        <h1>FlashDB Management</h1>
         <p>Database Virtualization Management</p>
       </header>
 
@@ -115,7 +117,24 @@ function App() {
         </div>
       )}
 
-      <div className="container">
+      <nav className="app-tabs">
+        <button
+          className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          Metrics Dashboard
+        </button>
+        <button
+          className={`tab ${activeTab === 'management' ? 'active' : ''}`}
+          onClick={() => setActiveTab('management')}
+        >
+          Management
+        </button>
+      </nav>
+
+      {activeTab === 'dashboard' && <Dashboard />}
+
+      {activeTab === 'management' && <div className="container">
         <div className="section">
           <h2>Golden Images</h2>
           {loading ? (
@@ -176,8 +195,9 @@ function App() {
 
       <footer className="app-footer">
         <p>FlashDB v0.1.0 - Database Virtualization Tool</p>
-        <button onClick={loadData} className="btn-refresh">🔄 Refresh</button>
+        <button onClick={loadData} className="btn-refresh">Refresh</button>
       </footer>
+      </div>}
     </div>
   );
 }

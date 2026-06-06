@@ -6,6 +6,9 @@ import logger from './logger';
 import goldImageRoutes from './routes/goldenImages';
 import cloneRoutes from './routes/clones';
 import checkpointRoutes from './routes/checkpoints';
+import searchRoutes from './routes/search';
+import batchRoutes from './routes/batch';
+import metricsRoutes from './routes/metrics';
 
 dotenv.config();
 
@@ -30,6 +33,9 @@ app.get('/health', (_req: Request, res: Response) => {
 app.use('/api/golden-images', goldImageRoutes);
 app.use('/api/clones', cloneRoutes);
 app.use('/api/clones/:cloneId/checkpoints', checkpointRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/batches', batchRoutes);
+app.use('/api/metrics', metricsRoutes);
 
 // Swagger/OpenAPI endpoint (can be expanded later)
 app.get('/api/docs', (_req: Request, res: Response) => {
@@ -42,7 +48,31 @@ app.get('/api/docs', (_req: Request, res: Response) => {
     endpoints: {
       goldenImages: '/api/golden-images',
       clones: '/api/clones',
-      checkpoints: '/api/clones/{cloneId}/checkpoints'
+      checkpoints: '/api/clones/{cloneId}/checkpoints',
+      search: {
+        operations: '/api/search/operations',
+        clones: '/api/search/clones',
+        checkpoints: '/api/search/checkpoints',
+        suggestions: '/api/search/suggestions',
+        advanced: '/api/search/advanced'
+      },
+      batches: {
+        create: 'POST /api/batches',
+        list: 'GET /api/batches',
+        getStatus: 'GET /api/batches/{batchId}',
+        start: 'POST /api/batches/{batchId}/start',
+        cancel: 'POST /api/batches/{batchId}/cancel',
+        results: 'GET /api/batches/{batchId}/results',
+        progress: 'GET /api/batches/{batchId}/progress'
+      },
+      metrics: {
+        overview: 'GET /api/metrics/overview',
+        clones: 'GET /api/metrics/clones',
+        storage: 'GET /api/metrics/storage',
+        operations: 'GET /api/metrics/operations',
+        timeline: 'GET /api/metrics/timeline',
+        all: 'GET /api/metrics/all'
+      }
     }
   });
 });
