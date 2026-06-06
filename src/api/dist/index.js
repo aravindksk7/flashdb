@@ -22,12 +22,18 @@ const taskQueue_1 = require("./services/taskQueue");
 const taskWorker_1 = require("./services/taskWorker");
 const sqlClient_1 = require("./services/sqlClient");
 const init_1 = require("./db/init");
+const pgStateManager_1 = require("./services/pgStateManager");
+const pgLockManager_1 = require("./services/pgLockManager");
+const pgStateSync_1 = require("./services/pgStateSync");
 const queue_1 = __importDefault(require("./routes/queue"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3001;
 // Initialize SQL client on startup
 let sqlClient;
+let stateManager;
+let lockManager;
+let stateSync;
 const initializeSql = async () => {
     try {
         sqlClient = await (0, sqlClient_1.initializeSqlClient)();
@@ -39,6 +45,22 @@ const initializeSql = async () => {
         const tablesExist = await (0, init_1.checkDatabaseTables)();
         if (!tablesExist) {
             logger_1.default.warn('Some database tables may not exist. Running schema initialization.');
+        }
+        // Initialize state management (Phase 5b.1)
+        try {
+            stateManager = await (0, pgStateManager_1.initializePgStateManager)();
+            lockManager = await (0, pgLockManager_1.initializePgLockManager)();
+            stateSync = await (0, pgStateSync_1.initializePgStateSync)();
+            logger_1.default.info('PostgreSQL state management initialized');
+            const stateTablesExist = await (0, init_1.checkStateManagementTables)();
+            if (!stateTablesExist) {
+                logger_1.default.warn('Some state management tables may not exist. Retrying schema initialization.');
+                await (0, init_1.initializeDatabaseSchema)();
+            }
+        }
+        catch (error) {
+            logger_1.default.warn(`State management initialization warning: ${error.message}. Continuing without state management.`);
+            // State management is optional - continue with fallback
         }
     }
     catch (error) {
@@ -133,7 +155,9 @@ app.get('/api/docs', (_req, res) => {
                 operations: 'GET /api/metrics/operations',
                 timeline: 'GET /api/metrics/timeline',
                 all: 'GET /api/metrics/all',
-                performance: 'GET /api/metrics/performance (operation metrics)'
+                performance: 'GET /api/metrics/performance (operation metrics)',
+                cache: 'GET /api/metrics/cache',
+                state: 'GET /api/metrics/state (PostgreSQL state management metrics)'
             },
             queue: {
                 metrics: 'GET /api/queue/metrics',
@@ -163,6 +187,33 @@ app.get('/api/metrics/cache', (_req, res) => {
         timestamp: new Date().toISOString(),
         cache: (0, caching_1.getCacheMetrics)()
     });
+});
+// State management metrics endpoint (Phase 5b.1)
+app.get('/api/metrics/state', async (_req, res) => {
+    try {
+        const stats = {
+            timestamp: new Date().toISOString(),
+            stateManager: null,
+            lockManager: null,
+            stateSync: null
+        };
+        if (stateManager) {
+            stats.stateManager = await stateManager.getStats();
+        }
+        if (lockManager) {
+            stats.lockManager = await lockManager.getStats();
+        }
+        if (stateSync) {
+            stats.stateSync = stateSync.getStats();
+        }
+        res.json(stats);
+    }
+    catch (error) {
+        res.status(500).json({
+            timestamp: new Date().toISOString(),
+            error: error.message
+        });
+    }
 });
 // Prometheus metrics endpoint (placeholder)
 app.get('/metrics', (_req, res) => {
@@ -240,6 +291,16 @@ const server = app.listen(port, async () => {
         logger_1.default.info('  SQL Client: Not initialized (using PowerShell fallback)');
     }
     logger_1.default.info('');
+    logger_1.default.info('State Management (Phase 5b.1):');
+    if (stateManager) {
+        logger_1.default.info('  State Manager: Initialized (PostgreSQL-backed)');
+        logger_1.default.info('  Lock Manager: Initialized');
+        logger_1.default.info('  State Sync: Initialized (eventually consistent)');
+    }
+    else {
+        logger_1.default.info('  State Management: Not initialized (optional, using fallback)');
+    }
+    logger_1.default.info('');
     logger_1.default.info('Connection Pool Status:');
     logger_1.default.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
     logger_1.default.info(`  Available: ${connectionPool.getMetrics().available}`);
@@ -264,6 +325,18 @@ process.on('SIGTERM', async () => {
         logger_1.default.info('HTTP server closed');
         await taskWorker.stopWorker(5000);
         logger_1.default.info('Task worker shut down');
+        if (stateSync) {
+            await stateSync.shutdown();
+            logger_1.default.info('State sync shut down');
+        }
+        if (lockManager) {
+            await lockManager.shutdown();
+            logger_1.default.info('Lock manager shut down');
+        }
+        if (stateManager) {
+            await stateManager.shutdown();
+            logger_1.default.info('State manager shut down');
+        }
         if (sqlClient) {
             await (0, sqlClient_1.shutdownSqlClient)();
             logger_1.default.info('SQL client shut down');
@@ -279,6 +352,18 @@ process.on('SIGINT', async () => {
         logger_1.default.info('HTTP server closed');
         await taskWorker.stopWorker(5000);
         logger_1.default.info('Task worker shut down');
+        if (stateSync) {
+            await stateSync.shutdown();
+            logger_1.default.info('State sync shut down');
+        }
+        if (lockManager) {
+            await lockManager.shutdown();
+            logger_1.default.info('Lock manager shut down');
+        }
+        if (stateManager) {
+            await stateManager.shutdown();
+            logger_1.default.info('State manager shut down');
+        }
         if (sqlClient) {
             await (0, sqlClient_1.shutdownSqlClient)();
             logger_1.default.info('SQL client shut down');

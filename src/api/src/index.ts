@@ -29,7 +29,10 @@ import { initializeConnectionPool, shutdownConnectionPool } from './services/con
 import { initializeTaskQueue } from './services/taskQueue';
 import { initializeTaskWorker } from './services/taskWorker';
 import { initializeSqlClient, shutdownSqlClient } from './services/sqlClient';
-import { initializeDatabaseSchema, checkDatabaseTables } from './db/init';
+import { initializeDatabaseSchema, checkDatabaseTables, checkStateManagementTables } from './db/init';
+import { initializePgStateManager } from './services/pgStateManager';
+import { initializePgLockManager } from './services/pgLockManager';
+import { initializePgStateSync } from './services/pgStateSync';
 import queueRoutes from './routes/queue';
 
 dotenv.config();
@@ -39,6 +42,10 @@ const port = process.env.PORT || 3001;
 
 // Initialize SQL client on startup
 let sqlClient: any;
+let stateManager: any;
+let lockManager: any;
+let stateSync: any;
+
 const initializeSql = async () => {
   try {
     sqlClient = await initializeSqlClient();
@@ -52,6 +59,23 @@ const initializeSql = async () => {
     const tablesExist = await checkDatabaseTables();
     if (!tablesExist) {
       logger.warn('Some database tables may not exist. Running schema initialization.');
+    }
+
+    // Initialize state management (Phase 5b.1)
+    try {
+      stateManager = await initializePgStateManager();
+      lockManager = await initializePgLockManager();
+      stateSync = await initializePgStateSync();
+      logger.info('PostgreSQL state management initialized');
+
+      const stateTablesExist = await checkStateManagementTables();
+      if (!stateTablesExist) {
+        logger.warn('Some state management tables may not exist. Retrying schema initialization.');
+        await initializeDatabaseSchema();
+      }
+    } catch (error: any) {
+      logger.warn(`State management initialization warning: ${error.message}. Continuing without state management.`);
+      // State management is optional - continue with fallback
     }
   } catch (error: any) {
     logger.error(`SQL initialization failed: ${error.message}`);
@@ -156,7 +180,9 @@ app.get('/api/docs', (_req: Request, res: Response) => {
         operations: 'GET /api/metrics/operations',
         timeline: 'GET /api/metrics/timeline',
         all: 'GET /api/metrics/all',
-        performance: 'GET /api/metrics/performance (operation metrics)'
+        performance: 'GET /api/metrics/performance (operation metrics)',
+        cache: 'GET /api/metrics/cache',
+        state: 'GET /api/metrics/state (PostgreSQL state management metrics)'
       },
       queue: {
         metrics: 'GET /api/queue/metrics',
@@ -188,6 +214,37 @@ app.get('/api/metrics/cache', (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     cache: getCacheMetrics()
   });
+});
+
+// State management metrics endpoint (Phase 5b.1)
+app.get('/api/metrics/state', async (_req: Request, res: Response) => {
+  try {
+    const stats: any = {
+      timestamp: new Date().toISOString(),
+      stateManager: null,
+      lockManager: null,
+      stateSync: null
+    };
+
+    if (stateManager) {
+      stats.stateManager = await stateManager.getStats();
+    }
+
+    if (lockManager) {
+      stats.lockManager = await lockManager.getStats();
+    }
+
+    if (stateSync) {
+      stats.stateSync = stateSync.getStats();
+    }
+
+    res.json(stats);
+  } catch (error: any) {
+    res.status(500).json({
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
 });
 
 // Prometheus metrics endpoint (placeholder)
@@ -275,6 +332,15 @@ const server = app.listen(port, async () => {
     logger.info('  SQL Client: Not initialized (using PowerShell fallback)');
   }
   logger.info('');
+  logger.info('State Management (Phase 5b.1):');
+  if (stateManager) {
+    logger.info('  State Manager: Initialized (PostgreSQL-backed)');
+    logger.info('  Lock Manager: Initialized');
+    logger.info('  State Sync: Initialized (eventually consistent)');
+  } else {
+    logger.info('  State Management: Not initialized (optional, using fallback)');
+  }
+  logger.info('');
   logger.info('Connection Pool Status:');
   logger.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
   logger.info(`  Available: ${connectionPool.getMetrics().available}`);
@@ -300,6 +366,18 @@ process.on('SIGTERM', async () => {
     logger.info('HTTP server closed');
     await taskWorker.stopWorker(5000);
     logger.info('Task worker shut down');
+    if (stateSync) {
+      await stateSync.shutdown();
+      logger.info('State sync shut down');
+    }
+    if (lockManager) {
+      await lockManager.shutdown();
+      logger.info('Lock manager shut down');
+    }
+    if (stateManager) {
+      await stateManager.shutdown();
+      logger.info('State manager shut down');
+    }
     if (sqlClient) {
       await shutdownSqlClient();
       logger.info('SQL client shut down');
@@ -316,6 +394,18 @@ process.on('SIGINT', async () => {
     logger.info('HTTP server closed');
     await taskWorker.stopWorker(5000);
     logger.info('Task worker shut down');
+    if (stateSync) {
+      await stateSync.shutdown();
+      logger.info('State sync shut down');
+    }
+    if (lockManager) {
+      await lockManager.shutdown();
+      logger.info('Lock manager shut down');
+    }
+    if (stateManager) {
+      await stateManager.shutdown();
+      logger.info('State manager shut down');
+    }
     if (sqlClient) {
       await shutdownSqlClient();
       logger.info('SQL client shut down');

@@ -11,7 +11,7 @@ export async function initializeDatabaseSchema(): Promise<void> {
   try {
     const sqlClient = getSqlClient();
 
-    // Read schema file
+    // Read main schema file
     const schemaPath = path.join(__dirname, 'schema.sql');
     if (!fs.existsSync(schemaPath)) {
       logger.error(`Schema file not found: ${schemaPath}`);
@@ -41,9 +41,53 @@ export async function initializeDatabaseSchema(): Promise<void> {
     }
 
     logger.info('Database schema initialized successfully');
+
+    // Initialize state management schema (Phase 5b.1)
+    await initializeStateSchema();
   } catch (error: any) {
     logger.error(`Error initializing database schema: ${error.message}`);
     throw error;
+  }
+}
+
+/**
+ * Initialize the state management schema
+ * Creates tables for state, locks, and operations if they don't exist
+ */
+export async function initializeStateSchema(): Promise<void> {
+  try {
+    const sqlClient = getSqlClient();
+
+    // Read state schema file
+    const stateSchemaPath = path.join(__dirname, 'stateSchema.sql');
+    if (!fs.existsSync(stateSchemaPath)) {
+      logger.warn(`State schema file not found: ${stateSchemaPath}. State management tables may need manual creation.`);
+      return;
+    }
+
+    const stateSchemaSQL = fs.readFileSync(stateSchemaPath, 'utf-8');
+
+    // Split by GO statements and execute each batch
+    const batches = stateSchemaSQL.split(/\nGO\n/i);
+
+    for (const batch of batches) {
+      const trimmedBatch = batch.trim();
+      if (trimmedBatch.length > 0) {
+        try {
+          await sqlClient.execute(trimmedBatch);
+        } catch (error: any) {
+          // Ignore errors about objects that already exist
+          if (!error.message.includes('already exists')) {
+            logger.warn(`State schema execution warning: ${error.message}`);
+          }
+        }
+      }
+    }
+
+    logger.info('State management schema initialized successfully');
+  } catch (error: any) {
+    logger.error(`Error initializing state schema: ${error.message}`);
+    // Don't throw - state management is optional and can degrade gracefully
   }
 }
 
@@ -67,6 +111,30 @@ export async function checkDatabaseTables(): Promise<boolean> {
     return tableCount === 4;
   } catch (error: any) {
     logger.error(`Error checking database tables: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Check if state management tables exist
+ */
+export async function checkStateManagementTables(): Promise<boolean> {
+  try {
+    const sqlClient = getSqlClient();
+
+    const sql = `
+      SELECT COUNT(*) as tableCount
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME IN ('flashdb_state', 'flashdb_locks', 'flashdb_operations')
+    `;
+
+    const result = await sqlClient.query<{ tableCount: number }>(sql);
+    const tableCount = result.recordset[0]?.tableCount ?? 0;
+
+    // We expect all 3 state tables to exist
+    return tableCount === 3;
+  } catch (error: any) {
+    logger.error(`Error checking state management tables: ${error.message}`);
     return false;
   }
 }

@@ -37,7 +37,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initializeDatabaseSchema = initializeDatabaseSchema;
+exports.initializeStateSchema = initializeStateSchema;
 exports.checkDatabaseTables = checkDatabaseTables;
+exports.checkStateManagementTables = checkStateManagementTables;
 exports.getDatabaseInfo = getDatabaseInfo;
 const sqlClient_1 = require("../services/sqlClient");
 const logger_1 = __importDefault(require("../logger"));
@@ -50,7 +52,7 @@ const path = __importStar(require("path"));
 async function initializeDatabaseSchema() {
     try {
         const sqlClient = (0, sqlClient_1.getSqlClient)();
-        // Read schema file
+        // Read main schema file
         const schemaPath = path.join(__dirname, 'schema.sql');
         if (!fs.existsSync(schemaPath)) {
             logger_1.default.error(`Schema file not found: ${schemaPath}`);
@@ -75,10 +77,49 @@ async function initializeDatabaseSchema() {
             }
         }
         logger_1.default.info('Database schema initialized successfully');
+        // Initialize state management schema (Phase 5b.1)
+        await initializeStateSchema();
     }
     catch (error) {
         logger_1.default.error(`Error initializing database schema: ${error.message}`);
         throw error;
+    }
+}
+/**
+ * Initialize the state management schema
+ * Creates tables for state, locks, and operations if they don't exist
+ */
+async function initializeStateSchema() {
+    try {
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        // Read state schema file
+        const stateSchemaPath = path.join(__dirname, 'stateSchema.sql');
+        if (!fs.existsSync(stateSchemaPath)) {
+            logger_1.default.warn(`State schema file not found: ${stateSchemaPath}. State management tables may need manual creation.`);
+            return;
+        }
+        const stateSchemaSQL = fs.readFileSync(stateSchemaPath, 'utf-8');
+        // Split by GO statements and execute each batch
+        const batches = stateSchemaSQL.split(/\nGO\n/i);
+        for (const batch of batches) {
+            const trimmedBatch = batch.trim();
+            if (trimmedBatch.length > 0) {
+                try {
+                    await sqlClient.execute(trimmedBatch);
+                }
+                catch (error) {
+                    // Ignore errors about objects that already exist
+                    if (!error.message.includes('already exists')) {
+                        logger_1.default.warn(`State schema execution warning: ${error.message}`);
+                    }
+                }
+            }
+        }
+        logger_1.default.info('State management schema initialized successfully');
+    }
+    catch (error) {
+        logger_1.default.error(`Error initializing state schema: ${error.message}`);
+        // Don't throw - state management is optional and can degrade gracefully
     }
 }
 /**
@@ -99,6 +140,27 @@ async function checkDatabaseTables() {
     }
     catch (error) {
         logger_1.default.error(`Error checking database tables: ${error.message}`);
+        return false;
+    }
+}
+/**
+ * Check if state management tables exist
+ */
+async function checkStateManagementTables() {
+    try {
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        const sql = `
+      SELECT COUNT(*) as tableCount
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME IN ('flashdb_state', 'flashdb_locks', 'flashdb_operations')
+    `;
+        const result = await sqlClient.query(sql);
+        const tableCount = result.recordset[0]?.tableCount ?? 0;
+        // We expect all 3 state tables to exist
+        return tableCount === 3;
+    }
+    catch (error) {
+        logger_1.default.error(`Error checking state management tables: ${error.message}`);
         return false;
     }
 }
