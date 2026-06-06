@@ -42,6 +42,9 @@ Write-Verbose "Loading FlashDB Core modules from $script:ModuleRoot..."
 # Import checkpoint management
 . "$script:ModuleRoot\Core\CheckpointManagement.ps1"
 
+# Import Golden Image Provider
+. "$script:ModuleRoot\Providers\GoldenImageProvider.ps1"
+
 <#
 .SYNOPSIS
     Gets the current FlashDB configuration
