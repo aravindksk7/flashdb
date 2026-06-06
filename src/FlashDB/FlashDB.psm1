@@ -308,9 +308,9 @@ function Initialize-FlashdbEnvironment {
     # Test environment
     $envTest = Test-FlashdbEnvironment
     if ($envTest.Issues.Count -gt 0) {
-        Write-Warning "Environment issues detected:"
+        Write-Verbose "Environment issues detected:"
         foreach ($issue in $envTest.Issues) {
-            Write-Warning "  - $issue"
+            Write-Verbose "  - $issue"
         }
     }
 
@@ -337,7 +337,7 @@ function Initialize-FlashdbEnvironment {
                 New-Item -ItemType Directory -Path $path -Force | Out-Null
                 Write-Verbose "Created directory: $path"
             } catch {
-                Write-Warning "Failed to create directory: $path ($_)"
+                Write-Verbose "Failed to create directory: $path ($_)"
             }
         }
     }
@@ -358,7 +358,7 @@ function Initialize-FlashdbEnvironment {
 # Run initialization on module load
 $initResult = Initialize-FlashdbEnvironment
 if ($initResult.Issues.Count -gt 0) {
-    Write-Warning "FlashDB loaded with configuration warnings. Run Test-FlashdbEnvironment for details."
+    Write-Verbose "FlashDB loaded with configuration warnings. Run Test-FlashdbEnvironment for details."
 }
 
 # Export public functions
