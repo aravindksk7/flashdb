@@ -368,6 +368,12 @@ Export-ModuleMember -Function @(
     'Initialize-FlashdbEnvironment'
     'Get-FlashdbProviderRegistry'
 
+    # Golden Image Management
+    'New-FlashdbGoldenImage'
+    'Get-FlashdbGoldenImage'
+    'Remove-FlashdbGoldenImage'
+    'Get-FlashdbGoldenImageInfo'
+
     # Clone Management
     'New-FlashdbClone'
     'Get-FlashdbClone'
