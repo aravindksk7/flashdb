@@ -220,7 +220,7 @@ describe('Database Integration Tests', () => {
         await sqlClient.initialize();
 
         // Create a clone
-        const clone = await cloneRepository.create({
+        void await cloneRepository.create({
           goldenImageId: 'img-integrity-test',
           cloneName: 'integrity-clone',
           instancePath: '/instances/integrity',

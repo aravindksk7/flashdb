@@ -3,6 +3,7 @@ declare class TaskWorker {
     private isRunning;
     private pollInterval;
     private inFlightTasks;
+    private usePersistence;
     startWorker(): Promise<void>;
     stopWorker(gracefulWaitMs?: number): Promise<void>;
     private processNextTask;

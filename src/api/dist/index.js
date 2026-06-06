@@ -26,6 +26,7 @@ const init_1 = require("./db/init");
 const pgStateManager_1 = require("./services/pgStateManager");
 const pgLockManager_1 = require("./services/pgLockManager");
 const pgStateSync_1 = require("./services/pgStateSync");
+const pgQueueManager_1 = require("./services/pgQueueManager");
 const queue_1 = __importDefault(require("./routes/queue"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -35,6 +36,7 @@ let sqlClient;
 let stateManager;
 let lockManager;
 let stateSync;
+let queueManager;
 const initializeSql = async () => {
     try {
         sqlClient = await (0, sqlClient_1.initializeSqlClient)();
@@ -62,6 +64,21 @@ const initializeSql = async () => {
         catch (error) {
             logger_1.default.warn(`State management initialization warning: ${error.message}. Continuing without state management.`);
             // State management is optional - continue with fallback
+        }
+        // Initialize queue manager with DB persistence (Phase 5b.3)
+        try {
+            const persistMode = process.env.QUEUE_PERSIST_MODE || 'db';
+            if (persistMode === 'db') {
+                queueManager = await (0, pgQueueManager_1.initializePgQueueManager)();
+                logger_1.default.info('PostgreSQL queue manager initialized for task durability');
+            }
+            else {
+                logger_1.default.info('Queue persistence disabled (QUEUE_PERSIST_MODE=file)');
+            }
+        }
+        catch (error) {
+            logger_1.default.warn(`Queue manager initialization warning: ${error.message}. Continuing with file-only persistence.`);
+            // Queue persistence is optional - continue with file fallback
         }
     }
     catch (error) {
@@ -304,6 +321,16 @@ const server = app.listen(port, async () => {
         logger_1.default.info('  State Management: Not initialized (optional, using fallback)');
     }
     logger_1.default.info('');
+    logger_1.default.info('Queue Persistence (Phase 5b.3):');
+    if (queueManager) {
+        logger_1.default.info('  Queue Manager: Initialized (PostgreSQL-backed)');
+        logger_1.default.info('  Persistence Mode: DB (durable across restarts)');
+        logger_1.default.info(`  Instance ID: ${queueManager.getInstanceId()}`);
+    }
+    else {
+        logger_1.default.info('  Queue Manager: Not initialized (using file persistence fallback)');
+    }
+    logger_1.default.info('');
     logger_1.default.info('Connection Pool Status:');
     logger_1.default.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
     logger_1.default.info(`  Available: ${connectionPool.getMetrics().available}`);
@@ -328,6 +355,9 @@ process.on('SIGTERM', async () => {
         logger_1.default.info('HTTP server closed');
         await taskWorker.stopWorker(5000);
         logger_1.default.info('Task worker shut down');
+        if (queueManager) {
+            logger_1.default.info('Queue manager (no shutdown needed)');
+        }
         if (stateSync) {
             await stateSync.shutdown();
             logger_1.default.info('State sync shut down');
@@ -355,6 +385,9 @@ process.on('SIGINT', async () => {
         logger_1.default.info('HTTP server closed');
         await taskWorker.stopWorker(5000);
         logger_1.default.info('Task worker shut down');
+        if (queueManager) {
+            logger_1.default.info('Queue manager (no shutdown needed)');
+        }
         if (stateSync) {
             await stateSync.shutdown();
             logger_1.default.info('State sync shut down');

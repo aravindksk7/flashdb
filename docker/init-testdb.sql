@@ -53,6 +53,50 @@ CREATE TABLE dbo.flashdb_operations (
 CREATE INDEX idx_flashdb_operations_type ON dbo.flashdb_operations(operation_type);
 CREATE INDEX idx_flashdb_operations_time ON dbo.flashdb_operations(timestamp DESC);
 
+-- ============================================================================
+-- Task Queue Tables (Phase 5b.3)
+-- ============================================================================
+
+-- Active task queue table
+CREATE TABLE dbo.flashdb_queue (
+    [id] NVARCHAR(36) PRIMARY KEY NOT NULL,
+    [type] NVARCHAR(50) NOT NULL,
+    [status] NVARCHAR(50) NOT NULL DEFAULT 'pending',
+    [payload] NVARCHAR(MAX) NOT NULL,
+    [retry_count] INT NOT NULL DEFAULT 0,
+    [max_retries] INT NOT NULL DEFAULT 3,
+    [created_at] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE(),
+    [started_at] DATETIME2(7) NULL,
+    [completed_at] DATETIME2(7) NULL,
+    [error] NVARCHAR(MAX) NULL,
+    [result] NVARCHAR(MAX) NULL,
+    [instance_id] NVARCHAR(36) NULL
+);
+CREATE INDEX idx_flashdb_queue_status ON dbo.flashdb_queue([status]);
+CREATE INDEX idx_flashdb_queue_created_at ON dbo.flashdb_queue([created_at] DESC);
+CREATE INDEX idx_flashdb_queue_status_created ON dbo.flashdb_queue([status], [created_at] DESC);
+CREATE INDEX idx_flashdb_queue_type ON dbo.flashdb_queue([type]);
+CREATE INDEX idx_flashdb_queue_instance ON dbo.flashdb_queue([instance_id]) WHERE [instance_id] IS NOT NULL;
+
+-- Archive table for completed/failed tasks
+CREATE TABLE dbo.flashdb_queue_archive (
+    [id] NVARCHAR(36) PRIMARY KEY NOT NULL,
+    [type] NVARCHAR(50) NOT NULL,
+    [status] NVARCHAR(50) NOT NULL,
+    [payload] NVARCHAR(MAX) NOT NULL,
+    [retry_count] INT NOT NULL,
+    [created_at] DATETIME2(7) NOT NULL,
+    [started_at] DATETIME2(7) NULL,
+    [completed_at] DATETIME2(7) NULL,
+    [error] NVARCHAR(MAX) NULL,
+    [result] NVARCHAR(MAX) NULL,
+    [archived_at] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE()
+);
+CREATE INDEX idx_flashdb_queue_archive_status ON dbo.flashdb_queue_archive([status]);
+CREATE INDEX idx_flashdb_queue_archive_created ON dbo.flashdb_queue_archive([created_at] DESC);
+CREATE INDEX idx_flashdb_queue_archive_archived ON dbo.flashdb_queue_archive([archived_at] DESC);
+CREATE INDEX idx_flashdb_queue_archive_type ON dbo.flashdb_queue_archive([type]);
+
 -- Create Customers table
 CREATE TABLE dbo.Customers (
     CustomerID INT PRIMARY KEY IDENTITY(1,1),
@@ -149,11 +193,13 @@ DECLARE @TotalCustomers INT = (SELECT COUNT(*) FROM dbo.Customers);
 DECLARE @TotalOrders INT = (SELECT COUNT(*) FROM dbo.Orders);
 DECLARE @TotalOrderItems INT = (SELECT COUNT(*) FROM dbo.OrderItems);
 DECLARE @TotalProducts INT = (SELECT COUNT(*) FROM dbo.Products);
+DECLARE @QueueTables INT = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN ('flashdb_queue', 'flashdb_queue_archive') AND TABLE_SCHEMA = 'dbo');
 
 PRINT 'Test database created successfully!';
-PRINT 'Tables: Customers, Orders, OrderItems, Products';
+PRINT 'Tables: Customers, Orders, OrderItems, Products, State Management, Task Queue';
 PRINT 'Total Customers: ' + CAST(@TotalCustomers AS NVARCHAR(10));
 PRINT 'Total Orders: ' + CAST(@TotalOrders AS NVARCHAR(10));
 PRINT 'Total Order Items: ' + CAST(@TotalOrderItems AS NVARCHAR(10));
 PRINT 'Total Products: ' + CAST(@TotalProducts AS NVARCHAR(10));
+PRINT 'Queue tables initialized: ' + CAST(@QueueTables AS NVARCHAR(10));
 GO

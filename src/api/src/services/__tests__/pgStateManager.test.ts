@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 import { PgStateManager, getPgStateManager, initializePgStateManager } from '../pgStateManager';
-import { getSqlClient, initializeSqlClient } from '../sqlClient';
+import { initializeSqlClient } from '../sqlClient';
 
 /**
  * PostgreSQL State Manager Unit Tests

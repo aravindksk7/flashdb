@@ -133,7 +133,7 @@ describe('PgStateSync', () => {
         const key = 'test:subscribe';
         let notified = false;
 
-        const callback = (changedKey: string, value: any) => {
+        const callback = (changedKey: string) => {
           if (changedKey === key) {
             notified = true;
           }
@@ -159,7 +159,7 @@ describe('PgStateSync', () => {
         const pattern = 'clone:*';
         let notifiedWith: string | null = null;
 
-        const callback = (key: string, value: any) => {
+        const callback = (key: string) => {
           notifiedWith = key;
         };
 

@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initializeDatabaseSchema = initializeDatabaseSchema;
+exports.initializeQueueSchema = initializeQueueSchema;
 exports.initializeStateSchema = initializeStateSchema;
 exports.checkDatabaseTables = checkDatabaseTables;
 exports.checkStateManagementTables = checkStateManagementTables;
@@ -79,10 +80,49 @@ async function initializeDatabaseSchema() {
         logger_1.default.info('Database schema initialized successfully');
         // Initialize state management schema (Phase 5b.1)
         await initializeStateSchema();
+        // Initialize queue schema (Phase 5b.3)
+        await initializeQueueSchema();
     }
     catch (error) {
         logger_1.default.error(`Error initializing database schema: ${error.message}`);
         throw error;
+    }
+}
+/**
+ * Initialize the queue management schema
+ * Creates tables for persistent task queue if they don't exist
+ */
+async function initializeQueueSchema() {
+    try {
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        // Read queue schema file
+        const queueSchemaPath = path.join(__dirname, 'queueSchema.sql');
+        if (!fs.existsSync(queueSchemaPath)) {
+            logger_1.default.warn(`Queue schema file not found: ${queueSchemaPath}. Queue persistence tables may need manual creation.`);
+            return;
+        }
+        const queueSchemaSQL = fs.readFileSync(queueSchemaPath, 'utf-8');
+        // Split by GO statements and execute each batch
+        const batches = queueSchemaSQL.split(/\nGO\n/i);
+        for (const batch of batches) {
+            const trimmedBatch = batch.trim();
+            if (trimmedBatch.length > 0) {
+                try {
+                    await sqlClient.execute(trimmedBatch);
+                }
+                catch (error) {
+                    // Ignore errors about objects that already exist
+                    if (!error.message.includes('already exists')) {
+                        logger_1.default.warn(`Queue schema execution warning: ${error.message}`);
+                    }
+                }
+            }
+        }
+        logger_1.default.info('Queue management schema initialized successfully');
+    }
+    catch (error) {
+        logger_1.default.error(`Error initializing queue schema: ${error.message}`);
+        // Don't throw - queue persistence is optional and can degrade gracefully
     }
 }
 /**

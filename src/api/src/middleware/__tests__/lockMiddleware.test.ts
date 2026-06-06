@@ -1,5 +1,5 @@
 import { withLock, withLockRetry, acquireOrFail, acquireWithRetry, releaseLock } from '../lockMiddleware';
-import { getPgLockManager } from '../../services/pgLockManager';
+import * as pgLockModule from '../../services/pgLockManager';
 import logger from '../../logger';
 
 // Mock logger
@@ -9,6 +9,9 @@ jest.mock('../../logger');
 jest.mock('uuid', () => ({
   v4: () => 'test-owner-id'
 }));
+
+// Mock pgLockManager
+jest.mock('../../services/pgLockManager');
 
 describe('lockMiddleware', () => {
   let mockLockManager: any;
@@ -20,7 +23,7 @@ describe('lockMiddleware', () => {
       getLockInfo: jest.fn()
     };
 
-    jest.mocked(getPgLockManager).mockReturnValue(mockLockManager);
+    (pgLockModule.getPgLockManager as jest.Mock).mockReturnValue(mockLockManager);
   });
 
   afterEach(() => {

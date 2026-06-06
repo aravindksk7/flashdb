@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { CloneRepository, CheckpointRepository, MetricsRepository, SearchRepository, CloneData, CheckpointData } from '../repository';
+import { CloneRepository, CheckpointRepository, MetricsRepository, SearchRepository } from '../repository';
 import { getSqlClient, shutdownSqlClient } from '../sqlClient';
 
 /**
@@ -480,7 +480,8 @@ describe('CheckpointRepository', () => {
           cloneId: clone.id,
           checkpointName: 'read-cp',
           phase: 'manual',
-          labels: ['test']
+          labels: ['test'],
+          isFavorite: false
         });
 
         const retrieved = await repository.getById(checkpoint.id);
@@ -513,14 +514,16 @@ describe('CheckpointRepository', () => {
           cloneId: clone.id,
           checkpointName: 'cp-1',
           phase: 'manual',
-          labels: []
+          labels: [],
+          isFavorite: false
         });
 
         await repository.create({
           cloneId: clone.id,
           checkpointName: 'cp-2',
           phase: 'manual',
-          labels: []
+          labels: [],
+          isFavorite: false
         });
 
         const checkpoints = await repository.getByCloneId(clone.id);
@@ -709,7 +712,7 @@ describe('SearchRepository', () => {
       try {
         await sqlClient.initialize();
 
-        const clone = await cloneRepository.create({
+        void await cloneRepository.create({
           goldenImageId: 'img-case-test',
           cloneName: 'CaseSensitiveClone',
           instancePath: '/instances/case-test',
@@ -764,11 +767,12 @@ describe('SearchRepository', () => {
         });
 
         const cpRepository = new CheckpointRepository();
-        const checkpoint = await cpRepository.create({
+        void await cpRepository.create({
           cloneId: clone.id,
           checkpointName: 'search-checkpoint-test',
           phase: 'manual',
-          labels: []
+          labels: [],
+          isFavorite: false
         });
 
         const results = await repository.searchCheckpoints('search-checkpoint');

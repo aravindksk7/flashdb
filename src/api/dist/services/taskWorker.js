@@ -9,6 +9,7 @@ exports.initializeTaskWorker = initializeTaskWorker;
 exports.resetTaskWorkerForTesting = resetTaskWorkerForTesting;
 const taskQueue_1 = require("./taskQueue");
 const pooledPowershellService_1 = require("./pooledPowershellService");
+const pgQueueManager_1 = require("./pgQueueManager");
 const logger_1 = __importDefault(require("../logger"));
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000; // Base delay, will be exponential
@@ -18,6 +19,7 @@ class TaskWorker {
         this.isRunning = false;
         this.pollInterval = null;
         this.inFlightTasks = new Set();
+        this.usePersistence = false; // Whether to use DB persistence
     }
     async startWorker() {
         if (this.isRunning) {
@@ -26,6 +28,32 @@ class TaskWorker {
         }
         this.isRunning = true;
         logger_1.default.info('Starting task worker');
+        // Check if DB persistence is enabled
+        const persistMode = process.env.QUEUE_PERSIST_MODE || 'db';
+        if (persistMode === 'db') {
+            try {
+                const pgQueueManager = (0, pgQueueManager_1.getPgQueueManager)();
+                if (pgQueueManager.isInitialized()) {
+                    this.usePersistence = true;
+                    // Load pending tasks from DB on startup
+                    const pendingTasks = await pgQueueManager.loadQueueFromDB();
+                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
+                    for (const task of pendingTasks) {
+                        // Add to in-memory queue if not already there
+                        const existing = taskQueue.getTask(task.id);
+                        if (!existing) {
+                            // Reconstruct task in memory queue
+                            taskQueue.enqueue(task.type, task.payload);
+                        }
+                    }
+                    logger_1.default.info(`Loaded ${pendingTasks.length} tasks from DB for recovery`);
+                }
+            }
+            catch (error) {
+                logger_1.default.warn(`DB persistence not available: ${error.message}. Falling back to file persistence.`);
+                this.usePersistence = false;
+            }
+        }
         this.pollInterval = setInterval(() => {
             this.processNextTask().catch(error => {
                 logger_1.default.error(`Error in task worker poll: ${error.message}`);
@@ -118,6 +146,11 @@ class TaskWorker {
             }
             logger_1.default.info(`Task completed successfully: ${task.id}`);
             taskQueue.updateTask(task.id, 'completed', result);
+            // Update DB if persistence is enabled
+            if (this.usePersistence) {
+                const pgQueueManager = (0, pgQueueManager_1.getPgQueueManager)();
+                await pgQueueManager.updateTaskStatus(task.id, 'completed', undefined, result);
+            }
         }
         catch (error) {
             const errorMessage = error.message || String(error);
@@ -137,6 +170,11 @@ class TaskWorker {
                 // Max retries exceeded
                 const taskQueue = (0, taskQueue_1.getTaskQueue)();
                 taskQueue.updateTask(task.id, 'failed', undefined, errorMessage);
+                // Update DB if persistence is enabled
+                if (this.usePersistence) {
+                    const pgQueueManager = (0, pgQueueManager_1.getPgQueueManager)();
+                    await pgQueueManager.updateTaskStatus(task.id, 'failed', errorMessage);
+                }
             }
         }
     }

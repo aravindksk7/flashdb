@@ -1,5 +1,6 @@
 import { getTaskQueue, Task } from './taskQueue';
 import { getPooledPowerShellService } from './pooledPowershellService';
+import { getPgQueueManager } from './pgQueueManager';
 import logger from '../logger';
 
 const MAX_RETRIES = 3;
@@ -10,6 +11,7 @@ class TaskWorker {
   private isRunning: boolean = false;
   private pollInterval: NodeJS.Timeout | null = null;
   private inFlightTasks: Set<string> = new Set();
+  private usePersistence: boolean = false; // Whether to use DB persistence
 
   async startWorker(): Promise<void> {
     if (this.isRunning) {
@@ -19,6 +21,32 @@ class TaskWorker {
 
     this.isRunning = true;
     logger.info('Starting task worker');
+
+    // Check if DB persistence is enabled
+    const persistMode = process.env.QUEUE_PERSIST_MODE || 'db';
+    if (persistMode === 'db') {
+      try {
+        const pgQueueManager = getPgQueueManager();
+        if (pgQueueManager.isInitialized()) {
+          this.usePersistence = true;
+          // Load pending tasks from DB on startup
+          const pendingTasks = await pgQueueManager.loadQueueFromDB();
+          const taskQueue = getTaskQueue();
+          for (const task of pendingTasks) {
+            // Add to in-memory queue if not already there
+            const existing = taskQueue.getTask(task.id);
+            if (!existing) {
+              // Reconstruct task in memory queue
+              taskQueue.enqueue(task.type, task.payload);
+            }
+          }
+          logger.info(`Loaded ${pendingTasks.length} tasks from DB for recovery`);
+        }
+      } catch (error: any) {
+        logger.warn(`DB persistence not available: ${error.message}. Falling back to file persistence.`);
+        this.usePersistence = false;
+      }
+    }
 
     this.pollInterval = setInterval(() => {
       this.processNextTask().catch(error => {
@@ -127,6 +155,12 @@ class TaskWorker {
 
       logger.info(`Task completed successfully: ${task.id}`);
       taskQueue.updateTask(task.id, 'completed', result);
+
+      // Update DB if persistence is enabled
+      if (this.usePersistence) {
+        const pgQueueManager = getPgQueueManager();
+        await pgQueueManager.updateTaskStatus(task.id, 'completed', undefined, result);
+      }
     } catch (error: any) {
       const errorMessage = error.message || String(error);
       logger.error(`Task failed: ${task.id}, error: ${errorMessage}, retry: ${task.retryCount}/${MAX_RETRIES}`);
@@ -146,6 +180,12 @@ class TaskWorker {
         // Max retries exceeded
         const taskQueue = getTaskQueue();
         taskQueue.updateTask(task.id, 'failed', undefined, errorMessage);
+
+        // Update DB if persistence is enabled
+        if (this.usePersistence) {
+          const pgQueueManager = getPgQueueManager();
+          await pgQueueManager.updateTaskStatus(task.id, 'failed', errorMessage);
+        }
       }
     }
   }

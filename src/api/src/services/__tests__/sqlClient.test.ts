@@ -109,7 +109,7 @@ describe('SqlClient', () => {
 
     it('should track error count on query failure', () => {
       const initialMetrics = sqlClient.getMetrics();
-      const initialErrors = initialMetrics.errorCount;
+      void initialMetrics.errorCount; // Verify structure exists
 
       // Error tracking happens at a lower level, so we verify structure exists
       expect(sqlClient.getMetrics()).toHaveProperty('errorCount');

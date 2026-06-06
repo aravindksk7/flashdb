@@ -4,6 +4,11 @@
  */
 export declare function initializeDatabaseSchema(): Promise<void>;
 /**
+ * Initialize the queue management schema
+ * Creates tables for persistent task queue if they don't exist
+ */
+export declare function initializeQueueSchema(): Promise<void>;
+/**
  * Initialize the state management schema
  * Creates tables for state, locks, and operations if they don't exist
  */
