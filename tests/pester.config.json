@@ -1,0 +1,91 @@
+{
+  "$schema": "https://raw.githubusercontent.com/pester/Pester/main/docs/schemas/pester.config.schema.json",
+  "Pester": {
+    "Run": {
+      "Path": [
+        "tests/FlashDB",
+        "tests/Providers/SqlServer",
+        "tests/Integration",
+        "tests/Performance"
+      ],
+      "ExcludePath": [],
+      "ScriptBlock": [],
+      "Container": [],
+      "TestExtension": ".Tests.ps1",
+      "Exit": true,
+      "Throw": false,
+      "PassThru": false,
+      "SkipRun": false,
+      "Tag": [],
+      "ExcludeTag": [],
+      "FullNameFilter": []
+    },
+    "Filter": {
+      "Tag": [],
+      "ExcludeTag": []
+    },
+    "CodeCoverage": {
+      "Enabled": true,
+      "Path": [
+        "src/FlashDB"
+      ],
+      "ExcludeTests": true,
+      "RecursePaths": true,
+      "CoveragePercentTarget": 80,
+      "UseBreakpoints": false,
+      "SingleHitBreakpoints": false
+    },
+    "TestResult": {
+      "Enabled": true,
+      "OutputPath": "tests/TestResults.xml",
+      "OutputFormat": "NUnitXml",
+      "TestSuiteName": "FlashDB Test Suite"
+    },
+    "Should": {
+      "ErrorAction": "Continue"
+    },
+    "Debug": {
+      "ShowFullErrors": false,
+      "WriteDebugMessages": false,
+      "WriteVerboseMessages": false,
+      "ReturnRawResultObject": false
+    },
+    "Output": {
+      "Verbosity": "Normal",
+      "StackTraceVerbosity": "Filtered",
+      "CIFormat": "Auto",
+      "RenderMode": "Auto"
+    }
+  },
+  "TestConfiguration": {
+    "SQL": {
+      "DefaultInstance": "LOCALHOST\\SQLEXPRESS",
+      "Instances": [
+        "LOCALHOST\\SQLEXPRESS"
+      ],
+      "Databases": {
+        "TestDatabase": "FlashDB_Test",
+        "GoldenImage": "FlashDB_Golden"
+      }
+    },
+    "VHDX": {
+      "StoragePath": "C:\\FlashDB\\Test\\Storage",
+      "GoldenImagePath": "C:\\FlashDB\\Test\\GoldenImages",
+      "ClonePath": "C:\\FlashDB\\Test\\Clones",
+      "CheckpointPath": "C:\\FlashDB\\Test\\Checkpoints"
+    },
+    "Performance": {
+      "CloneCreationTarget": 5,
+      "CheckpointCreationTarget": 1,
+      "RollbackTarget": 2,
+      "StorageSavingsTarget": 70,
+      "EnablePerformanceTests": true
+    },
+    "Timeouts": {
+      "CloneCreation": 30000,
+      "CheckpointCreation": 10000,
+      "DatabaseAttach": 60000,
+      "SqlQuery": 30000
+    }
+  }
+}
