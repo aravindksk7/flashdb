@@ -8,6 +8,7 @@ const pooledPowershellService_1 = require("../services/pooledPowershellService")
 const taskQueue_1 = require("../services/taskQueue");
 const logger_1 = __importDefault(require("../logger"));
 const caching_1 = require("../middleware/caching");
+const lockMiddleware_1 = require("../middleware/lockMiddleware");
 const router = (0, express_1.Router)();
 const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
 const toResponseArray = (value) => {
@@ -31,60 +32,80 @@ router.post('/', async (req, res) => {
             });
         }
         logger_1.default.info(`Creating clone: ${cloneName}`);
-        // Use task queue for async processing
-        if (useQueue !== false) {
-            const taskQueue = (0, taskQueue_1.getTaskQueue)();
-            const task = taskQueue.enqueue('create-clone', {
-                goldenImageId,
-                cloneName,
-                instancePath,
-                storagePath,
-                databaseType,
-                databaseName,
-                compressionEnabled,
-                attachAfterCreate
+        // Lock on source to prevent concurrent clones from same golden image
+        const lockResourceId = `clone-creation:${goldenImageId}`;
+        try {
+            const { result: task, lockContext } = await (0, lockMiddleware_1.withLock)(lockResourceId, async () => {
+                // Use task queue for async processing
+                if (useQueue !== false) {
+                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
+                    const task = taskQueue.enqueue('create-clone', {
+                        goldenImageId,
+                        cloneName,
+                        instancePath,
+                        storagePath,
+                        databaseType,
+                        databaseName,
+                        compressionEnabled,
+                        attachAfterCreate
+                    });
+                    // Invalidate cache for clones and metrics
+                    (0, caching_1.invalidateCache)(['/clones', '/metrics']);
+                    return task;
+                }
+                else {
+                    // Synchronous mode (for backward compatibility)
+                    const params = {
+                        GoldenImageId: goldenImageId,
+                        CloneName: cloneName,
+                        InstancePath: instancePath,
+                        StoragePath: storagePath
+                    };
+                    if (databaseType)
+                        params.DatabaseType = databaseType;
+                    if (databaseName)
+                        params.DatabaseName = databaseName;
+                    if (compressionEnabled !== undefined)
+                        params.CompressionEnabled = compressionEnabled;
+                    const clone = await psService.executeCommand('New-FlashdbClone', params);
+                    if (attachAfterCreate === true && clone && typeof clone === 'object') {
+                        await psService.executeCommandRaw('Connect-FlashdbClone', {
+                            CloneId: clone.Id || clone.id,
+                            InstancePath: instancePath
+                        });
+                        clone.Status = 'Attached';
+                    }
+                    // Invalidate cache for clones and metrics
+                    (0, caching_1.invalidateCache)(['/clones', '/metrics']);
+                    return clone;
+                }
             });
-            // Invalidate cache for clones and metrics
-            (0, caching_1.invalidateCache)(['/clones', '/metrics']);
-            return res.status(202).json({
-                success: true,
-                data: {
+            const responseCode = useQueue !== false ? 202 : 201;
+            const responseData = useQueue !== false
+                ? {
                     taskId: task.id,
                     status: task.status,
                     createdAt: task.createdAt
-                },
-                message: 'Clone creation task queued successfully'
+                }
+                : task;
+            res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+            return res.status(responseCode).json({
+                success: true,
+                data: responseData,
+                message: useQueue !== false ? 'Clone creation task queued successfully' : 'Clone created successfully'
             });
         }
-        else {
-            // Synchronous mode (for backward compatibility)
-            const params = {
-                GoldenImageId: goldenImageId,
-                CloneName: cloneName,
-                InstancePath: instancePath,
-                StoragePath: storagePath
-            };
-            if (databaseType)
-                params.DatabaseType = databaseType;
-            if (databaseName)
-                params.DatabaseName = databaseName;
-            if (compressionEnabled !== undefined)
-                params.CompressionEnabled = compressionEnabled;
-            const clone = await psService.executeCommand('New-FlashdbClone', params);
-            if (attachAfterCreate === true && clone && typeof clone === 'object') {
-                await psService.executeCommandRaw('Connect-FlashdbClone', {
-                    CloneId: clone.Id || clone.id,
-                    InstancePath: instancePath
+        catch (error) {
+            if (error.message.includes('LOCK_CONFLICT')) {
+                logger_1.default.warn(`Clone creation blocked - resource locked: ${lockResourceId}`);
+                const lockInfo = await (0, lockMiddleware_1.getLockInfo)(lockResourceId);
+                return res.status(409).json({
+                    success: false,
+                    message: 'Clone creation is already in progress for this golden image',
+                    lockInfo
                 });
-                clone.Status = 'Attached';
             }
-            // Invalidate cache for clones and metrics
-            (0, caching_1.invalidateCache)(['/clones', '/metrics']);
-            return res.status(201).json({
-                success: true,
-                data: clone,
-                message: 'Clone created successfully'
-            });
+            throw error;
         }
     }
     catch (error) {
@@ -201,37 +222,58 @@ router.delete('/:cloneId', async (req, res) => {
         const { cloneId } = req.params;
         const { deleteVhdx, useQueue = true } = req.query;
         logger_1.default.info(`Deleting clone: ${cloneId}`);
-        // Use task queue for async processing
-        if (useQueue !== 'false') {
-            const taskQueue = (0, taskQueue_1.getTaskQueue)();
-            const task = taskQueue.enqueue('delete-clone', {
-                cloneId,
-                deleteVhdx: deleteVhdx === 'true'
+        // Lock on clone to prevent delete during active operations
+        const lockResourceId = `clone:${cloneId}`;
+        try {
+            const { result: task, lockContext } = await (0, lockMiddleware_1.withLock)(lockResourceId, async () => {
+                // Use task queue for async processing
+                if (useQueue !== 'false') {
+                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
+                    const task = taskQueue.enqueue('delete-clone', {
+                        cloneId,
+                        deleteVhdx: deleteVhdx === 'true'
+                    });
+                    // Invalidate cache for clones and metrics
+                    (0, caching_1.invalidateCache)(['/clones', '/metrics']);
+                    return task;
+                }
+                else {
+                    // Synchronous mode (for backward compatibility)
+                    await psService.executeCommandRaw('Remove-FlashdbClone', {
+                        CloneId: cloneId,
+                        DeleteVhdx: deleteVhdx === 'true'
+                    });
+                    // Invalidate cache for clones and metrics
+                    (0, caching_1.invalidateCache)(['/clones', '/metrics']);
+                    return { success: true, message: 'Clone deleted successfully' };
+                }
             });
-            // Invalidate cache for clones and metrics
-            (0, caching_1.invalidateCache)(['/clones', '/metrics']);
-            return res.status(202).json({
-                success: true,
-                data: {
+            const isQueued = useQueue !== 'false';
+            const responseData = isQueued
+                ? {
                     taskId: task.id,
                     status: task.status,
                     createdAt: task.createdAt
-                },
-                message: 'Clone deletion task queued successfully'
+                }
+                : task;
+            res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+            return res.status(isQueued ? 202 : 200).json({
+                success: true,
+                data: responseData,
+                message: isQueued ? 'Clone deletion task queued successfully' : 'Clone deleted successfully'
             });
         }
-        else {
-            // Synchronous mode (for backward compatibility)
-            await psService.executeCommandRaw('Remove-FlashdbClone', {
-                CloneId: cloneId,
-                DeleteVhdx: deleteVhdx === 'true'
-            });
-            // Invalidate cache for clones and metrics
-            (0, caching_1.invalidateCache)(['/clones', '/metrics']);
-            return res.json({
-                success: true,
-                message: 'Clone deleted successfully'
-            });
+        catch (error) {
+            if (error.message.includes('LOCK_CONFLICT')) {
+                logger_1.default.warn(`Clone deletion blocked - resource locked: ${lockResourceId}`);
+                const lockInfo = await (0, lockMiddleware_1.getLockInfo)(lockResourceId);
+                return res.status(409).json({
+                    success: false,
+                    message: 'Clone is currently in use or undergoing another operation',
+                    lockInfo
+                });
+            }
+            throw error;
         }
     }
     catch (error) {

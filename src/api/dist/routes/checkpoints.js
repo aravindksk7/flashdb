@@ -8,6 +8,7 @@ const pooledPowershellService_1 = require("../services/pooledPowershellService")
 const taskQueue_1 = require("../services/taskQueue");
 const logger_1 = __importDefault(require("../logger"));
 const caching_1 = require("../middleware/caching");
+const lockMiddleware_1 = require("../middleware/lockMiddleware");
 const router = (0, express_1.Router)({ mergeParams: true });
 const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
 const toResponseArray = (value) => {
@@ -32,44 +33,64 @@ router.post('/', async (req, res) => {
             });
         }
         logger_1.default.info(`Creating checkpoint for clone ${cloneId}: ${checkpointName}`);
-        // Use task queue for async processing
-        if (useQueue !== false) {
-            const taskQueue = (0, taskQueue_1.getTaskQueue)();
-            const task = taskQueue.enqueue('create-checkpoint', {
-                cloneId,
-                checkpointName,
-                phase: phase || 'manual',
-                description,
-                force: force || false
+        // Lock on clone to prevent concurrent checkpoint operations
+        const lockResourceId = `checkpoint:${cloneId}`;
+        try {
+            const { result: task, lockContext } = await (0, lockMiddleware_1.withLockRetry)(lockResourceId, async () => {
+                // Use task queue for async processing
+                if (useQueue !== false) {
+                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
+                    const task = taskQueue.enqueue('create-checkpoint', {
+                        cloneId,
+                        checkpointName,
+                        phase: phase || 'manual',
+                        description,
+                        force: force || false
+                    });
+                    // Invalidate cache for checkpoints and metrics
+                    (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
+                    return task;
+                }
+                else {
+                    // Synchronous mode (for backward compatibility)
+                    const checkpoint = await psService.executeCommand('New-FlashdbCheckpoint', {
+                        CloneId: cloneId,
+                        CheckpointName: checkpointName,
+                        Phase: phase || 'manual',
+                        Description: description,
+                        Force: force || false
+                    });
+                    // Invalidate cache for checkpoints and metrics
+                    (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
+                    return checkpoint;
+                }
             });
-            // Invalidate cache for checkpoints and metrics
-            (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
-            return res.status(202).json({
-                success: true,
-                data: {
+            const responseCode = useQueue !== false ? 202 : 201;
+            const responseData = useQueue !== false
+                ? {
                     taskId: task.id,
                     status: task.status,
                     createdAt: task.createdAt
-                },
-                message: 'Checkpoint creation task queued successfully'
+                }
+                : task;
+            res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+            return res.status(responseCode).json({
+                success: true,
+                data: responseData,
+                message: useQueue !== false ? 'Checkpoint creation task queued successfully' : 'Checkpoint created successfully'
             });
         }
-        else {
-            // Synchronous mode (for backward compatibility)
-            const checkpoint = await psService.executeCommand('New-FlashdbCheckpoint', {
-                CloneId: cloneId,
-                CheckpointName: checkpointName,
-                Phase: phase || 'manual',
-                Description: description,
-                Force: force || false
-            });
-            // Invalidate cache for checkpoints and metrics
-            (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
-            return res.status(201).json({
-                success: true,
-                data: checkpoint,
-                message: 'Checkpoint created successfully'
-            });
+        catch (error) {
+            if (error.message.includes('LOCK_TIMEOUT')) {
+                logger_1.default.warn(`Checkpoint creation blocked - resource locked: ${lockResourceId}`);
+                const lockInfo = await (0, lockMiddleware_1.getLockInfo)(lockResourceId);
+                return res.status(408).json({
+                    success: false,
+                    message: 'Checkpoint operation timeout - another operation is in progress on this clone',
+                    lockInfo
+                });
+            }
+            throw error;
         }
     }
     catch (error) {
@@ -100,39 +121,60 @@ router.post('/:checkpointId/restore', async (req, res) => {
         const { cloneId, checkpointId } = req.params;
         const { reattachAfter, useQueue = true } = req.body;
         logger_1.default.info(`Restoring checkpoint ${checkpointId} for clone ${cloneId}`);
-        // Use task queue for async processing
-        if (useQueue !== false) {
-            const taskQueue = (0, taskQueue_1.getTaskQueue)();
-            const task = taskQueue.enqueue('restore-checkpoint', {
-                cloneId,
-                checkpointId,
-                reattachAfter: reattachAfter !== false
+        // Lock on clone to prevent concurrent checkpoint operations
+        const lockResourceId = `checkpoint:${cloneId}`;
+        try {
+            const { result: task, lockContext } = await (0, lockMiddleware_1.withLockRetry)(lockResourceId, async () => {
+                // Use task queue for async processing
+                if (useQueue !== false) {
+                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
+                    const task = taskQueue.enqueue('restore-checkpoint', {
+                        cloneId,
+                        checkpointId,
+                        reattachAfter: reattachAfter !== false
+                    });
+                    // Invalidate cache for checkpoints and metrics
+                    (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
+                    return task;
+                }
+                else {
+                    // Synchronous mode (for backward compatibility)
+                    await psService.executeCommandRaw('Restore-FlashdbCheckpoint', {
+                        CloneId: cloneId,
+                        CheckpointId: checkpointId,
+                        ReattachAfter: reattachAfter !== false
+                    });
+                    // Invalidate cache for checkpoints and metrics
+                    (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
+                    return { success: true, message: 'Checkpoint restored successfully' };
+                }
             });
-            // Invalidate cache for checkpoints and metrics
-            (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
-            return res.status(202).json({
-                success: true,
-                data: {
+            const isQueued = useQueue !== false;
+            const responseData = isQueued
+                ? {
                     taskId: task.id,
                     status: task.status,
                     createdAt: task.createdAt
-                },
-                message: 'Checkpoint restore task queued successfully'
+                }
+                : task;
+            res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+            return res.status(isQueued ? 202 : 200).json({
+                success: true,
+                data: responseData,
+                message: isQueued ? 'Checkpoint restore task queued successfully' : 'Checkpoint restored successfully'
             });
         }
-        else {
-            // Synchronous mode (for backward compatibility)
-            await psService.executeCommandRaw('Restore-FlashdbCheckpoint', {
-                CloneId: cloneId,
-                CheckpointId: checkpointId,
-                ReattachAfter: reattachAfter !== false
-            });
-            // Invalidate cache for checkpoints and metrics
-            (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
-            return res.json({
-                success: true,
-                message: 'Checkpoint restored successfully'
-            });
+        catch (error) {
+            if (error.message.includes('LOCK_TIMEOUT')) {
+                logger_1.default.warn(`Checkpoint restore blocked - resource locked: ${lockResourceId}`);
+                const lockInfo = await (0, lockMiddleware_1.getLockInfo)(lockResourceId);
+                return res.status(408).json({
+                    success: false,
+                    message: 'Checkpoint operation timeout - another operation is in progress on this clone',
+                    lockInfo
+                });
+            }
+            throw error;
         }
     }
     catch (error) {

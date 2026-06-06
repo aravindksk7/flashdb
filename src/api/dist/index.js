@@ -17,6 +17,7 @@ const metrics_1 = __importDefault(require("./routes/metrics"));
 const logging_1 = require("./middleware/logging");
 const healthcheck_1 = require("./middleware/healthcheck");
 const caching_1 = require("./middleware/caching");
+const lockMiddleware_1 = require("./middleware/lockMiddleware");
 const connectionPool_1 = require("./services/connectionPool");
 const taskQueue_1 = require("./services/taskQueue");
 const taskWorker_1 = require("./services/taskWorker");
@@ -91,6 +92,8 @@ app.use(logging_1.performanceMetricsMiddleware);
 app.use((0, morgan_1.default)('combined', { stream: { write: msg => logger_1.default.info(msg.trim()) } }));
 // Caching middleware (after logging, before routes)
 app.use(caching_1.cacheMiddleware);
+// Lock middleware (attach lock helpers to request)
+app.use(lockMiddleware_1.lockMiddleware);
 // Health check endpoints
 app.get('/live', healthcheck_1.livelinessProbe);
 app.get('/ready', healthcheck_1.readinessProbe);

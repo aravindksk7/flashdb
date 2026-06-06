@@ -7,6 +7,7 @@ const express_1 = require("express");
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const logger_1 = __importDefault(require("../logger"));
 const caching_1 = require("../middleware/caching");
+const lockMiddleware_1 = require("../middleware/lockMiddleware");
 const router = (0, express_1.Router)();
 const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
 /**
@@ -159,15 +160,35 @@ router.post('/:batchId/start', async (req, res) => {
             });
         }
         logger_1.default.info(`Starting batch execution: ${batchId}`);
-        const result = await psService.executeCommand('Start-FlashdbBatchQueue', {
-            BatchId: batchId,
-            StoragePath: storagePath
-        });
-        return res.json({
-            success: true,
-            data: result,
-            message: 'Batch execution started successfully'
-        });
+        // Lock on batch to prevent duplicate execution
+        const lockResourceId = `batch:${batchId}`;
+        try {
+            const { result, lockContext } = await (0, lockMiddleware_1.withLock)(lockResourceId, async () => {
+                const result = await psService.executeCommand('Start-FlashdbBatchQueue', {
+                    BatchId: batchId,
+                    StoragePath: storagePath
+                });
+                return result;
+            });
+            res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+            return res.json({
+                success: true,
+                data: result,
+                message: 'Batch execution started successfully'
+            });
+        }
+        catch (error) {
+            if (error.message.includes('LOCK_CONFLICT')) {
+                logger_1.default.warn(`Batch execution blocked - batch already running: ${lockResourceId}`);
+                const lockInfo = await (0, lockMiddleware_1.getLockInfo)(lockResourceId);
+                return res.status(409).json({
+                    success: false,
+                    message: 'Batch is already being executed',
+                    lockInfo
+                });
+            }
+            throw error;
+        }
     }
     catch (error) {
         logger_1.default.error(`Error starting batch: ${error.message}`);

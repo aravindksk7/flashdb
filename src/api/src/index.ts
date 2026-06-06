@@ -25,6 +25,7 @@ import {
   cacheMiddleware,
   getCacheMetrics
 } from './middleware/caching';
+import { lockMiddleware } from './middleware/lockMiddleware';
 import { initializeConnectionPool, shutdownConnectionPool } from './services/connectionPool';
 import { initializeTaskQueue } from './services/taskQueue';
 import { initializeTaskWorker } from './services/taskWorker';
@@ -112,6 +113,9 @@ app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }
 
 // Caching middleware (after logging, before routes)
 app.use(cacheMiddleware);
+
+// Lock middleware (attach lock helpers to request)
+app.use(lockMiddleware);
 
 // Health check endpoints
 app.get('/live', livelinessProbe);

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getPooledPowerShellService } from '../services/pooledPowershellService';
 import logger from '../logger';
 import { invalidateCache } from '../middleware/caching';
+import { withLock, getLockInfo } from '../middleware/lockMiddleware';
 
 const router = Router();
 const psService = getPooledPowerShellService();
@@ -177,16 +178,37 @@ router.post('/:batchId/start', async (req: Request, res: Response) => {
 
     logger.info(`Starting batch execution: ${batchId}`);
 
-    const result = await psService.executeCommand('Start-FlashdbBatchQueue', {
-      BatchId: batchId,
-      StoragePath: storagePath
-    });
+    // Lock on batch to prevent duplicate execution
+    const lockResourceId = `batch:${batchId}`;
 
-    return res.json({
-      success: true,
-      data: result,
-      message: 'Batch execution started successfully'
-    });
+    try {
+      const { result, lockContext } = await withLock(lockResourceId, async () => {
+        const result = await psService.executeCommand('Start-FlashdbBatchQueue', {
+          BatchId: batchId,
+          StoragePath: storagePath
+        });
+
+        return result;
+      });
+
+      res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+      return res.json({
+        success: true,
+        data: result,
+        message: 'Batch execution started successfully'
+      });
+    } catch (error: any) {
+      if (error.message.includes('LOCK_CONFLICT')) {
+        logger.warn(`Batch execution blocked - batch already running: ${lockResourceId}`);
+        const lockInfo = await getLockInfo(lockResourceId);
+        return res.status(409).json({
+          success: false,
+          message: 'Batch is already being executed',
+          lockInfo
+        });
+      }
+      throw error;
+    }
   } catch (error: any) {
     logger.error(`Error starting batch: ${error.message}`);
     return res.status(400).json({

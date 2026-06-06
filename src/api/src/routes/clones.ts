@@ -3,6 +3,7 @@ import { getPooledPowerShellService } from '../services/pooledPowershellService'
 import { getTaskQueue } from '../services/taskQueue';
 import logger from '../logger';
 import { invalidateCache } from '../middleware/caching';
+import { withLock, getLockInfo } from '../middleware/lockMiddleware';
 
 const router = Router();
 const psService = getPooledPowerShellService();
@@ -40,62 +41,84 @@ router.post('/', async (req: Request, res: Response) => {
 
     logger.info(`Creating clone: ${cloneName}`);
 
-    // Use task queue for async processing
-    if (useQueue !== false) {
-      const taskQueue = getTaskQueue();
-      const task = taskQueue.enqueue('create-clone', {
-        goldenImageId,
-        cloneName,
-        instancePath,
-        storagePath,
-        databaseType,
-        databaseName,
-        compressionEnabled,
-        attachAfterCreate
+    // Lock on source to prevent concurrent clones from same golden image
+    const lockResourceId = `clone-creation:${goldenImageId}`;
+
+    try {
+      const { result: task, lockContext } = await withLock(lockResourceId, async () => {
+        // Use task queue for async processing
+        if (useQueue !== false) {
+          const taskQueue = getTaskQueue();
+          const task = taskQueue.enqueue('create-clone', {
+            goldenImageId,
+            cloneName,
+            instancePath,
+            storagePath,
+            databaseType,
+            databaseName,
+            compressionEnabled,
+            attachAfterCreate
+          });
+
+          // Invalidate cache for clones and metrics
+          invalidateCache(['/clones', '/metrics']);
+
+          return task;
+        } else {
+          // Synchronous mode (for backward compatibility)
+          const params: any = {
+            GoldenImageId: goldenImageId,
+            CloneName: cloneName,
+            InstancePath: instancePath,
+            StoragePath: storagePath
+          };
+          if (databaseType) params.DatabaseType = databaseType;
+          if (databaseName) params.DatabaseName = databaseName;
+          if (compressionEnabled !== undefined) params.CompressionEnabled = compressionEnabled;
+
+          const clone = await psService.executeCommand('New-FlashdbClone', params);
+
+          if (attachAfterCreate === true && clone && typeof clone === 'object') {
+            await psService.executeCommandRaw('Connect-FlashdbClone', {
+              CloneId: (clone as any).Id || (clone as any).id,
+              InstancePath: instancePath
+            });
+            (clone as any).Status = 'Attached';
+          }
+
+          // Invalidate cache for clones and metrics
+          invalidateCache(['/clones', '/metrics']);
+
+          return clone;
+        }
       });
 
-      // Invalidate cache for clones and metrics
-      invalidateCache(['/clones', '/metrics']);
+      const responseCode = useQueue !== false ? 202 : 201;
+      const responseData = useQueue !== false
+        ? {
+            taskId: (task as any).id,
+            status: (task as any).status,
+            createdAt: (task as any).createdAt
+          }
+        : task;
 
-      return res.status(202).json({
+      res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+      return res.status(responseCode).json({
         success: true,
-        data: {
-          taskId: task.id,
-          status: task.status,
-          createdAt: task.createdAt
-        },
-        message: 'Clone creation task queued successfully'
+        data: responseData,
+        message: useQueue !== false ? 'Clone creation task queued successfully' : 'Clone created successfully'
       });
-    } else {
-      // Synchronous mode (for backward compatibility)
-      const params: any = {
-        GoldenImageId: goldenImageId,
-        CloneName: cloneName,
-        InstancePath: instancePath,
-        StoragePath: storagePath
-      };
-      if (databaseType) params.DatabaseType = databaseType;
-      if (databaseName) params.DatabaseName = databaseName;
-      if (compressionEnabled !== undefined) params.CompressionEnabled = compressionEnabled;
-
-      const clone = await psService.executeCommand('New-FlashdbClone', params);
-
-      if (attachAfterCreate === true && clone && typeof clone === 'object') {
-        await psService.executeCommandRaw('Connect-FlashdbClone', {
-          CloneId: (clone as any).Id || (clone as any).id,
-          InstancePath: instancePath
+    } catch (error: any) {
+      if (error.message.includes('LOCK_CONFLICT')) {
+        logger.warn(`Clone creation blocked - resource locked: ${lockResourceId}`);
+        const lockInfo = await getLockInfo(lockResourceId);
+        return res.status(409).json({
+          success: false,
+          message: 'Clone creation is already in progress for this golden image',
+          lockInfo
         });
-        (clone as any).Status = 'Attached';
       }
-
-      // Invalidate cache for clones and metrics
-      invalidateCache(['/clones', '/metrics']);
-
-      return res.status(201).json({
-        success: true,
-        data: clone,
-        message: 'Clone created successfully'
-      });
+      throw error;
     }
   } catch (error: any) {
     logger.error(`Error creating clone: ${error.message}`);
@@ -227,40 +250,63 @@ router.delete('/:cloneId', async (req: Request, res: Response) => {
 
     logger.info(`Deleting clone: ${cloneId}`);
 
-    // Use task queue for async processing
-    if (useQueue !== 'false') {
-      const taskQueue = getTaskQueue();
-      const task = taskQueue.enqueue('delete-clone', {
-        cloneId,
-        deleteVhdx: deleteVhdx === 'true'
+    // Lock on clone to prevent delete during active operations
+    const lockResourceId = `clone:${cloneId}`;
+
+    try {
+      const { result: task, lockContext } = await withLock(lockResourceId, async () => {
+        // Use task queue for async processing
+        if (useQueue !== 'false') {
+          const taskQueue = getTaskQueue();
+          const task = taskQueue.enqueue('delete-clone', {
+            cloneId,
+            deleteVhdx: deleteVhdx === 'true'
+          });
+
+          // Invalidate cache for clones and metrics
+          invalidateCache(['/clones', '/metrics']);
+
+          return task;
+        } else {
+          // Synchronous mode (for backward compatibility)
+          await psService.executeCommandRaw('Remove-FlashdbClone', {
+            CloneId: cloneId,
+            DeleteVhdx: deleteVhdx === 'true'
+          });
+
+          // Invalidate cache for clones and metrics
+          invalidateCache(['/clones', '/metrics']);
+
+          return { success: true, message: 'Clone deleted successfully' };
+        }
       });
 
-      // Invalidate cache for clones and metrics
-      invalidateCache(['/clones', '/metrics']);
+      const isQueued = useQueue !== 'false';
+      const responseData = isQueued
+        ? {
+            taskId: (task as any).id,
+            status: (task as any).status,
+            createdAt: (task as any).createdAt
+          }
+        : task;
 
-      return res.status(202).json({
+      res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
+      return res.status(isQueued ? 202 : 200).json({
         success: true,
-        data: {
-          taskId: task.id,
-          status: task.status,
-          createdAt: task.createdAt
-        },
-        message: 'Clone deletion task queued successfully'
+        data: responseData,
+        message: isQueued ? 'Clone deletion task queued successfully' : 'Clone deleted successfully'
       });
-    } else {
-      // Synchronous mode (for backward compatibility)
-      await psService.executeCommandRaw('Remove-FlashdbClone', {
-        CloneId: cloneId,
-        DeleteVhdx: deleteVhdx === 'true'
-      });
-
-      // Invalidate cache for clones and metrics
-      invalidateCache(['/clones', '/metrics']);
-
-      return res.json({
-        success: true,
-        message: 'Clone deleted successfully'
-      });
+    } catch (error: any) {
+      if (error.message.includes('LOCK_CONFLICT')) {
+        logger.warn(`Clone deletion blocked - resource locked: ${lockResourceId}`);
+        const lockInfo = await getLockInfo(lockResourceId);
+        return res.status(409).json({
+          success: false,
+          message: 'Clone is currently in use or undergoing another operation',
+          lockInfo
+        });
+      }
+      throw error;
     }
   } catch (error: any) {
     logger.error(`Error deleting clone: ${error.message}`);
