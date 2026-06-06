@@ -321,7 +321,15 @@ function Initialize-FlashdbEnvironment {
     )
 
     foreach ($path in $storagePaths) {
-        if (-not (Test-Path -Path $path -PathType Container)) {
+        $pathExists = $false
+        try {
+            $pathExists = Test-Path -Path $path -PathType Container -ErrorAction Stop
+        } catch {
+            # Path is inaccessible (e.g., UNC path to non-existent server)
+            $pathExists = $false
+        }
+
+        if (-not $pathExists) {
             try {
                 New-Item -ItemType Directory -Path $path -Force | Out-Null
                 Write-Verbose "Created directory: $path"

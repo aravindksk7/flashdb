@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY src/api/package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install all dependencies
+RUN npm install
 
 # Copy source code
 COPY src/api/src ./src
@@ -17,23 +17,20 @@ COPY src/api/tsconfig.json ./
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:18-alpine
 
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache \
-    curl \
-    git \
-    bash
+RUN apk add --no-cache curl git bash
 
 # Copy package files
 COPY src/api/package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Install production dependencies
+RUN npm install --production
 
-# Copy built code
+# Copy built code from builder
 COPY --from=builder /app/dist ./dist
 
 # Copy source (for PowerShell module reference)
@@ -46,8 +43,8 @@ RUN mkdir -p /app/logs
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
 
 # Start API
 CMD ["node", "dist/index.js"]

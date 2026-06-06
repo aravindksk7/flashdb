@@ -1,9 +1,10 @@
 version: '3.8'
 
 services:
+  # SQL Server Database
   sql-server:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: flashdb-sql-server
+    container_name: flashdb-sql
     environment:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "FlashDB@Password123"
@@ -12,8 +13,7 @@ services:
       - "1433:1433"
     volumes:
       - sql-data:/var/opt/mssql/data
-      - sql-logs:/var/opt/mssql/log
-      - sql-backup:/var/opt/mssql/backup
+      - ./docker/init-testdb.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "FlashDB@Password123", "-Q", "SELECT 1"]
       interval: 10s
@@ -22,32 +22,57 @@ services:
     networks:
       - flashdb-network
 
-  flashdb-test:
+  # REST API Server
+  api:
     build:
       context: .
-      dockerfile: Dockerfile.test
-    container_name: flashdb-test-runner
+      dockerfile: Dockerfile.api
+    container_name: flashdb-api
     depends_on:
       sql-server:
         condition: service_healthy
     environment:
-      SQL_SERVER_HOST: "sql-server"
-      SQL_SERVER_PORT: "1433"
-      SQL_SERVER_USER: "sa"
-      SQL_SERVER_PASSWORD: "FlashDB@Password123"
-      FLASHDB_HOME: "/app/flashdb"
+      NODE_ENV: development
+      PORT: 3001
+      LOG_LEVEL: info
+      FLASHDB_MODULE_PATH: /app/flashdb/src/FlashDB/FlashDB.psm1
+    ports:
+      - "3001:3001"
     volumes:
       - .:/app/flashdb
-      - test-results:/app/test-results
+      - api-logs:/app/logs
     networks:
       - flashdb-network
-    command: pwsh -Command "& /app/flashdb/docker/run-tests.ps1"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # GUI Dashboard
+  gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.gui
+    container_name: flashdb-gui
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://api:3001
+    networks:
+      - flashdb-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
 volumes:
   sql-data:
-  sql-logs:
-  sql-backup:
-  test-results:
+  api-logs:
 
 networks:
   flashdb-network:
