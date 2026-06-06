@@ -18,6 +18,41 @@ GO
 USE TestDB;
 GO
 
+-- ============================================================================
+-- State Management Tables (Phase 5b.1)
+-- ============================================================================
+
+-- State key-value store with TTL support
+CREATE TABLE dbo.flashdb_state (
+    [key] NVARCHAR(255) PRIMARY KEY NOT NULL,
+    [value] NVARCHAR(MAX) NOT NULL,
+    [expires_at] DATETIME NULL,
+    [created_at] DATETIME DEFAULT GETUTCDATE(),
+    [updated_at] DATETIME DEFAULT GETUTCDATE()
+);
+CREATE INDEX idx_flashdb_state_expires ON dbo.flashdb_state(expires_at);
+
+-- Distributed locks for coordinating multiple instances
+CREATE TABLE dbo.flashdb_locks (
+    [resource_id] NVARCHAR(255) PRIMARY KEY NOT NULL,
+    [owner_id] NVARCHAR(255) NOT NULL,
+    [acquired_at] DATETIME DEFAULT GETUTCDATE(),
+    [expires_at] DATETIME NOT NULL
+);
+CREATE INDEX idx_flashdb_locks_owner ON dbo.flashdb_locks(owner_id);
+CREATE INDEX idx_flashdb_locks_expires ON dbo.flashdb_locks(expires_at);
+
+-- State change operations log for audit trail
+CREATE TABLE dbo.flashdb_operations (
+    [id] BIGINT PRIMARY KEY IDENTITY(1,1),
+    [operation_type] NVARCHAR(50) NOT NULL,
+    [resource_id] NVARCHAR(255) NOT NULL,
+    [timestamp] DATETIME DEFAULT GETUTCDATE(),
+    [details] NVARCHAR(MAX) NULL
+);
+CREATE INDEX idx_flashdb_operations_type ON dbo.flashdb_operations(operation_type);
+CREATE INDEX idx_flashdb_operations_time ON dbo.flashdb_operations(timestamp DESC);
+
 -- Create Customers table
 CREATE TABLE dbo.Customers (
     CustomerID INT PRIMARY KEY IDENTITY(1,1),

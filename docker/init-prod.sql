@@ -48,6 +48,56 @@ GO
 USE FlashDB;
 GO
 
+-- ============================================================================
+-- State Management Tables (Phase 5b.1)
+-- ============================================================================
+
+-- State key-value store with TTL support
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'flashdb_state')
+BEGIN
+    CREATE TABLE flashdb_state (
+        [key] NVARCHAR(255) PRIMARY KEY NOT NULL,
+        [value] NVARCHAR(MAX) NOT NULL,
+        [expires_at] DATETIME NULL,
+        [created_at] DATETIME DEFAULT GETUTCDATE(),
+        [updated_at] DATETIME DEFAULT GETUTCDATE()
+    );
+    CREATE INDEX idx_flashdb_state_expires ON flashdb_state(expires_at);
+    PRINT 'Table flashdb_state created.';
+END
+GO
+
+-- Distributed locks for coordinating multiple instances
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'flashdb_locks')
+BEGIN
+    CREATE TABLE flashdb_locks (
+        [resource_id] NVARCHAR(255) PRIMARY KEY NOT NULL,
+        [owner_id] NVARCHAR(255) NOT NULL,
+        [acquired_at] DATETIME DEFAULT GETUTCDATE(),
+        [expires_at] DATETIME NOT NULL
+    );
+    CREATE INDEX idx_flashdb_locks_owner ON flashdb_locks(owner_id);
+    CREATE INDEX idx_flashdb_locks_expires ON flashdb_locks(expires_at);
+    PRINT 'Table flashdb_locks created.';
+END
+GO
+
+-- State change operations log for audit trail
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'flashdb_operations')
+BEGIN
+    CREATE TABLE flashdb_operations (
+        [id] BIGINT PRIMARY KEY IDENTITY(1,1),
+        [operation_type] NVARCHAR(50) NOT NULL,
+        [resource_id] NVARCHAR(255) NOT NULL,
+        [timestamp] DATETIME DEFAULT GETUTCDATE(),
+        [details] NVARCHAR(MAX) NULL
+    );
+    CREATE INDEX idx_flashdb_operations_type ON flashdb_operations(operation_type);
+    CREATE INDEX idx_flashdb_operations_time ON flashdb_operations(timestamp DESC);
+    PRINT 'Table flashdb_operations created.';
+END
+GO
+
 -- FlashDB operations metadata table
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'OperationMetadata')
 BEGIN
