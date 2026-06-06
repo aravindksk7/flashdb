@@ -18,12 +18,62 @@ $ErrorActionPreference = 'Stop'
 
 <#
 .SYNOPSIS
+    Computes the state hash of a VHDX to validate checkpoint integrity
+
+.DESCRIPTION
+    Calculates a SHA-256 hash based on VHDX sector information and metadata.
+    Used for pre-checkpoint baseline and post-restore validation.
+
+.PARAMETER VhdxPath
+    Path to the VHDX file
+
+.OUTPUTS
+    String containing the hex-encoded SHA-256 hash
+
+.EXAMPLE
+    $hash = Get-VhdxStateHash -VhdxPath "C:\vm\clone.vhdx"
+#>
+function Get-VhdxStateHash {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$VhdxPath
+    )
+
+    process {
+        try {
+            if (-not (Test-Path -Path $VhdxPath)) {
+                throw "VHDX file not found: $VhdxPath"
+            }
+
+            $vhd = Get-VHD -Path $VhdxPath -ErrorAction Stop
+
+            # Combine VHDX metadata for hash computation
+            $stateData = "$($vhd.LogicalSectorSize)_$($vhd.PhysicalSectorSize)_$($vhd.Size)_$($vhd.CreationTime.ToUniversalTime():O)"
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($stateData)
+
+            # Compute SHA-256 hash
+            $sha256 = [System.Security.Cryptography.SHA256]::Create()
+            $hash = $sha256.ComputeHash($bytes)
+
+            # Return hex-encoded hash
+            return [System.Convert]::ToHexString($hash)
+        } catch {
+            Write-Error "Failed to compute VHDX state hash: $_"
+            throw
+        }
+    }
+}
+
+<#
+.SYNOPSIS
     Creates a new checkpoint (VHDX snapshot) of the current clone state
 
 .DESCRIPTION
     Creates a new VHDX differencing disk that captures the current state of the
     clone at a specific point in time. Checkpoints support instant rollback without
-    copying data.
+    copying data. Also computes a state hash for validation.
 
 .PARAMETER CloneId
     The ID of the clone to checkpoint
@@ -50,7 +100,7 @@ $ErrorActionPreference = 'Stop'
         -Description "Baseline before large delete operation"
 
 .OUTPUTS
-    System.Object with checkpoint metadata
+    System.Object with checkpoint metadata including preVhdxStateHash
 #>
 function New-FlashdbCheckpoint {
     [CmdletBinding()]
@@ -174,6 +224,10 @@ function New-FlashdbCheckpoint {
 
             Write-Verbose "VHDX checkpoint snapshot created successfully"
 
+            # Phase 3: Compute state hash for validation
+            $preVhdxStateHash = Get-VhdxStateHash -VhdxPath $vhdxPath
+            Write-Verbose "Computed pre-checkpoint VHDX state hash: $preVhdxStateHash"
+
             # Record operation in SQL for tracking and recovery
             $operationId = [guid]::NewGuid().ToString()
 
@@ -200,6 +254,10 @@ function New-FlashdbCheckpoint {
                 isActive = $true
                 isFavorite = $false
                 labels = $Labels
+                preVhdxStateHash = $preVhdxStateHash
+                postVhdxStateHash = $null
+                validationStatus = 'pending'
+                validationError = $null
                 databaseConnections = @{
                     activeCount = 0
                     forceClosed = $false
@@ -241,6 +299,7 @@ function New-FlashdbCheckpoint {
                 CreatedAt = $checkpoint.createdAt
                 CreatedBy = $checkpoint.createdBy
                 VhdxPath = $checkpointVhdxPath
+                PreVhdxStateHash = $preVhdxStateHash
             }
         } catch {
             Write-Error "Failed to create checkpoint: $_"
@@ -689,6 +748,39 @@ function Restore-FlashdbCheckpoint {
                 Move-Item -Path $tempPath -Destination $vhdxPath -Force -ErrorAction Stop
                 Write-Verbose "VHDX swapped to checkpoint state (native revert, not full copy)"
 
+                # Phase 3: Compute post-restore hash for validation
+                $postVhdxStateHash = Get-VhdxStateHash -VhdxPath $vhdxPath
+                Write-Verbose "Computed post-restore VHDX state hash: $postVhdxStateHash"
+
+                # Phase 3: Validate hash matches pre-checkpoint hash
+                if ($postVhdxStateHash -eq $checkpoint.preVhdxStateHash) {
+                    Write-Verbose "VHDX state hash validation PASSED"
+                    $validationStatus = 'passed'
+                    $validationError = $null
+                } else {
+                    Write-Warning "VHDX state hash validation FAILED - AUTO-ROLLBACK TRIGGERED"
+                    Write-Warning "Expected hash: $($checkpoint.preVhdxStateHash), Got: $postVhdxStateHash"
+
+                    # Auto-rollback: restore from backup
+                    if ($backupPath -and (Test-Path $backupPath)) {
+                        Write-Verbose "Initiating automatic rollback from backup: $backupPath"
+                        try {
+                            Move-Item -Path $backupPath -Destination $vhdxPath -Force -ErrorAction Stop
+                            Write-Warning "Rollback completed - original VHDX restored"
+                            $validationStatus = 'rolled-back'
+                            $validationError = "Hash mismatch: Expected $($checkpoint.preVhdxStateHash), got $postVhdxStateHash. Auto-rollback executed."
+                        } catch {
+                            $validationStatus = 'failed'
+                            $validationError = "Hash mismatch and rollback also failed: $_"
+                            throw "Critical: Hash validation failed and rollback failed: $_"
+                        }
+                    } else {
+                        $validationStatus = 'failed'
+                        $validationError = "Hash mismatch: Expected $($checkpoint.preVhdxStateHash), got $postVhdxStateHash. Rollback backup not available."
+                        throw "Hash validation failed and no rollback backup available"
+                    }
+                }
+
             } catch {
                 Write-Error "Failed to create/swap VHDX: $_"
 
@@ -701,16 +793,27 @@ function Restore-FlashdbCheckpoint {
             }
 
             # Update checkpoint state
-            $metadata.checkpoints | ForEach-Object { $_.isActive = $_.checkpointId -eq $CheckpointId }
+            $metadata.checkpoints | ForEach-Object {
+                if ($_.checkpointId -eq $CheckpointId) {
+                    $_.isActive = $true
+                    $_.postVhdxStateHash = $postVhdxStateHash
+                    $_.validationStatus = $validationStatus
+                    $_.validationError = $validationError
+                } else {
+                    $_.isActive = $false
+                }
+            }
 
-            # Log operation with rollback path
+            # Log operation with validation details
             $operation = @{
                 operation = "checkpoint-restored"
                 timestamp = (Get-Date).ToUniversalTime().ToString("o")
-                status = "success"
+                status = if ($validationStatus -eq 'passed') { 'success' } else { $validationStatus }
                 checkpointId = $CheckpointId
                 rollbackPath = $backupPath
                 restoreOperationId = $restoreOperationId
+                validationStatus = $validationStatus
+                validationError = $validationError
             }
             $metadata.operations.operationLog += $operation
             $metadata.operations.lastOperation = "checkpoint-restored"
@@ -731,9 +834,11 @@ function Restore-FlashdbCheckpoint {
             return [PSCustomObject]@{
                 CloneId = $CloneId
                 CheckpointId = $CheckpointId
-                Status = 'restored'
+                Status = if ($validationStatus -eq 'passed') { 'restored' } else { $validationStatus }
                 RestoredAt = (Get-Date).ToUniversalTime().ToString("o")
                 ReattachedAfter = $ReattachAfter
+                ValidationStatus = $validationStatus
+                ValidationError = $validationError
             }
         } catch {
             Write-Error "Failed to restore checkpoint: $_"
@@ -979,6 +1084,7 @@ function Restore-FlashdbClone {
 
 # Export functions
 Export-ModuleMember -Function @(
+    'Get-VhdxStateHash'
     'New-FlashdbCheckpoint'
     'Get-FlashdbCheckpoint'
     'Set-FlashdbCheckpoint'
