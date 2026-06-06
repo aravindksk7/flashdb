@@ -4,19 +4,26 @@
 
 .cluster-grid {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  gap: 1.5rem;
 }
 
 .cluster-card {
-  border-radius: 22px;
+  border-radius: 12px;
+  padding: 1.5rem;
+  gap: 1rem;
 }
 
 .instance-card h3 {
-  color: var(--cyan);
+  color: var(--text);
+  margin: 0 0 1rem 0;
+  font-weight: 600;
 }
 
 .health-card h3 {
-  color: var(--green);
+  color: var(--text);
+  margin: 0 0 1rem 0;
+  font-weight: 600;
 }
 
 .instance-details,
@@ -62,8 +69,8 @@
 
 .health-stat {
   background: rgba(8, 12, 18, 0.55);
-  border-radius: 16px;
-  padding: 0.9rem;
+  border-radius: 12px;
+  padding: 1rem;
   text-align: center;
 }
 
@@ -72,13 +79,14 @@
 }
 
 .instances-section {
-  border-radius: 22px;
+  border-radius: 16px;
+  padding: 1.5rem;
 }
 
 .instances-table {
-  border-radius: 18px;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .table-header,
@@ -89,13 +97,14 @@
 
 .table-header {
   display: grid;
-  padding: 0.85rem 1rem;
-  background: rgba(15, 23, 34, 0.95);
+  padding: 1rem;
+  background: rgba(31, 41, 55, 0.5);
   color: var(--text-soft);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .table-body {

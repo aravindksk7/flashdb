@@ -4,15 +4,20 @@
 
 .queue-grid {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  gap: 1.5rem;
 }
 
 .queue-card {
-  border-radius: 22px;
+  border-radius: 12px;
+  padding: 1.5rem;
+  gap: 1rem;
 }
 
 .queue-card h3 {
-  color: var(--amber);
+  color: var(--text);
+  margin: 0 0 1rem 0;
+  font-weight: 600;
 }
 
 .queue-status {
@@ -22,8 +27,8 @@
 }
 
 .status-item {
-  padding: 0.9rem;
-  border-radius: 16px;
+  padding: 1rem;
+  border-radius: 12px;
   color: #fff;
   text-align: center;
 }

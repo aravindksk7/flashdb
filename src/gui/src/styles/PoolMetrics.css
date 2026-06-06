@@ -4,15 +4,20 @@
 
 .pool-grid {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  gap: 1.5rem;
 }
 
 .pool-card {
-  border-radius: 22px;
+  border-radius: 12px;
+  padding: 1.5rem;
+  gap: 1rem;
 }
 
 .pool-card h3 {
-  color: var(--cyan);
+  color: var(--text);
+  margin: 0 0 1rem 0;
+  font-weight: 600;
 }
 
 .pool-stat,
@@ -57,9 +62,9 @@
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  margin-top: 0.9rem;
+  margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
   color: var(--text-soft);
 }
 
