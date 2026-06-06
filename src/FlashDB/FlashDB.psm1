@@ -73,13 +73,31 @@ function Get-FlashdbConfig {
     param()
 
     if (-not $script:FlashdbConfig) {
-        # Initialize default configuration
+        # Initialize default configuration from environment or use sensible defaults
+        $goldenImagePath = $env:FLASHDB_GOLDEN_IMAGE_PATH
+        if (-not $goldenImagePath) {
+            if ($IsLinux -or $IsCoreCLR) {
+                $goldenImagePath = Join-Path ([System.IO.Path]::GetTempPath()) "flashdb" "golden-images"
+            } else {
+                $goldenImagePath = Join-Path $env:TEMP "flashdb" "golden-images"
+            }
+        }
+
+        $cloneStoragePath = $env:FLASHDB_CLONE_STORAGE_PATH
+        if (-not $cloneStoragePath) {
+            if ($IsLinux -or $IsCoreCLR) {
+                $cloneStoragePath = Join-Path ([System.IO.Path]::GetTempPath()) "flashdb" "clones"
+            } else {
+                $cloneStoragePath = Join-Path $env:TEMP "flashdb" "clones"
+            }
+        }
+
         $script:FlashdbConfig = [PSCustomObject]@{
-            goldenImagePath = "\\shared\GoldenImages"
-            defaultCloneStoragePath = "D:\CloneStorage"
+            goldenImagePath = $goldenImagePath
+            defaultCloneStoragePath = $cloneStoragePath
             sqlServerProvider = @{
-                defaultInstance = "LOCALHOST\SQLEXPRESS"
-                authMethod = "Windows"
+                defaultInstance = $env:FLASHDB_SQL_INSTANCE -or "LOCALHOST\SQLEXPRESS"
+                authMethod = $env:FLASHDB_SQL_AUTH_METHOD -or "Windows"
             }
             checkpointRetentionDays = $null
             maxConcurrentClones = 5
@@ -370,6 +388,16 @@ if ($initResult.Issues.Count -gt 0) {
     Write-Verbose "FlashDB loaded with configuration warnings. Run Test-FlashdbEnvironment for details."
 }
 
+Set-Alias -Name nfgi -Value New-FlashdbGoldenImage
+Set-Alias -Name gfgi -Value Get-FlashdbGoldenImage
+Set-Alias -Name nfc -Value New-FlashdbClone
+Set-Alias -Name gfc -Value Get-FlashdbClone
+Set-Alias -Name cfc -Value Connect-FlashdbClone
+Set-Alias -Name dfc -Value Disconnect-FlashdbClone
+Set-Alias -Name nfcp -Value New-FlashdbCheckpoint
+Set-Alias -Name gfcp -Value Get-FlashdbCheckpoint
+Set-Alias -Name rfc -Value Restore-FlashdbCheckpoint
+
 # Export public functions
 Export-ModuleMember -Function @(
     # Configuration
@@ -452,6 +480,18 @@ Export-ModuleMember -Function @(
 Export-ModuleMember -Variable @(
     'FlashdbConfig'
     'FlashdbProviderRegistry'
+)
+
+Export-ModuleMember -Alias @(
+    'nfgi',
+    'gfgi',
+    'nfc',
+    'gfc',
+    'cfc',
+    'dfc',
+    'nfcp',
+    'gfcp',
+    'rfc'
 )
 
 Write-Verbose "FlashDB module loaded successfully (v0.1.0)"
