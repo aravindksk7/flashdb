@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const connectionPool_1 = require("../services/connectionPool");
+const taskQueue_1 = require("../services/taskQueue");
 const logger_1 = __importDefault(require("../logger"));
 const router = (0, express_1.Router)();
 const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
@@ -316,6 +317,33 @@ router.get('/pool', async (_req, res) => {
     }
     catch (error) {
         logger_1.default.error(`Error retrieving pool metrics: ${error.message}`);
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+/**
+ * GET /api/metrics/queue
+ * Retrieves task queue metrics
+ * Returns: queue depth, pending tasks, processing tasks, completed, failed, error count, etc.
+ */
+router.get('/queue', async (_req, res) => {
+    try {
+        logger_1.default.info('Retrieving task queue metrics');
+        const taskQueue = (0, taskQueue_1.getTaskQueue)();
+        const metrics = taskQueue.getMetrics();
+        return res.json({
+            success: true,
+            data: {
+                ...metrics,
+                timestamp: new Date().toISOString()
+            },
+            message: 'Task queue metrics retrieved successfully'
+        });
+    }
+    catch (error) {
+        logger_1.default.error(`Error retrieving task queue metrics: ${error.message}`);
         return res.status(500).json({
             success: false,
             message: error.message

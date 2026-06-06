@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getPooledPowerShellService } from '../services/pooledPowershellService';
 import { getConnectionPool } from '../services/connectionPool';
+import { getTaskQueue } from '../services/taskQueue';
 import logger from '../logger';
 
 const router = Router();
@@ -330,6 +331,34 @@ router.get('/pool', async (_req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error(`Error retrieving pool metrics: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/metrics/queue
+ * Retrieves task queue metrics
+ * Returns: queue depth, pending tasks, processing tasks, completed, failed, error count, etc.
+ */
+router.get('/queue', async (_req: Request, res: Response) => {
+  try {
+    logger.info('Retrieving task queue metrics');
+    const taskQueue = getTaskQueue();
+    const metrics = taskQueue.getMetrics();
+
+    return res.json({
+      success: true,
+      data: {
+        ...metrics,
+        timestamp: new Date().toISOString()
+      },
+      message: 'Task queue metrics retrieved successfully'
+    });
+  } catch (error: any) {
+    logger.error(`Error retrieving task queue metrics: ${error.message}`);
     return res.status(500).json({
       success: false,
       message: error.message

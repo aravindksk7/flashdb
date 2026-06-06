@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
+const taskQueue_1 = require("../services/taskQueue");
 const logger_1 = __importDefault(require("../logger"));
 const caching_1 = require("../middleware/caching");
 const router = (0, express_1.Router)();
@@ -19,10 +20,10 @@ const toResponseArray = (value) => {
         return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
     });
 };
-// POST - Create clone
+// POST - Create clone (queued)
 router.post('/', async (req, res) => {
     try {
-        const { goldenImageId, cloneName, instancePath, storagePath, databaseType, databaseName, compressionEnabled, attachAfterCreate } = req.body;
+        const { goldenImageId, cloneName, instancePath, storagePath, databaseType, databaseName, compressionEnabled, attachAfterCreate, useQueue = true } = req.body;
         if (!goldenImageId || !cloneName || !instancePath || !storagePath) {
             return res.status(400).json({
                 success: false,
@@ -30,33 +31,61 @@ router.post('/', async (req, res) => {
             });
         }
         logger_1.default.info(`Creating clone: ${cloneName}`);
-        const params = {
-            GoldenImageId: goldenImageId,
-            CloneName: cloneName,
-            InstancePath: instancePath,
-            StoragePath: storagePath
-        };
-        if (databaseType)
-            params.DatabaseType = databaseType;
-        if (databaseName)
-            params.DatabaseName = databaseName;
-        if (compressionEnabled !== undefined)
-            params.CompressionEnabled = compressionEnabled;
-        const clone = await psService.executeCommand('New-FlashdbClone', params);
-        if (attachAfterCreate === true && clone && typeof clone === 'object') {
-            await psService.executeCommandRaw('Connect-FlashdbClone', {
-                CloneId: clone.Id || clone.id,
-                InstancePath: instancePath
+        // Use task queue for async processing
+        if (useQueue !== false) {
+            const taskQueue = (0, taskQueue_1.getTaskQueue)();
+            const task = taskQueue.enqueue('create-clone', {
+                goldenImageId,
+                cloneName,
+                instancePath,
+                storagePath,
+                databaseType,
+                databaseName,
+                compressionEnabled,
+                attachAfterCreate
             });
-            clone.Status = 'Attached';
+            // Invalidate cache for clones and metrics
+            (0, caching_1.invalidateCache)(['/clones', '/metrics']);
+            return res.status(202).json({
+                success: true,
+                data: {
+                    taskId: task.id,
+                    status: task.status,
+                    createdAt: task.createdAt
+                },
+                message: 'Clone creation task queued successfully'
+            });
         }
-        // Invalidate cache for clones and metrics
-        (0, caching_1.invalidateCache)(['/clones', '/metrics']);
-        return res.status(201).json({
-            success: true,
-            data: clone,
-            message: 'Clone created successfully'
-        });
+        else {
+            // Synchronous mode (for backward compatibility)
+            const params = {
+                GoldenImageId: goldenImageId,
+                CloneName: cloneName,
+                InstancePath: instancePath,
+                StoragePath: storagePath
+            };
+            if (databaseType)
+                params.DatabaseType = databaseType;
+            if (databaseName)
+                params.DatabaseName = databaseName;
+            if (compressionEnabled !== undefined)
+                params.CompressionEnabled = compressionEnabled;
+            const clone = await psService.executeCommand('New-FlashdbClone', params);
+            if (attachAfterCreate === true && clone && typeof clone === 'object') {
+                await psService.executeCommandRaw('Connect-FlashdbClone', {
+                    CloneId: clone.Id || clone.id,
+                    InstancePath: instancePath
+                });
+                clone.Status = 'Attached';
+            }
+            // Invalidate cache for clones and metrics
+            (0, caching_1.invalidateCache)(['/clones', '/metrics']);
+            return res.status(201).json({
+                success: true,
+                data: clone,
+                message: 'Clone created successfully'
+            });
+        }
     }
     catch (error) {
         logger_1.default.error(`Error creating clone: ${error.message}`);
@@ -166,22 +195,44 @@ router.post('/:cloneId/detach', async (req, res) => {
         });
     }
 });
-// DELETE - Remove clone
+// DELETE - Remove clone (queued)
 router.delete('/:cloneId', async (req, res) => {
     try {
         const { cloneId } = req.params;
-        const { deleteVhdx } = req.query;
+        const { deleteVhdx, useQueue = true } = req.query;
         logger_1.default.info(`Deleting clone: ${cloneId}`);
-        await psService.executeCommandRaw('Remove-FlashdbClone', {
-            CloneId: cloneId,
-            DeleteVhdx: deleteVhdx === 'true'
-        });
-        // Invalidate cache for clones and metrics
-        (0, caching_1.invalidateCache)(['/clones', '/metrics']);
-        return res.json({
-            success: true,
-            message: 'Clone deleted successfully'
-        });
+        // Use task queue for async processing
+        if (useQueue !== 'false') {
+            const taskQueue = (0, taskQueue_1.getTaskQueue)();
+            const task = taskQueue.enqueue('delete-clone', {
+                cloneId,
+                deleteVhdx: deleteVhdx === 'true'
+            });
+            // Invalidate cache for clones and metrics
+            (0, caching_1.invalidateCache)(['/clones', '/metrics']);
+            return res.status(202).json({
+                success: true,
+                data: {
+                    taskId: task.id,
+                    status: task.status,
+                    createdAt: task.createdAt
+                },
+                message: 'Clone deletion task queued successfully'
+            });
+        }
+        else {
+            // Synchronous mode (for backward compatibility)
+            await psService.executeCommandRaw('Remove-FlashdbClone', {
+                CloneId: cloneId,
+                DeleteVhdx: deleteVhdx === 'true'
+            });
+            // Invalidate cache for clones and metrics
+            (0, caching_1.invalidateCache)(['/clones', '/metrics']);
+            return res.json({
+                success: true,
+                message: 'Clone deleted successfully'
+            });
+        }
     }
     catch (error) {
         logger_1.default.error(`Error deleting clone: ${error.message}`);

@@ -18,12 +18,20 @@ const logging_1 = require("./middleware/logging");
 const healthcheck_1 = require("./middleware/healthcheck");
 const caching_1 = require("./middleware/caching");
 const connectionPool_1 = require("./services/connectionPool");
+const taskQueue_1 = require("./services/taskQueue");
+const taskWorker_1 = require("./services/taskWorker");
+const queue_1 = __importDefault(require("./routes/queue"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3001;
 // Initialize connection pool on startup
 const connectionPool = (0, connectionPool_1.initializeConnectionPool)();
 logger_1.default.info('Connection pool initialized on startup');
+// Initialize task queue on startup
+(0, taskQueue_1.initializeTaskQueue)();
+logger_1.default.info('Task queue initialized on startup');
+// Initialize and start task worker
+const taskWorker = (0, taskWorker_1.initializeTaskWorker)();
 // Middleware - Order matters!
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
@@ -62,6 +70,7 @@ app.use('/api/clones/:cloneId/checkpoints', checkpoints_1.default);
 app.use('/api/search', search_1.default);
 app.use('/api/batches', batch_1.default);
 app.use('/api/metrics', metrics_1.default);
+app.use('/api/queue', queue_1.default);
 // Swagger/OpenAPI endpoint (can be expanded later)
 app.get('/api/docs', (_req, res) => {
     res.json({
@@ -103,6 +112,14 @@ app.get('/api/docs', (_req, res) => {
                 timeline: 'GET /api/metrics/timeline',
                 all: 'GET /api/metrics/all',
                 performance: 'GET /api/metrics/performance (operation metrics)'
+            },
+            queue: {
+                metrics: 'GET /api/queue/metrics',
+                status: 'GET /api/queue/status',
+                tasks: 'GET /api/queue/tasks',
+                getTask: 'GET /api/queue/tasks/{taskId}',
+                clearCompleted: 'POST /api/queue/clear/completed',
+                clearFailed: 'POST /api/queue/clear/failed'
             },
             monitoring: {
                 operationMetrics: 'GET /metrics (Prometheus format)',
@@ -169,7 +186,7 @@ app.use((req, res) => {
     });
 });
 // Start server
-const server = app.listen(port, () => {
+const server = app.listen(port, async () => {
     const env = process.env.NODE_ENV || 'development';
     const logLevel = process.env.LOG_LEVEL || 'info';
     const flashdbModule = process.env.FLASHDB_MODULE_PATH || 'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1';
@@ -192,13 +209,27 @@ const server = app.listen(port, () => {
     logger_1.default.info('Connection Pool Status:');
     logger_1.default.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
     logger_1.default.info(`  Available: ${connectionPool.getMetrics().available}`);
+    logger_1.default.info('');
+    logger_1.default.info('Task Queue Status:');
+    logger_1.default.info(`  Queue Initialized: true`);
+    logger_1.default.info(`  Task Worker: starting...`);
     logger_1.default.info('='.repeat(60));
+    // Start task worker
+    try {
+        await taskWorker.startWorker();
+        logger_1.default.info('Task worker started successfully');
+    }
+    catch (error) {
+        logger_1.default.error(`Failed to start task worker: ${error.message}`);
+    }
 });
 // Graceful shutdown handler
 process.on('SIGTERM', async () => {
     logger_1.default.info('SIGTERM signal received: closing HTTP server');
     server.close(async () => {
         logger_1.default.info('HTTP server closed');
+        await taskWorker.stopWorker(5000);
+        logger_1.default.info('Task worker shut down');
         await (0, connectionPool_1.shutdownConnectionPool)();
         logger_1.default.info('Connection pool shut down');
         process.exit(0);
@@ -208,6 +239,8 @@ process.on('SIGINT', async () => {
     logger_1.default.info('SIGINT signal received: closing HTTP server');
     server.close(async () => {
         logger_1.default.info('HTTP server closed');
+        await taskWorker.stopWorker(5000);
+        logger_1.default.info('Task worker shut down');
         await (0, connectionPool_1.shutdownConnectionPool)();
         logger_1.default.info('Connection pool shut down');
         process.exit(0);

@@ -26,6 +26,9 @@ import {
   getCacheMetrics
 } from './middleware/caching';
 import { initializeConnectionPool, shutdownConnectionPool } from './services/connectionPool';
+import { initializeTaskQueue } from './services/taskQueue';
+import { initializeTaskWorker } from './services/taskWorker';
+import queueRoutes from './routes/queue';
 
 dotenv.config();
 
@@ -35,6 +38,13 @@ const port = process.env.PORT || 3001;
 // Initialize connection pool on startup
 const connectionPool = initializeConnectionPool();
 logger.info('Connection pool initialized on startup');
+
+// Initialize task queue on startup
+initializeTaskQueue();
+logger.info('Task queue initialized on startup');
+
+// Initialize and start task worker
+const taskWorker = initializeTaskWorker();
 
 // Middleware - Order matters!
 app.use(express.json());
@@ -80,6 +90,7 @@ app.use('/api/clones/:cloneId/checkpoints', checkpointRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/metrics', metricsRoutes);
+app.use('/api/queue', queueRoutes);
 
 // Swagger/OpenAPI endpoint (can be expanded later)
 app.get('/api/docs', (_req: Request, res: Response) => {
@@ -122,6 +133,14 @@ app.get('/api/docs', (_req: Request, res: Response) => {
         timeline: 'GET /api/metrics/timeline',
         all: 'GET /api/metrics/all',
         performance: 'GET /api/metrics/performance (operation metrics)'
+      },
+      queue: {
+        metrics: 'GET /api/queue/metrics',
+        status: 'GET /api/queue/status',
+        tasks: 'GET /api/queue/tasks',
+        getTask: 'GET /api/queue/tasks/{taskId}',
+        clearCompleted: 'POST /api/queue/clear/completed',
+        clearFailed: 'POST /api/queue/clear/failed'
       },
       monitoring: {
         operationMetrics: 'GET /metrics (Prometheus format)',
@@ -199,7 +218,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Start server
-const server = app.listen(port, () => {
+const server = app.listen(port, async () => {
   const env = process.env.NODE_ENV || 'development';
   const logLevel = process.env.LOG_LEVEL || 'info';
   const flashdbModule = process.env.FLASHDB_MODULE_PATH || 'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1';
@@ -223,7 +242,19 @@ const server = app.listen(port, () => {
   logger.info('Connection Pool Status:');
   logger.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
   logger.info(`  Available: ${connectionPool.getMetrics().available}`);
+  logger.info('');
+  logger.info('Task Queue Status:');
+  logger.info(`  Queue Initialized: true`);
+  logger.info(`  Task Worker: starting...`);
   logger.info('='.repeat(60));
+
+  // Start task worker
+  try {
+    await taskWorker.startWorker();
+    logger.info('Task worker started successfully');
+  } catch (error: any) {
+    logger.error(`Failed to start task worker: ${error.message}`);
+  }
 });
 
 // Graceful shutdown handler
@@ -231,6 +262,8 @@ process.on('SIGTERM', async () => {
   logger.info('SIGTERM signal received: closing HTTP server');
   server.close(async () => {
     logger.info('HTTP server closed');
+    await taskWorker.stopWorker(5000);
+    logger.info('Task worker shut down');
     await shutdownConnectionPool();
     logger.info('Connection pool shut down');
     process.exit(0);
@@ -241,6 +274,8 @@ process.on('SIGINT', async () => {
   logger.info('SIGINT signal received: closing HTTP server');
   server.close(async () => {
     logger.info('HTTP server closed');
+    await taskWorker.stopWorker(5000);
+    logger.info('Task worker shut down');
     await shutdownConnectionPool();
     logger.info('Connection pool shut down');
     process.exit(0);
