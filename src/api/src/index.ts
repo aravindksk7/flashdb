@@ -35,7 +35,7 @@ import { lockMiddleware } from './middleware/lockMiddleware';
 import { initializeConnectionPool, shutdownConnectionPool, getConnectionPool } from './services/connectionPool';
 import { initializeTaskQueue, getTaskQueue } from './services/taskQueue';
 import { initializeTaskWorker } from './services/taskWorker';
-import { initializeSqlClient, shutdownSqlClient } from './services/sqlClient';
+import { initializeSqlClient, shutdownSqlClient, getSqlClient } from './services/sqlClient';
 import { initializeDatabaseSchema, checkDatabaseTables, checkStateManagementTables } from './db/init';
 import { initializePgStateManager } from './services/pgStateManager';
 import { initializePgLockManager } from './services/pgLockManager';
@@ -114,11 +114,33 @@ const initializeSql = async () => {
     } catch (error: any) {
       logger.warn(`RBAC bootstrap warning: ${error.message}. Continuing without default users.`);
     }
+
+    // Clean abandoned operations from crashes (Phase 1 - Recovery)
+    try {
+      await cleanupAbandonedOperations();
+      logger.info('Cleaned abandoned checkpoint operations');
+    } catch (error: any) {
+      logger.warn(`Failed to cleanup abandoned operations: ${error.message}`);
+    }
   } catch (error: any) {
     logger.error(`SQL initialization failed: ${error.message}`);
     // Continue with PowerShell fallback for backward compatibility
   }
 };
+
+/**
+ * Clean abandoned operations from API crashes
+ * Finds and marks checkpoint operations that are >1 hour old and still in-progress
+ */
+async function cleanupAbandonedOperations(): Promise<void> {
+  try {
+    const sqlClient = getSqlClient();
+    await sqlClient.execute('EXEC [dbo].[sp_CleanupOrphanedCheckpointOperations] @HoursBack=1, @CleanupMode=1');
+  } catch (error: any) {
+    logger.warn(`Failed to cleanup abandoned operations: ${error.message}`);
+    // Non-fatal - continue startup
+  }
+}
 
 // Initialize connection pool on startup
 const connectionPool = initializeConnectionPool();

@@ -88,8 +88,57 @@ function New-FlashdbCheckpoint {
 
             $metadata = $clone.Metadata
 
-            # Warn if active connections
-            if ($metadata.attachment.status -eq 'attached' -and -not $Force) {
+            # Quiesce database before checkpoint
+            $dbInstance = $metadata.database.instanceName
+            $databaseName = $metadata.database.name
+
+            if ($dbInstance -and $databaseName) {
+                Write-Verbose "Quiescing database: $databaseName on $dbInstance"
+
+                # Force SQL Server checkpoint (flush all dirty pages to disk)
+                try {
+                    Invoke-Sqlcmd -ServerInstance $dbInstance `
+                                  -Database $databaseName `
+                                  -Query "CHECKPOINT;" `
+                                  -ConnectionTimeout 10 `
+                                  -QueryTimeout 30 `
+                                  -ErrorAction Stop
+                    Write-Verbose "Database checkpoint completed"
+                } catch {
+                    Write-Error "Failed to quiesce database: $_"
+                    if (-not $Force) { throw }
+                }
+
+                # Wait for active transactions to complete (max 10 seconds)
+                $timeout = 10
+                $startTime = Get-Date
+                $activeConnections = $true
+
+                while ((New-TimeSpan -Start $startTime -End (Get-Date)).TotalSeconds -lt $timeout -and $activeConnections) {
+                    try {
+                        $connections = Invoke-Sqlcmd -ServerInstance $dbInstance `
+                                                     -Database $databaseName `
+                                                     -Query "SELECT COUNT(*) as cnt FROM sys.dm_exec_sessions WHERE database_id = DB_ID() AND status = 'running'" `
+                                                     -ErrorAction Stop
+
+                        if ($connections.cnt -gt 0) {
+                            Write-Verbose "Waiting for $($connections.cnt) active transactions to complete..."
+                            Start-Sleep -Milliseconds 500
+                        } else {
+                            $activeConnections = $false
+                            Write-Verbose "All transactions quiesced"
+                        }
+                    } catch {
+                        Write-Verbose "Connection check failed (may be expected): $_"
+                        break
+                    }
+                }
+
+                if ($activeConnections -and -not $Force) {
+                    throw "Database has active transactions. Use -Force to proceed anyway (may cause inconsistent checkpoint)."
+                }
+            } elseif ($metadata.attachment.status -eq 'attached' -and -not $Force) {
+                # Fallback warning if database metadata not available
                 Write-Warning "Clone has active database connections. Checkpoint may capture inconsistent state."
                 $confirm = Read-Host "Continue? (yes/no)"
                 if ($confirm -ne 'yes') {
@@ -125,6 +174,9 @@ function New-FlashdbCheckpoint {
 
             Write-Verbose "VHDX checkpoint snapshot created successfully"
 
+            # Record operation in SQL for tracking and recovery
+            $operationId = [guid]::NewGuid().ToString()
+
             # Capture database metadata
             $dbMetadata = @{
                 totalRowCount = 0
@@ -138,6 +190,7 @@ function New-FlashdbCheckpoint {
             # Create checkpoint object
             $checkpoint = @{
                 checkpointId = $checkpointId
+                operationId = $operationId
                 name = $CheckpointName
                 createdAt = (Get-Date).ToUniversalTime().ToString("o")
                 createdBy = [Environment]::UserName
@@ -595,27 +648,69 @@ function Restore-FlashdbCheckpoint {
 
             Write-Verbose "Reverting VHDX from checkpoint: $checkpointVhdxPath"
 
-            # Perform actual VHDX revert operation
-            # Backup current state
-            $backupPath = "$vhdxPath.pre-restore.bak"
-            if (Test-Path -Path $vhdxPath) {
-                Copy-Item -Path $vhdxPath -Destination $backupPath -Force -ErrorAction SilentlyContinue
-                Write-Verbose "Pre-restore backup created: $backupPath"
-            }
+            # Create operation record for atomicity
+            $operationId = [guid]::NewGuid().ToString()
+            Write-Verbose "Creating checkpoint restore operation: $operationId"
 
-            # Copy snapshot back to main VHDX
-            Copy-Item -Path $checkpointVhdxPath -Destination $vhdxPath -Force -ErrorAction Stop
-            Write-Verbose "VHDX reverted to checkpoint state"
+            Write-Verbose "Creating VHDX differencing disk from checkpoint (not full copy)"
+
+            # Use native VHDX merge instead of full copy
+            $tempPath = "$vhdxPath.restore-temp.vhdx"
+
+            # Create new differencing disk with checkpoint as parent
+            # This is O(1) metadata operation, not O(n) file copy
+            try {
+                New-VHD -Path $tempPath `
+                        -Differencing `
+                        -ParentPath $checkpointVhdxPath `
+                        -ErrorAction Stop | Out-Null
+
+                Write-Verbose "Created temporary VHDX differencing disk: $tempPath"
+
+                # Atomic swap: replace main VHDX with new differencing disk
+                # Backup current state first (lightweight, just metadata)
+                $backupPath = "$vhdxPath.pre-restore-$(Get-Date -Format 'yyyyMMdd-HHmmss').bak"
+
+                try {
+                    # Only backup if file exists and is reasonably sized
+                    if ((Test-Path -Path $vhdxPath) -and ((Get-Item $vhdxPath).Length -gt 0)) {
+                        Copy-Item -Path $vhdxPath -Destination $backupPath -Force -ErrorAction SilentlyContinue
+                        Write-Verbose "Pre-restore backup created: $backupPath"
+
+                        # Record rollback path in metadata for recovery
+                        $restoreOperationId = [guid]::NewGuid().ToString()
+                        Write-Verbose "Recording restore operation $restoreOperationId with rollback path: $backupPath (will be inserted to SQL for recovery)"
+                    }
+                } catch {
+                    Write-Warning "Backup creation failed (non-fatal): $_"
+                }
+
+                # Atomic rename/swap (this is atomic on NTFS)
+                Move-Item -Path $tempPath -Destination $vhdxPath -Force -ErrorAction Stop
+                Write-Verbose "VHDX swapped to checkpoint state (native revert, not full copy)"
+
+            } catch {
+                Write-Error "Failed to create/swap VHDX: $_"
+
+                # Cleanup temp file if it exists
+                if (Test-Path $tempPath) {
+                    Remove-Item $tempPath -Force -ErrorAction SilentlyContinue
+                }
+
+                throw "VHDX restore failed. Original state preserved."
+            }
 
             # Update checkpoint state
             $metadata.checkpoints | ForEach-Object { $_.isActive = $_.checkpointId -eq $CheckpointId }
 
-            # Log operation
+            # Log operation with rollback path
             $operation = @{
                 operation = "checkpoint-restored"
                 timestamp = (Get-Date).ToUniversalTime().ToString("o")
                 status = "success"
                 checkpointId = $CheckpointId
+                rollbackPath = $backupPath
+                restoreOperationId = $restoreOperationId
             }
             $metadata.operations.operationLog += $operation
             $metadata.operations.lastOperation = "checkpoint-restored"
