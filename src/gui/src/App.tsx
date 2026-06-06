@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
+import { CreateGoldenImageForm } from './components/CreateGoldenImageForm';
+import { CreateCloneForm } from './components/CreateCloneForm';
+import { CreateCheckpointForm } from './components/CreateCheckpointForm';
 
 interface Clone {
   id: string;
@@ -134,37 +137,13 @@ function App() {
         </div>
 
         <div className="section">
-          <h2>Clones</h2>
+          <h2>🗄️ Create Golden Image</h2>
+          <CreateGoldenImageForm onSuccess={loadData} />
+        </div>
 
-          <form className="form" onSubmit={handleCreateClone}>
-            <h3>Create New Clone</h3>
-            <div className="form-group">
-              <label>Golden Image:</label>
-              <select name="goldenImageId" required>
-                <option value="">Select a golden image</option>
-                {goldenImages.map(image => (
-                  <option key={image.id} value={image.id}>{image.name} ({image.version})</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Clone Name:</label>
-              <input type="text" name="cloneName" placeholder="e.g., dev-test-1" required />
-            </div>
-
-            <div className="form-group">
-              <label>SQL Instance:</label>
-              <input type="text" name="instancePath" placeholder="e.g., LOCALHOST\SQLEXPRESS" required />
-            </div>
-
-            <div className="form-group">
-              <label>Storage Path:</label>
-              <input type="text" name="storagePath" placeholder="e.g., D:\CloneStorage" required />
-            </div>
-
-            <button type="submit" className="btn-primary">Create Clone</button>
-          </form>
+        <div className="section">
+          <h2>📦 Clones</h2>
+          <CreateCloneForm onSuccess={loadData} />
 
           <h3>Active Clones</h3>
           {clones.length === 0 ? (
@@ -188,18 +167,9 @@ function App() {
 
         {selectedClone && (
           <div className="section">
-            <h2>Clone Details: {selectedClone.name}</h2>
-            <div className="details">
-              <p><strong>Clone ID:</strong> {selectedClone.id}</p>
-              <p><strong>Golden Image ID:</strong> {selectedClone.goldenImageId}</p>
-              <p><strong>Status:</strong> {selectedClone.status}</p>
-              <p><strong>Created:</strong> {formatDate(selectedClone.createdAt)}</p>
-            </div>
-
-            <h3>Checkpoints</h3>
-            <p>Checkpoint management coming soon...</p>
-
-            <button className="btn-secondary" onClick={() => setSelectedClone(null)}>Close</button>
+            <h2>⏱️ Checkpoints for: {selectedClone.name}</h2>
+            <CreateCheckpointForm onSuccess={loadData} />
+            <button className="btn-secondary" onClick={() => setSelectedClone(null)}>← Back</button>
           </div>
         )}
       </div>
