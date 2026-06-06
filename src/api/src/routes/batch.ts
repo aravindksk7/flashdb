@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getPooledPowerShellService } from '../services/pooledPowershellService';
 import logger from '../logger';
+import { invalidateCache } from '../middleware/caching';
 
 const router = Router();
 const psService = getPooledPowerShellService();
@@ -60,6 +61,9 @@ router.post('/', async (req: Request, res: Response) => {
       ConcurrencyLimit: concurrencyLimit,
       StoragePath: storagePath
     });
+
+    // Invalidate cache for clones/checkpoints and metrics since batch will modify them
+    invalidateCache(['/clones', '/checkpoints', '/metrics']);
 
     return res.status(201).json({
       success: true,

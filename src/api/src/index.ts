@@ -21,6 +21,10 @@ import {
   livelinessProbe,
   readinessProbe
 } from './middleware/healthcheck';
+import {
+  cacheMiddleware,
+  getCacheMetrics
+} from './middleware/caching';
 import { initializeConnectionPool, shutdownConnectionPool } from './services/connectionPool';
 
 dotenv.config();
@@ -47,6 +51,9 @@ app.use(performanceMetricsMiddleware);
 
 // HTTP request logging (Morgan)
 app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
+
+// Caching middleware (after logging, before routes)
+app.use(cacheMiddleware);
 
 // Health check endpoints
 app.get('/live', livelinessProbe);
@@ -129,6 +136,14 @@ app.get('/api/metrics/performance', (_req: Request, res: Response) => {
   res.json({
     timestamp: new Date().toISOString(),
     metrics: getPerformanceMetrics()
+  });
+});
+
+// Cache metrics endpoint
+app.get('/api/metrics/cache', (_req: Request, res: Response) => {
+  res.json({
+    timestamp: new Date().toISOString(),
+    cache: getCacheMetrics()
   });
 });
 

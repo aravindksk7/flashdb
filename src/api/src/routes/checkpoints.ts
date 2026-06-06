@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getPooledPowerShellService } from '../services/pooledPowershellService';
 import logger from '../logger';
+import { invalidateCache } from '../middleware/caching';
 
 const router = Router({ mergeParams: true });
 const psService = getPooledPowerShellService();
@@ -36,6 +37,9 @@ router.post('/', async (req: Request, res: Response) => {
       Description: description,
       Force: force || false
     });
+
+    // Invalidate cache for checkpoints and metrics
+    invalidateCache(['/checkpoints', '/metrics']);
 
     return res.status(201).json({
       success: true,
@@ -80,6 +84,9 @@ router.post('/:checkpointId/restore', async (req: Request, res: Response) => {
       ReattachAfter: reattachAfter !== false
     });
 
+    // Invalidate cache for checkpoints and metrics
+    invalidateCache(['/checkpoints', '/metrics']);
+
     return res.json({
       success: true,
       message: 'Checkpoint restored successfully'
@@ -112,6 +119,9 @@ router.patch('/:checkpointId', async (req: Request, res: Response) => {
 
     await psService.executeCommandRaw('Set-FlashdbCheckpoint', params);
 
+    // Invalidate cache for checkpoints
+    invalidateCache(['/checkpoints']);
+
     return res.json({
       success: true,
       message: 'Checkpoint updated successfully'
@@ -131,6 +141,9 @@ router.delete('/:checkpointId', async (req: Request, res: Response) => {
       CloneId: cloneId,
       CheckpointId: checkpointId
     });
+
+    // Invalidate cache for checkpoints and metrics
+    invalidateCache(['/checkpoints', '/metrics']);
 
     return res.json({
       success: true,

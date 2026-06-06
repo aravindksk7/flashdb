@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const logger_1 = __importDefault(require("../logger"));
+const caching_1 = require("../middleware/caching");
 const router = (0, express_1.Router)();
 const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
 /**
@@ -56,6 +57,8 @@ router.post('/', async (req, res) => {
             ConcurrencyLimit: concurrencyLimit,
             StoragePath: storagePath
         });
+        // Invalidate cache for clones/checkpoints and metrics since batch will modify them
+        (0, caching_1.invalidateCache)(['/clones', '/checkpoints', '/metrics']);
         return res.status(201).json({
             success: true,
             data: batch,

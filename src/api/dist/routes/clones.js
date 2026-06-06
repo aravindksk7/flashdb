@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const logger_1 = __importDefault(require("../logger"));
+const caching_1 = require("../middleware/caching");
 const router = (0, express_1.Router)();
 const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
 const toResponseArray = (value) => {
@@ -49,6 +50,8 @@ router.post('/', async (req, res) => {
             });
             clone.Status = 'Attached';
         }
+        // Invalidate cache for clones and metrics
+        (0, caching_1.invalidateCache)(['/clones', '/metrics']);
         return res.status(201).json({
             success: true,
             data: clone,
@@ -125,6 +128,8 @@ router.post('/:cloneId/attach', async (req, res) => {
             CloneId: cloneId,
             InstancePath: instancePath
         });
+        // Invalidate cache for this clone
+        (0, caching_1.invalidateCache)(['/clones', '/metrics']);
         return res.json({
             success: true,
             message: 'Clone attached successfully'
@@ -146,6 +151,8 @@ router.post('/:cloneId/detach', async (req, res) => {
         await psService.executeCommandRaw('Disconnect-FlashdbClone', {
             CloneId: cloneId
         });
+        // Invalidate cache for this clone
+        (0, caching_1.invalidateCache)(['/clones', '/metrics']);
         return res.json({
             success: true,
             message: 'Clone detached successfully'
@@ -169,6 +176,8 @@ router.delete('/:cloneId', async (req, res) => {
             CloneId: cloneId,
             DeleteVhdx: deleteVhdx === 'true'
         });
+        // Invalidate cache for clones and metrics
+        (0, caching_1.invalidateCache)(['/clones', '/metrics']);
         return res.json({
             success: true,
             message: 'Clone deleted successfully'

@@ -16,6 +16,7 @@ const batch_1 = __importDefault(require("./routes/batch"));
 const metrics_1 = __importDefault(require("./routes/metrics"));
 const logging_1 = require("./middleware/logging");
 const healthcheck_1 = require("./middleware/healthcheck");
+const caching_1 = require("./middleware/caching");
 const connectionPool_1 = require("./services/connectionPool");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -36,6 +37,8 @@ app.use(logging_1.bodyLoggingMiddleware);
 app.use(logging_1.performanceMetricsMiddleware);
 // HTTP request logging (Morgan)
 app.use((0, morgan_1.default)('combined', { stream: { write: msg => logger_1.default.info(msg.trim()) } }));
+// Caching middleware (after logging, before routes)
+app.use(caching_1.cacheMiddleware);
 // Health check endpoints
 app.get('/live', healthcheck_1.livelinessProbe);
 app.get('/ready', healthcheck_1.readinessProbe);
@@ -113,6 +116,13 @@ app.get('/api/metrics/performance', (_req, res) => {
     res.json({
         timestamp: new Date().toISOString(),
         metrics: (0, logging_1.getPerformanceMetrics)()
+    });
+});
+// Cache metrics endpoint
+app.get('/api/metrics/cache', (_req, res) => {
+    res.json({
+        timestamp: new Date().toISOString(),
+        cache: (0, caching_1.getCacheMetrics)()
     });
 });
 // Prometheus metrics endpoint (placeholder)

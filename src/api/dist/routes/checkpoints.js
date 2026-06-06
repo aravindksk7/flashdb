@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const logger_1 = __importDefault(require("../logger"));
+const caching_1 = require("../middleware/caching");
 const router = (0, express_1.Router)({ mergeParams: true });
 const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
 const toResponseArray = (value) => {
@@ -37,6 +38,8 @@ router.post('/', async (req, res) => {
             Description: description,
             Force: force || false
         });
+        // Invalidate cache for checkpoints and metrics
+        (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
         return res.status(201).json({
             success: true,
             data: checkpoint,
@@ -76,6 +79,8 @@ router.post('/:checkpointId/restore', async (req, res) => {
             CheckpointId: checkpointId,
             ReattachAfter: reattachAfter !== false
         });
+        // Invalidate cache for checkpoints and metrics
+        (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
         return res.json({
             success: true,
             message: 'Checkpoint restored successfully'
@@ -107,6 +112,8 @@ router.patch('/:checkpointId', async (req, res) => {
                 .filter(Boolean);
         }
         await psService.executeCommandRaw('Set-FlashdbCheckpoint', params);
+        // Invalidate cache for checkpoints
+        (0, caching_1.invalidateCache)(['/checkpoints']);
         return res.json({
             success: true,
             message: 'Checkpoint updated successfully'
@@ -125,6 +132,8 @@ router.delete('/:checkpointId', async (req, res) => {
             CloneId: cloneId,
             CheckpointId: checkpointId
         });
+        // Invalidate cache for checkpoints and metrics
+        (0, caching_1.invalidateCache)(['/checkpoints', '/metrics']);
         return res.json({
             success: true,
             message: 'Checkpoint deleted successfully'
