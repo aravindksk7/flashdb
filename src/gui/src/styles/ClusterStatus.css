@@ -1,0 +1,139 @@
+.cluster-status {
+  padding: 0;
+}
+
+.cluster-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.cluster-card {
+  border-radius: 22px;
+}
+
+.instance-card h3 {
+  color: var(--cyan);
+}
+
+.health-card h3 {
+  color: var(--green);
+}
+
+.instance-details,
+.health-summary {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.detail-row,
+.health-stat,
+.table-row {
+  display: grid;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.detail-row,
+.table-row {
+  grid-template-columns: 1fr 1.2fr;
+}
+
+.detail-row .label,
+.health-stat .stat-label {
+  color: var(--text-soft);
+}
+
+.detail-row .value,
+.health-stat .stat-value,
+.col-host,
+.col-version,
+.col-heartbeat,
+.col-id,
+.col-role {
+  color: var(--text);
+}
+
+.health-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.health-stat {
+  background: rgba(8, 12, 18, 0.55);
+  border-radius: 16px;
+  padding: 0.9rem;
+  text-align: center;
+}
+
+.gauge-background {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.instances-section {
+  border-radius: 22px;
+}
+
+.instances-table {
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.table-header,
+.table-row {
+  grid-template-columns: 60px 120px 100px 150px 100px 150px;
+  gap: 10px;
+}
+
+.table-header {
+  display: grid;
+  padding: 0.85rem 1rem;
+  background: rgba(15, 23, 34, 0.95);
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.table-body {
+  display: grid;
+}
+
+.table-row {
+  padding: 0.85rem 1rem;
+  background: rgba(15, 23, 34, 0.82);
+}
+
+.table-row:hover {
+  background: rgba(34, 211, 238, 0.06);
+}
+
+.status-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.metrics-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.9rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.cluster-loading,
+.cluster-error {
+  color: var(--text-soft);
+}
+
+.cluster-error {
+  color: #fecaca;
+}

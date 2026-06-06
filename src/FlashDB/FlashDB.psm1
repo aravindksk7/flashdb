@@ -411,6 +411,8 @@ Export-ModuleMember -Function @(
     # Golden Image Management
     'New-FlashdbGoldenImage'
     'Get-FlashdbGoldenImage'
+    'Get-FlashdbDatabaseSchema'
+    'Update-FlashdbGoldenImage'
     'Remove-FlashdbGoldenImage'
     'Get-FlashdbGoldenImageInfo'
 

@@ -122,6 +122,13 @@ class TaskWorker {
             DatabaseName: task.payload.databaseName,
             CompressionEnabled: task.payload.compressionEnabled
           });
+          if (task.payload.attachAfterCreate === true && result && typeof result === 'object') {
+            await psService.executeCommandRaw('Connect-FlashdbClone', {
+              CloneId: (result as any).Id || (result as any).id,
+              InstancePath: task.payload.instancePath
+            });
+            (result as any).Status = 'Attached';
+          }
           break;
 
         case 'delete-clone':

@@ -47,12 +47,12 @@ export class PgQueueManager {
       const sqlClient = getSqlClient();
 
       // Check if table exists
-      const result = await sqlClient.query<{ exists: number }>(
-        `SELECT COUNT(*) as exists FROM INFORMATION_SCHEMA.TABLES
+      const result = await sqlClient.query<{ tableCount: number }>(
+        `SELECT COUNT(*) as tableCount FROM INFORMATION_SCHEMA.TABLES
          WHERE TABLE_NAME = 'flashdb_queue' AND TABLE_SCHEMA = 'dbo'`
       );
 
-      if ((result.recordset[0]?.exists ?? 0) === 0) {
+      if ((result.recordset[0]?.tableCount ?? 0) === 0) {
         logger.warn('Queue tables do not exist. Attempting schema initialization...');
         // Tables should be created during database schema init, but if not, log it
         throw new Error(

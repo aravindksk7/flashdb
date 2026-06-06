@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import '../styles/Dashboard.css';
+import { ConsoleIcon } from './ConsoleIcon';
 
 interface MetricsData {
   overview: {
@@ -87,19 +88,6 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const formatBytes = (bytes: number) => {
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let size = bytes;
-    let unitIndex = 0;
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-
-    return `${size.toFixed(2)} ${units[unitIndex]}`;
-  };
-
   const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds.toFixed(1)}s`;
     const minutes = Math.floor(seconds / 60);
@@ -107,8 +95,30 @@ export const Dashboard: React.FC = () => {
     return `${minutes}m ${secs.toFixed(0)}s`;
   };
 
+  const renderTrend = (values: number[], tone: 'cyan' | 'green' | 'amber' | 'violet' = 'cyan') => {
+    const max = Math.max(...values, 1);
+    return (
+      <div className={`mini-trend mini-trend-${tone}`}>
+        {values.slice(-8).map((value, index) => (
+          <span
+            key={`${tone}-${index}`}
+            style={{ height: `${Math.max((value / max) * 100, 12)}%` }}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const cloneTrendValues = metrics?.timeline.cloneCreations.map((item) => item.clones) || [];
+  const operationTrendValues = metrics?.timeline.operations.map((item) => item.operations) || [];
+
   if (loading) {
-    return <div className="dashboard-loading">Loading metrics...</div>;
+    return (
+      <div className="dashboard-loading">
+        <div className="skeleton skeleton-line" style={{ width: '42%', marginBottom: '12px' }} />
+        <div className="skeleton skeleton-card" />
+      </div>
+    );
   }
 
   if (error) {
@@ -122,11 +132,20 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <h1>Performance Metrics Dashboard</h1>
+        <div>
+          <div className="panel-kicker">Live telemetry</div>
+          <h1>Performance Metrics Dashboard</h1>
+        </div>
+        <div className="chip-row dashboard-status-row">
+          <span className="chip chip-green">Healthy</span>
+          <span className="chip chip-cyan">{metrics.overview.operationsLast24h} ops / 24h</span>
+          <span className="chip chip-violet">{metrics.cloneStatistics.successRatePercent.toFixed(1)}% clone success</span>
+        </div>
         <div className="dashboard-controls">
-          <label>
-            Refresh interval (seconds):
+          <label className="console-control-label">
+            Interval
             <input
+              className="console-input compact"
               type="number"
               min="5"
               max="300"
@@ -134,7 +153,8 @@ export const Dashboard: React.FC = () => {
               onChange={(e) => setRefreshInterval(parseInt(e.target.value) || 30)}
             />
           </label>
-          <button onClick={loadMetrics} className="btn-refresh">
+          <button onClick={loadMetrics} className="btn-refresh btn-icon">
+            <ConsoleIcon name="refresh" className="console-icon" />
             Refresh Now
           </button>
         </div>
@@ -143,22 +163,36 @@ export const Dashboard: React.FC = () => {
       {/* Key Metrics Cards */}
       <div className="metrics-grid">
         <div className="metric-card">
+          <div className="metric-card-top">
+            <div>
           <div className="metric-label">Total Clones Created</div>
           <div className="metric-value">{metrics.overview.totalClonesCreated}</div>
           <div className="metric-subtext">
             {metrics.overview.activeClonesCount} active
           </div>
+            </div>
+            <span className="chip chip-green">Stable</span>
+          </div>
+          {renderTrend(cloneTrendValues, 'cyan')}
         </div>
 
         <div className="metric-card">
+          <div className="metric-card-top">
+            <div>
           <div className="metric-label">Storage Saved</div>
           <div className="metric-value">{metrics.storageMetrics.totalSavingsGB.toFixed(2)} GB</div>
           <div className="metric-subtext">
             vs {metrics.storageMetrics.totalParentSizeGB.toFixed(2)} GB original
           </div>
+            </div>
+            <span className="chip chip-cyan">Efficient</span>
+          </div>
+          {renderTrend(operationTrendValues, 'green')}
         </div>
 
         <div className="metric-card">
+          <div className="metric-card-top">
+            <div>
           <div className="metric-label">Avg Clone Creation Time</div>
           <div className="metric-value">
             {formatSeconds(metrics.overview.avgCloneCreationTimeSeconds)}
@@ -166,9 +200,15 @@ export const Dashboard: React.FC = () => {
           <div className="metric-subtext">
             Based on {metrics.cloneStatistics.totalClones} clones
           </div>
+            </div>
+            <span className="chip chip-amber">Monitored</span>
+          </div>
+          {renderTrend(metrics.timeline.cloneCreations.map((item) => item.clones + 1), 'amber')}
         </div>
 
         <div className="metric-card">
+          <div className="metric-card-top">
+            <div>
           <div className="metric-label">Operation Success Rate</div>
           <div className="metric-value">
             {metrics.overview.operationSuccessRatePercent.toFixed(1)}%
@@ -176,15 +216,27 @@ export const Dashboard: React.FC = () => {
           <div className="metric-subtext">
             {metrics.operationMetrics.successfulOperations}/{metrics.operationMetrics.totalOperations}
           </div>
+            </div>
+            <span className="chip chip-green">Ready</span>
+          </div>
+          {renderTrend(operationTrendValues, 'violet')}
         </div>
 
         <div className="metric-card">
+          <div className="metric-card-top">
+            <div>
           <div className="metric-label">Last 24h Activity</div>
           <div className="metric-value">{metrics.overview.operationsLast24h}</div>
           <div className="metric-subtext">operations performed</div>
+            </div>
+            <span className="chip chip-cyan">Live</span>
+          </div>
+          {renderTrend(operationTrendValues.length ? operationTrendValues : cloneTrendValues, 'cyan')}
         </div>
 
         <div className="metric-card">
+          <div className="metric-card-top">
+            <div>
           <div className="metric-label">Compression Ratio</div>
           <div className="metric-value">
             {metrics.storageMetrics.compressionRatioPercent.toFixed(1)}%
@@ -192,6 +244,10 @@ export const Dashboard: React.FC = () => {
           <div className="metric-subtext">
             {metrics.storageMetrics.totalUsedGB.toFixed(2)} GB used
           </div>
+            </div>
+            <span className="chip chip-violet">Optimized</span>
+          </div>
+          {renderTrend(cloneTrendValues, 'green')}
         </div>
       </div>
 

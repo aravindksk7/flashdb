@@ -10,6 +10,7 @@ const SENSITIVE_PATTERNS = [
   /api[_-]?key/i,
   /authorization/i,
   /credential/i,
+  /connection/i,
   /bearer/i,
   /auth/i
 ];

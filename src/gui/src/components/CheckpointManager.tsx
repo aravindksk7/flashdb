@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { CreateCheckpointForm } from './CreateCheckpointForm';
+import { ConsoleIcon } from './ConsoleIcon';
 
 const API_BASE = '/api';
 
@@ -74,11 +75,7 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadCheckpoints();
-  }, [clone.id]);
-
-  const loadCheckpoints = async () => {
+  const loadCheckpoints = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -97,7 +94,11 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
     } finally {
       setLoading(false);
     }
-  };
+  }, [clone.id]);
+
+  useEffect(() => {
+    loadCheckpoints();
+  }, [loadCheckpoints]);
 
   const refreshAll = async () => {
     await loadCheckpoints();
@@ -172,16 +173,27 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
       {message && <div style={styles.success}>{message}</div>}
 
       <div style={styles.headerRow}>
-        <h3>Restore Points</h3>
+        <div>
+          <h3>Restore Points</h3>
+          <p style={styles.meta}>Pin, relabel, restore, or delete checkpoints from the selected clone.</p>
+        </div>
         <button type="button" onClick={loadCheckpoints} style={styles.secondaryButton}>
+          <ConsoleIcon name="refresh" className="console-icon" />
           Refresh
         </button>
       </div>
 
       {loading ? (
-        <p>Loading restore points...</p>
+        <div style={styles.loadingState}>
+          <div style={styles.skeletonRow} />
+          <div style={styles.skeletonRow} />
+          <div style={styles.skeletonRow} />
+        </div>
       ) : checkpoints.length === 0 ? (
-        <p>No restore points found</p>
+        <div style={styles.emptyState}>
+          <ConsoleIcon name="restore" className="console-icon" />
+          <p>No restore points found</p>
+        </div>
       ) : (
         <div style={styles.list}>
           {checkpoints.map(checkpoint => (
@@ -210,6 +222,7 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
                     style={styles.labelInput}
                   />
                   <button type="button" onClick={() => saveLabels(checkpoint)} style={styles.secondaryButton}>
+                    <ConsoleIcon name="edit" className="console-icon" />
                     Save Labels
                   </button>
                 </div>
@@ -219,9 +232,11 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
                   {checkpoint.isFavorite ? 'Unpin' : 'Pin'}
                 </button>
                 <button type="button" onClick={() => restoreCheckpoint(checkpoint)} style={styles.restoreButton}>
+                  <ConsoleIcon name="restore" className="console-icon" />
                   Restore
                 </button>
                 <button type="button" onClick={() => deleteCheckpoint(checkpoint)} style={styles.dangerButton}>
+                  <ConsoleIcon name="delete" className="console-icon" />
                   Delete
                 </button>
               </div>
@@ -241,6 +256,11 @@ const styles = {
     gap: '12px',
     marginBottom: '12px',
   },
+  meta: {
+    color: 'var(--text-soft)',
+    marginTop: '4px',
+    fontSize: '13px',
+  },
   list: {
     display: 'grid',
     gap: '12px',
@@ -249,10 +269,10 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: '1fr auto',
     gap: '16px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    border: '1px solid rgba(148, 163, 184, 0.16)',
+    borderRadius: '18px',
     padding: '16px',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(15, 23, 34, 0.88)',
   },
   itemMain: {
     minWidth: 0,
@@ -265,19 +285,14 @@ const styles = {
   },
   itemTitle: {
     margin: 0,
-    color: '#1e293b',
+    color: 'var(--text)',
   },
   phase: {
     fontSize: '12px',
     padding: '2px 8px',
     borderRadius: '999px',
-    backgroundColor: '#e0f2fe',
-    color: '#0369a1',
-  },
-  meta: {
-    color: '#64748b',
-    margin: '4px 0',
-    fontSize: '14px',
+    backgroundColor: 'rgba(34, 211, 238, 0.12)',
+    color: '#cffafe',
   },
   description: {
     margin: '8px 0',
@@ -291,8 +306,10 @@ const styles = {
     flex: 1,
     minWidth: '180px',
     padding: '8px',
-    border: '1px solid #cbd5e1',
-    borderRadius: '4px',
+    border: '1px solid rgba(148, 163, 184, 0.18)',
+    borderRadius: '10px',
+    backgroundColor: 'rgba(8, 12, 18, 0.85)',
+    color: 'var(--text)',
   },
   actions: {
     display: 'flex',
@@ -301,35 +318,57 @@ const styles = {
     minWidth: '110px',
   },
   secondaryButton: {
-    backgroundColor: '#64748b',
+    backgroundColor: 'rgba(30, 41, 59, 0.92)',
     color: '#fff',
     padding: '8px 12px',
     fontSize: '14px',
+    borderRadius: '10px',
   },
   restoreButton: {
-    backgroundColor: '#2563eb',
+    background: 'linear-gradient(135deg, #67e8f9, #22d3ee)',
     color: '#fff',
     padding: '8px 12px',
     fontSize: '14px',
+    borderRadius: '10px',
   },
   dangerButton: {
-    backgroundColor: '#dc2626',
+    background: 'linear-gradient(135deg, #f97316, #ef4444)',
     color: '#fff',
     padding: '8px 12px',
     fontSize: '14px',
+    borderRadius: '10px',
   },
   error: {
-    backgroundColor: '#fee',
-    color: '#c33',
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    color: '#fecaca',
     padding: '10px',
-    borderRadius: '4px',
+    borderRadius: '10px',
     marginBottom: '15px',
   },
   success: {
-    backgroundColor: '#efe',
-    color: '#166534',
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    color: '#bbf7d0',
     padding: '10px',
-    borderRadius: '4px',
+    borderRadius: '10px',
     marginBottom: '15px',
+  },
+  loadingState: {
+    display: 'grid',
+    gap: '10px',
+  },
+  skeletonRow: {
+    height: '56px',
+    borderRadius: '14px',
+    background: 'linear-gradient(90deg, rgba(30,41,59,0.85), rgba(51,65,85,0.95), rgba(30,41,59,0.85))',
+  },
+  emptyState: {
+    display: 'grid',
+    placeItems: 'center',
+    gap: '10px',
+    minHeight: '120px',
+    border: '1px dashed rgba(148, 163, 184, 0.2)',
+    borderRadius: '16px',
+    backgroundColor: 'rgba(8, 12, 18, 0.55)',
+    color: 'var(--text-soft)',
   },
 };

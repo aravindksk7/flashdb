@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { ConsoleIcon } from './ConsoleIcon';
 
 const API_BASE = '/api';
 
@@ -210,7 +211,7 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
           disabled={loading || goldenImages.length === 0}
           style={{...styles.button, opacity: loading || goldenImages.length === 0 ? 0.5 : 1}}
         >
-          {loading ? 'Creating...' : 'Create Clone'}
+          {loading ? 'Creating...' : <><ConsoleIcon name="create" className="console-icon" /> Create Clone</>}
         </button>
       </form>
     </div>
@@ -219,10 +220,10 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
 
 const styles = {
   form: {
-    border: '1px solid #ddd',
-    borderRadius: '8px',
+    border: '1px solid rgba(148, 163, 184, 0.16)',
+    borderRadius: '18px',
     padding: '20px',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'rgba(16, 23, 32, 0.9)',
     marginBottom: '20px',
   },
   formGrid: {
@@ -240,25 +241,25 @@ const styles = {
     marginBottom: '12px',
   },
   error: {
-    backgroundColor: '#fee',
-    color: '#c33',
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    color: '#fecaca',
     padding: '10px',
-    borderRadius: '4px',
+    borderRadius: '10px',
     marginBottom: '15px',
   },
   success: {
-    backgroundColor: '#efe',
-    color: '#166534',
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    color: '#bbf7d0',
     padding: '10px',
-    borderRadius: '4px',
+    borderRadius: '10px',
     marginBottom: '15px',
   },
   button: {
-    backgroundColor: '#28a745',
+    background: 'linear-gradient(135deg, #67e8f9, #22d3ee 55%, #14b8a6)',
     color: 'white',
     padding: '10px 20px',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '12px',
     cursor: 'pointer',
     fontSize: '14px',
   },

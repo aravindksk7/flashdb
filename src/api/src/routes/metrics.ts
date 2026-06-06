@@ -290,21 +290,119 @@ router.get('/all', async (_req: Request, res: Response) => {
   try {
     logger.info('Retrieving all metrics');
 
-    const [overview, clones, storage, operations, timeline] = await Promise.all([
-      psService.executeCommand('Get-FlashdbMetrics', {}),
-      psService.executeCommand('Get-CloneCreationStats', {}),
-      psService.executeCommand('Get-StorageStats', {}),
-      psService.executeCommand('Get-OperationStats', {}),
-      psService.executeCommand('Get-TimelineData', {
-        HoursBack: 24,
-        GroupBy: 'hour'
-      })
+    const toArray = (value: any): any[] => {
+      if (value == null) return [];
+      const items = Array.isArray(value) ? value : [value];
+      return items.filter(item => {
+        if (item == null) return false;
+        return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
+      });
+    };
+
+    const safeCommand = async (command: string, params: Record<string, any>) => {
+      try {
+        return await psService.executeCommand(command, params);
+      } catch (error: any) {
+        logger.warn(`Metrics command ${command} failed; using defaults: ${error.message}`);
+        return [];
+      }
+    };
+
+    const [goldenImagesResult, clonesResult] = await Promise.all([
+      safeCommand('Get-FlashdbGoldenImage', {}),
+      safeCommand('Get-FlashdbClone', {})
     ]);
 
-    const overviewData = overview?.overview || {};
-    const operationsLast24h = typeof overviewData.operationsLast24h === 'number'
-      ? overviewData.operationsLast24h
-      : 0;
+    const goldenImages = toArray(goldenImagesResult);
+    const cloneItems = toArray(clonesResult);
+    const toNumber = (value: any, fallback = 0): number => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    const bytesToGB = (bytes: any): number => toNumber(bytes) / 1024 / 1024 / 1024;
+    const failedClones = cloneItems.filter(clone => /failed/i.test(clone.Status || clone.status || '')).length;
+    const successfulClones = Math.max(0, cloneItems.length - failedClones);
+    const activeClones = cloneItems.filter(clone => /ready|attached/i.test(clone.Status || clone.status || '')).length;
+    const cloneStorageBreakdown = cloneItems.map(clone => {
+      const vhdxSizeGB = bytesToGB(clone.Size || clone.size || clone.VhdxSizeBytes || clone.vhdxSizeBytes);
+      const parentSizeGB = bytesToGB(clone.ParentSize || clone.parentSize || clone.ParentSizeBytes || clone.parentSizeBytes);
+      const savingsGB = Math.max(0, parentSizeGB - vhdxSizeGB);
+
+      return {
+        cloneId: clone.Id || clone.id,
+        cloneName: clone.Name || clone.name,
+        databaseName: clone.DatabaseName || clone.databaseName,
+        rows: toNumber(clone.RowCount || clone.rowCount),
+        vhdxSizeGB,
+        parentSizeGB,
+        savingsGB
+      };
+    });
+    const totalUsedGB = cloneStorageBreakdown.reduce((sum, clone) => sum + clone.vhdxSizeGB, 0);
+    const totalParentSizeGB = cloneStorageBreakdown.reduce((sum, clone) => sum + clone.parentSizeGB, 0);
+    const totalSavingsGB = cloneStorageBreakdown.reduce((sum, clone) => sum + clone.savingsGB, 0);
+    const compressionRatioPercent = totalParentSizeGB > 0 ? (totalSavingsGB / totalParentSizeGB) * 100 : 0;
+    const last24hCutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const operationsLast24h = [...goldenImages, ...cloneItems]
+      .filter(item => {
+        const createdAt = item.CreatedAt || item.createdAt;
+        return createdAt && new Date(createdAt).getTime() >= last24hCutoff;
+      }).length;
+
+    const overviewData = {
+      totalClonesCreated: cloneItems.length,
+      totalStorageSavedGB: totalSavingsGB,
+      avgCloneCreationTimeSeconds: 0,
+      operationSuccessRatePercent: cloneItems.length === 0 ? 100 : (successfulClones / cloneItems.length) * 100,
+      operationsLast24h,
+      activeClonesCount: activeClones
+    };
+
+    const clones = {
+      totalClones: cloneItems.length,
+      successfulClones,
+      failedClones,
+      averageCreationTimeSeconds: 0,
+      minCreationTimeSeconds: 0,
+      maxCreationTimeSeconds: 0,
+      successRatePercent: cloneItems.length === 0 ? 100 : (successfulClones / cloneItems.length) * 100,
+      creationTimesByGoldenImage: []
+    };
+
+    const storage = {
+      totalUsedGB,
+      totalSavingsGB,
+      compressionRatioPercent,
+      totalParentSizeGB,
+      avgCloneSizeGB: cloneStorageBreakdown.length > 0 ? totalUsedGB / cloneStorageBreakdown.length : 0,
+      cloneStorageBreakdown
+    };
+
+    const operations = {
+      totalOperations: goldenImages.length + cloneItems.length,
+      successfulOperations: goldenImages.length + successfulClones,
+      failedOperations: failedClones,
+      successRatePercent: cloneItems.length === 0 ? 100 : (successfulClones / cloneItems.length) * 100,
+      operationsByType: [
+        { type: 'golden-images', count: goldenImages.length, successRatePercent: 100 },
+        {
+          type: 'clones',
+          count: cloneItems.length,
+          successRatePercent: cloneItems.length === 0 ? 100 : (successfulClones / cloneItems.length) * 100
+        }
+      ]
+    };
+
+    const timeline = {
+      cloneCreations: cloneItems.map(clone => ({
+        timestamp: clone.CreatedAt || clone.createdAt,
+        clones: 1,
+        cloneName: clone.Name || clone.name
+      })),
+      operations: [],
+      timelineStart: new Date(last24hCutoff).toISOString(),
+      timelineEnd: new Date().toISOString()
+    };
 
     return res.json({
       success: true,
@@ -416,12 +514,22 @@ router.get('/queue', async (_req: Request, res: Response) => {
   try {
     logger.info('Retrieving task queue metrics');
     const taskQueue = getTaskQueue();
-    const metrics = taskQueue.getMetrics();
+    const metrics: any = taskQueue.getMetrics();
+    const pending = metrics.pending ?? metrics.pendingTasks ?? metrics.queueDepth ?? 0;
+    const processing = metrics.processing ?? metrics.processingTasks ?? 0;
+    const completed = metrics.completed ?? metrics.completedTasks ?? metrics.totalTasksProcessed ?? 0;
+    const failed = metrics.failed ?? metrics.failedTasks ?? 0;
 
     return res.json({
       success: true,
       data: {
         ...metrics,
+        pending,
+        processing,
+        completed,
+        failed,
+        totalEnqueued: metrics.totalEnqueued ?? pending + processing + completed + failed,
+        maxRetries: metrics.maxRetries ?? 0,
         timestamp: new Date().toISOString()
       },
       message: 'Task queue metrics retrieved successfully'

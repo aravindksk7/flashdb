@@ -1,0 +1,73 @@
+.pool-metrics {
+  padding: 0;
+}
+
+.pool-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.pool-card {
+  border-radius: 22px;
+}
+
+.pool-card h3 {
+  color: var(--cyan);
+}
+
+.pool-stat,
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.pool-stat:last-child,
+.stat-row:last-child {
+  border-bottom: 0;
+}
+
+.stat-label {
+  color: var(--text-soft);
+}
+
+.stat-value {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.utilization-gauge,
+.cache-gauge {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.utilization-stats,
+.cache-stats {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.metrics-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.9rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  color: var(--text-soft);
+}
+
+.pool-loading,
+.pool-error {
+  color: var(--text-soft);
+}
+
+.pool-error {
+  color: #fecaca;
+}

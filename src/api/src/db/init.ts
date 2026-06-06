@@ -50,6 +50,9 @@ export async function initializeDatabaseSchema(): Promise<void> {
 
     // Initialize instance schema (Phase 5b.4)
     await initializeInstanceSchema();
+
+    // Initialize RBAC schema (Phase 5b.5)
+    await initializeRbacSchema();
   } catch (error: any) {
     logger.error(`Error initializing database schema: ${error.message}`);
     throw error;
@@ -224,6 +227,47 @@ export async function initializeInstanceSchema(): Promise<void> {
   } catch (error: any) {
     logger.error(`Error initializing instance schema: ${error.message}`);
     // Don't throw - instance management is optional and can degrade gracefully
+  }
+}
+
+/**
+ * Initialize the RBAC schema
+ * Creates tables for user management, roles, permissions, and access control
+ */
+export async function initializeRbacSchema(): Promise<void> {
+  try {
+    const sqlClient = getSqlClient();
+
+    // Read RBAC schema file
+    const rbacSchemaPath = path.join(__dirname, 'rbacSchema.sql');
+    if (!fs.existsSync(rbacSchemaPath)) {
+      logger.warn(`RBAC schema file not found: ${rbacSchemaPath}. RBAC tables may need manual creation.`);
+      return;
+    }
+
+    const rbacSchemaSQL = fs.readFileSync(rbacSchemaPath, 'utf-8');
+
+    // Split by GO statements and execute each batch
+    const batches = rbacSchemaSQL.split(/\nGO\n/i);
+
+    for (const batch of batches) {
+      const trimmedBatch = batch.trim();
+      if (trimmedBatch.length > 0) {
+        try {
+          await sqlClient.execute(trimmedBatch);
+        } catch (error: any) {
+          // Ignore errors about objects that already exist
+          if (!error.message.includes('already exists')) {
+            logger.warn(`RBAC schema execution warning: ${error.message}`);
+          }
+        }
+      }
+    }
+
+    logger.info('RBAC schema initialized successfully');
+  } catch (error: any) {
+    logger.error(`Error initializing RBAC schema: ${error.message}`);
+    // Don't throw - RBAC is optional and can degrade gracefully
   }
 }
 

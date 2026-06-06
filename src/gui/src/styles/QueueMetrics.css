@@ -1,0 +1,109 @@
+.queue-metrics {
+  padding: 0;
+}
+
+.queue-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.queue-card {
+  border-radius: 22px;
+}
+
+.queue-card h3 {
+  color: var(--amber);
+}
+
+.queue-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.status-item {
+  padding: 0.9rem;
+  border-radius: 16px;
+  color: #fff;
+  text-align: center;
+}
+
+.status-item.pending {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.92), rgba(245, 158, 11, 0.92));
+}
+
+.status-item.processing {
+  background: linear-gradient(135deg, rgba(103, 232, 249, 0.92), rgba(34, 211, 238, 0.92));
+}
+
+.status-item.completed {
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.92), rgba(52, 211, 153, 0.92));
+}
+
+.status-item.failed {
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.92), rgba(239, 68, 68, 0.92));
+}
+
+.status-value {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.status-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.88;
+}
+
+.depth-bar-background,
+.success-gauge-background {
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.depth-bar-fill {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.85), rgba(245, 158, 11, 0.98));
+}
+
+.success-gauge-section.success {
+  background: linear-gradient(90deg, rgba(74, 222, 128, 0.95), rgba(52, 211, 153, 0.95));
+}
+
+.success-gauge-section.failure {
+  background: linear-gradient(90deg, rgba(248, 113, 113, 0.95), rgba(239, 68, 68, 0.95));
+}
+
+.queue-stats,
+.success-stats {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.success-label {
+  color: var(--green);
+}
+
+.failure-label {
+  color: var(--red);
+}
+
+.metrics-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.9rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  color: var(--text-soft);
+}
+
+.queue-loading,
+.queue-error {
+  color: var(--text-soft);
+}
+
+.queue-error {
+  color: #fecaca;
+}

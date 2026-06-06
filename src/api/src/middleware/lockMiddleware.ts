@@ -16,6 +16,43 @@ export interface LockContext {
   ownerId: string;
   acquiredAt: Date;
   waitTimeMs: number;
+  backend?: 'pg' | 'local';
+}
+
+const localLocks = new Map<string, { ownerId: string; acquiredAt: Date; expiresAt: number }>();
+
+function acquireLocalLock(resourceId: string, ownerId: string, ttlSeconds: number, startTime: number): LockContext | null {
+  const now = Date.now();
+  const existing = localLocks.get(resourceId);
+
+  if (existing && existing.expiresAt > now && existing.ownerId !== ownerId) {
+    return null;
+  }
+
+  const acquiredAt = new Date();
+  localLocks.set(resourceId, {
+    ownerId,
+    acquiredAt,
+    expiresAt: now + ttlSeconds * 1000
+  });
+
+  return {
+    resourceId,
+    ownerId,
+    acquiredAt,
+    waitTimeMs: Date.now() - startTime,
+    backend: 'local'
+  };
+}
+
+function releaseLocalLock(lockContext: LockContext): boolean {
+  const existing = localLocks.get(lockContext.resourceId);
+  if (!existing || existing.ownerId !== lockContext.ownerId) {
+    return false;
+  }
+
+  localLocks.delete(lockContext.resourceId);
+  return true;
 }
 
 /**
@@ -28,10 +65,11 @@ export async function acquireOrFail(
   resourceId: string,
   ttlSeconds: number = 30
 ): Promise<LockContext | null> {
+  const ownerId = uuidv4();
+  const startTime = Date.now();
+
   try {
     const lockManager = getPgLockManager();
-    const ownerId = uuidv4();
-    const startTime = Date.now();
 
     const acquired = await lockManager.acquireLock(resourceId, ownerId, ttlSeconds);
 
@@ -46,11 +84,12 @@ export async function acquireOrFail(
       resourceId,
       ownerId,
       acquiredAt: new Date(),
-      waitTimeMs
+      waitTimeMs,
+      backend: 'pg'
     };
   } catch (error: any) {
-    logger.error(`Error acquiring lock ${resourceId}: ${error.message}`);
-    throw error;
+    logger.warn(`Distributed lock unavailable for ${resourceId}; using local lock fallback: ${error.message}`);
+    return acquireLocalLock(resourceId, ownerId, ttlSeconds, startTime);
   }
 }
 
@@ -69,10 +108,11 @@ export async function acquireWithRetry(
   maxAttempts: number = LOCK_RETRY_ATTEMPTS,
   retryDelayMs: number = LOCK_RETRY_DELAY_MS
 ): Promise<LockContext | null> {
+  const ownerId = uuidv4();
+  const startTime = Date.now();
+
   try {
     const lockManager = getPgLockManager();
-    const ownerId = uuidv4();
-    const startTime = Date.now();
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const acquired = await lockManager.acquireLock(resourceId, ownerId, ttlSeconds);
@@ -84,7 +124,8 @@ export async function acquireWithRetry(
           resourceId,
           ownerId,
           acquiredAt: new Date(),
-          waitTimeMs
+          waitTimeMs,
+          backend: 'pg'
         };
       }
 
@@ -96,8 +137,8 @@ export async function acquireWithRetry(
     logger.debug(`Lock acquisition timeout: ${resourceId} (${maxAttempts} attempts)`);
     return null;
   } catch (error: any) {
-    logger.error(`Error acquiring lock with retry ${resourceId}: ${error.message}`);
-    throw error;
+    logger.warn(`Distributed lock unavailable for ${resourceId}; using local lock fallback: ${error.message}`);
+    return acquireLocalLock(resourceId, ownerId, ttlSeconds, startTime);
   }
 }
 
@@ -106,6 +147,10 @@ export async function acquireWithRetry(
  * @param lockContext - Lock context from acquisition
  */
 export async function releaseLock(lockContext: LockContext): Promise<boolean> {
+  if (lockContext.backend === 'local') {
+    return releaseLocalLock(lockContext);
+  }
+
   try {
     const lockManager = getPgLockManager();
     const released = await lockManager.releaseLock(lockContext.resourceId, lockContext.ownerId);

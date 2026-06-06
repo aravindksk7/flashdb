@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { ConsoleIcon } from './ConsoleIcon';
 
 const API_BASE = '/api';
 
@@ -195,7 +196,7 @@ export const CreateCheckpointForm: React.FC<CreateCheckpointFormProps> = ({
           disabled={loading || noCloneAvailable}
           style={{...styles.button, opacity: loading || noCloneAvailable ? 0.5 : 1}}
         >
-          {loading ? 'Creating...' : 'Create Restore Point'}
+          {loading ? 'Creating...' : <><ConsoleIcon name="create" className="console-icon" /> Create Restore Point</>}
         </button>
       </form>
     </div>
@@ -204,10 +205,10 @@ export const CreateCheckpointForm: React.FC<CreateCheckpointFormProps> = ({
 
 const styles = {
   form: {
-    border: '1px solid #ddd',
-    borderRadius: '8px',
+    border: '1px solid rgba(148, 163, 184, 0.16)',
+    borderRadius: '18px',
     padding: '20px',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'rgba(16, 23, 32, 0.9)',
     marginBottom: '20px',
   },
   formGrid: {
@@ -233,25 +234,25 @@ const styles = {
     marginBottom: '12px',
   },
   error: {
-    backgroundColor: '#fee',
-    color: '#c33',
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    color: '#fecaca',
     padding: '10px',
-    borderRadius: '4px',
+    borderRadius: '10px',
     marginBottom: '15px',
   },
   success: {
-    backgroundColor: '#efe',
-    color: '#166534',
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    color: '#bbf7d0',
     padding: '10px',
-    borderRadius: '4px',
+    borderRadius: '10px',
     marginBottom: '15px',
   },
   button: {
-    backgroundColor: '#ffc107',
-    color: '#333',
+    background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+    color: '#1f1300',
     padding: '10px 20px',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '12px',
     cursor: 'pointer',
     fontSize: '14px',
   },
