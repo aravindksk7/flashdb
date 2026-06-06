@@ -50,7 +50,8 @@ function Get-VhdxStateHash {
             $vhd = Get-VHD -Path $VhdxPath -ErrorAction Stop
 
             # Combine VHDX metadata for hash computation
-            $stateData = "$($vhd.LogicalSectorSize)_$($vhd.PhysicalSectorSize)_$($vhd.Size)_$($vhd.CreationTime.ToUniversalTime():O)"
+            $creationTimeStr = $vhd.CreationTime.ToUniversalTime().ToString("O")
+            $stateData = "$($vhd.LogicalSectorSize)_$($vhd.PhysicalSectorSize)_$($vhd.Size)_$creationTimeStr"
             $bytes = [System.Text.Encoding]::UTF8.GetBytes($stateData)
 
             # Compute SHA-256 hash
