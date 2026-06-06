@@ -2,6 +2,8 @@
 -- Enables stateless API instances with shared PostgreSQL state
 -- Table: flashdb_instances (instance registry and heartbeat tracking)
 
+SET QUOTED_IDENTIFIER ON;
+
 -- Drop table if exists for clean recreation
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[flashdb_instances]') AND type in (N'U'))
     DROP TABLE [dbo].[flashdb_instances];

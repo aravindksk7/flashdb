@@ -41,6 +41,7 @@ exports.initializeQueueSchema = initializeQueueSchema;
 exports.initializeStateSchema = initializeStateSchema;
 exports.checkDatabaseTables = checkDatabaseTables;
 exports.checkStateManagementTables = checkStateManagementTables;
+exports.initializeInstanceSchema = initializeInstanceSchema;
 exports.getDatabaseInfo = getDatabaseInfo;
 const sqlClient_1 = require("../services/sqlClient");
 const logger_1 = __importDefault(require("../logger"));
@@ -82,6 +83,8 @@ async function initializeDatabaseSchema() {
         await initializeStateSchema();
         // Initialize queue schema (Phase 5b.3)
         await initializeQueueSchema();
+        // Initialize instance schema (Phase 5b.4)
+        await initializeInstanceSchema();
     }
     catch (error) {
         logger_1.default.error(`Error initializing database schema: ${error.message}`);
@@ -202,6 +205,43 @@ async function checkStateManagementTables() {
     catch (error) {
         logger_1.default.error(`Error checking state management tables: ${error.message}`);
         return false;
+    }
+}
+/**
+ * Initialize the instance cluster schema
+ * Creates tables for multi-instance deployment if they don't exist
+ */
+async function initializeInstanceSchema() {
+    try {
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        // Read instance schema file
+        const instanceSchemaPath = path.join(__dirname, 'instanceSchema.sql');
+        if (!fs.existsSync(instanceSchemaPath)) {
+            logger_1.default.warn(`Instance schema file not found: ${instanceSchemaPath}. Multi-instance tables may need manual creation.`);
+            return;
+        }
+        const instanceSchemaSQL = fs.readFileSync(instanceSchemaPath, 'utf-8');
+        // Split by GO statements and execute each batch
+        const batches = instanceSchemaSQL.split(/\nGO\n/i);
+        for (const batch of batches) {
+            const trimmedBatch = batch.trim();
+            if (trimmedBatch.length > 0) {
+                try {
+                    await sqlClient.execute(trimmedBatch);
+                }
+                catch (error) {
+                    // Ignore errors about objects that already exist
+                    if (!error.message.includes('already exists')) {
+                        logger_1.default.warn(`Instance schema execution warning: ${error.message}`);
+                    }
+                }
+            }
+        }
+        logger_1.default.info('Instance cluster schema initialized successfully');
+    }
+    catch (error) {
+        logger_1.default.error(`Error initializing instance schema: ${error.message}`);
+        // Don't throw - instance management is optional and can degrade gracefully
     }
 }
 /**

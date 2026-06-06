@@ -22,6 +22,11 @@ export declare function checkDatabaseTables(): Promise<boolean>;
  */
 export declare function checkStateManagementTables(): Promise<boolean>;
 /**
+ * Initialize the instance cluster schema
+ * Creates tables for multi-instance deployment if they don't exist
+ */
+export declare function initializeInstanceSchema(): Promise<void>;
+/**
  * Get database information
  */
 export declare function getDatabaseInfo(): Promise<any>;

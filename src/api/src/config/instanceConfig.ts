@@ -317,8 +317,7 @@ class InstanceConfig {
           OR status = 'inactive'
       `;
 
-      const result = await sqlClient.execute(sql);
-      const deleted = result.rowsAffected?.[0] ?? 0;
+      const deleted = await sqlClient.execute(sql);
 
       if (deleted > 0) {
         logger.info(`Cleaned up ${deleted} stale instance registrations`);

@@ -2,6 +2,8 @@
 -- Persistent queue backed by SQL Server for durability across restarts
 -- Tables: flashdb_queue (active tasks), flashdb_queue_archive (completed/failed tasks)
 
+SET QUOTED_IDENTIFIER ON;
+
 -- Ensure tables don't exist before creating (for clean recreation if needed)
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[flashdb_queue_archive]') AND type in (N'U'))
     DROP TABLE [dbo].[flashdb_queue_archive];

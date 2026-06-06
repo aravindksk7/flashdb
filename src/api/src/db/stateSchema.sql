@@ -2,6 +2,8 @@
 -- PostgreSQL-backed centralized state management to replace Redis
 -- Tables: flashdb_state (key-value store), flashdb_locks (distributed locks), flashdb_operations (in-flight operations)
 
+SET QUOTED_IDENTIFIER ON;
+
 -- Ensure tables don't exist before creating
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[flashdb_operations]') AND type in (N'U'))
     DROP TABLE [dbo].[flashdb_operations];

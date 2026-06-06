@@ -43,6 +43,7 @@ const logger_1 = __importDefault(require("../logger"));
 const child_process_1 = require("child_process");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const instanceConfig_1 = require("../config/instanceConfig");
 const startTime = Date.now();
 const API_VERSION = '0.1.0';
 function getPowerShellCommand() {
@@ -318,13 +319,31 @@ async function healthCheckEndpoint(_req, res) {
         }
         const uptime = Math.round((Date.now() - startTime) / 1000);
         const checkDuration = Date.now() - checkStart;
+        // Add instance information (Phase 5b.4)
+        let instanceInfo;
+        try {
+            const instanceConfig = (0, instanceConfig_1.getInstanceConfig)();
+            if (instanceConfig.isClusterMode()) {
+                const info = instanceConfig.getInstanceInfo();
+                instanceInfo = {
+                    instanceId: info.instanceId,
+                    role: info.role,
+                    status: info.status,
+                    isPrimary: instanceConfig.isPrimary()
+                };
+            }
+        }
+        catch (error) {
+            logger_1.default.debug('Instance info not available in health check');
+        }
         const healthStatus = {
             status: overallStatus,
             timestamp: new Date().toISOString(),
             uptime,
             checks,
             version: API_VERSION,
-            environment: process.env.NODE_ENV || 'development'
+            environment: process.env.NODE_ENV || 'development',
+            instance: instanceInfo
         };
         // Log health check result
         logger_1.default.info('Health check completed', {
