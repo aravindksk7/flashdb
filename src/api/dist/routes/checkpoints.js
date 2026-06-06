@@ -4,10 +4,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const powershellService_1 = require("../services/powershellService");
+const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const logger_1 = __importDefault(require("../logger"));
 const router = (0, express_1.Router)({ mergeParams: true });
-const psService = new powershellService_1.PowerShellService();
+const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
+const toResponseArray = (value) => {
+    if (value == null)
+        return [];
+    const items = Array.isArray(value) ? value : [value];
+    return items.filter(item => {
+        if (item == null)
+            return false;
+        return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
+    });
+};
 // POST - Create checkpoint
 router.post('/', async (req, res) => {
     try {
@@ -47,7 +57,7 @@ router.get('/', async (req, res) => {
         });
         return res.json({
             success: true,
-            data: Array.isArray(checkpoints) ? checkpoints : [checkpoints]
+            data: toResponseArray(checkpoints)
         });
     }
     catch (error) {
@@ -81,12 +91,22 @@ router.patch('/:checkpointId', async (req, res) => {
     try {
         const { cloneId, checkpointId } = req.params;
         const { isFavorite, labels } = req.body;
-        await psService.executeCommandRaw('Set-FlashdbCheckpoint', {
+        const params = {
             CloneId: cloneId,
-            CheckpointId: checkpointId,
-            IsFavorite: isFavorite,
-            Labels: labels
-        });
+            CheckpointId: checkpointId
+        };
+        if (typeof isFavorite === 'boolean')
+            params.IsFavorite = isFavorite;
+        if (Array.isArray(labels)) {
+            params.Labels = labels;
+        }
+        else if (typeof labels === 'string') {
+            params.Labels = labels
+                .split(',')
+                .map(label => label.trim())
+                .filter(Boolean);
+        }
+        await psService.executeCommandRaw('Set-FlashdbCheckpoint', params);
         return res.json({
             success: true,
             message: 'Checkpoint updated successfully'

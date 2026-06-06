@@ -5,31 +5,140 @@
 $script:GoldenImages = @{}
 $script:Clones = @{}
 $script:Checkpoints = @{}
+$script:FlashdbStatePath = if ($env:FLASHDB_STATE_PATH) {
+    $env:FLASHDB_STATE_PATH
+} else {
+    Join-Path ([System.IO.Path]::GetTempPath()) "flashdb-state.json"
+}
+
+function Add-OrSetProperty {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Target,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [object]$Value
+    )
+
+    if ($Target.PSObject.Properties.Name -contains $Name) {
+        $Target.$Name = $Value
+    } else {
+        $Target | Add-Member -MemberType NoteProperty -Name $Name -Value $Value
+    }
+}
+
+function Initialize-FlashdbProviderState {
+    if (-not (Test-Path -Path $script:FlashdbStatePath -PathType Leaf)) {
+        return
+    }
+
+    try {
+        $state = Get-Content -Path $script:FlashdbStatePath -Raw | ConvertFrom-Json -ErrorAction Stop
+
+        $script:GoldenImages = @{}
+        foreach ($image in @($state.GoldenImages)) {
+            if ($image -and $image.Id) {
+                $script:GoldenImages[$image.Id] = $image
+            }
+        }
+
+        $script:Clones = @{}
+        foreach ($clone in @($state.Clones)) {
+            if ($clone -and $clone.Id) {
+                $script:Clones[$clone.Id] = $clone
+            }
+        }
+
+        $script:Checkpoints = @{}
+        foreach ($checkpoint in @($state.Checkpoints)) {
+            if ($checkpoint -and $checkpoint.Id) {
+                $script:Checkpoints[$checkpoint.Id] = $checkpoint
+            }
+        }
+    } catch {
+        Write-Warning "Failed to load FlashDB provider state: $_"
+    }
+}
+
+function Save-FlashdbProviderState {
+    $stateDir = Split-Path -Parent $script:FlashdbStatePath
+    if ($stateDir -and -not (Test-Path -Path $stateDir -PathType Container)) {
+        New-Item -Path $stateDir -ItemType Directory -Force | Out-Null
+    }
+
+    $state = [PSCustomObject]@{
+        GoldenImages = @($script:GoldenImages.Values)
+        Clones = @($script:Clones.Values)
+        Checkpoints = @($script:Checkpoints.Values)
+        SavedAt = (Get-Date).ToString("o")
+    }
+
+    $state | ConvertTo-Json -Depth 10 | Out-File -FilePath $script:FlashdbStatePath -Encoding UTF8 -Force
+}
+
+Initialize-FlashdbProviderState
 
 function New-FlashdbGoldenImage {
     param(
         [string]$Name,
         [string]$Version,
-        [string]$Method = 'TABLE_BY_TABLE',
+        [ValidateSet('BackupRestore', 'ReplicaBackup', 'TableByTableCopy', 'BACKUP_RESTORE', 'REPLICA_BACKUP', 'TABLE_BY_TABLE')]
+        [string]$Method = 'TableByTableCopy',
         [string]$OutputPath,
         [string]$BackupFile,
         [string]$SourceConnection,
+        [string]$DatabaseType = 'sql-server',
+        [string]$DatabaseName,
+        [string]$SourceDatabase,
+        [string]$Driver = 'System.Data.SqlClient',
+        [string]$AuthenticationMode = 'SqlPassword',
         [switch]$Force
     )
 
+    $methodMap = @{
+        BACKUP_RESTORE = 'BackupRestore'
+        REPLICA_BACKUP = 'ReplicaBackup'
+        TABLE_BY_TABLE = 'TableByTableCopy'
+    }
+    if ($methodMap.ContainsKey($Method)) {
+        $Method = $methodMap[$Method]
+    }
+
+    if ($Method -eq 'BackupRestore' -and -not $BackupFile) {
+        throw "BackupRestore requires a backup file path"
+    }
+
+    if ($Method -eq 'BackupRestore' -and $BackupFile -and -not (Test-Path -Path $BackupFile -PathType Leaf)) {
+        throw "Backup file not found: $BackupFile"
+    }
+
+    if (($Method -eq 'ReplicaBackup' -or $Method -eq 'TableByTableCopy') -and -not $SourceConnection) {
+        throw "$Method requires a source connection"
+    }
+
     $imageId = "golden-$(Get-Date -Format yyyyMMddHHmmss)-$(Get-Random -Minimum 1000 -Maximum 9999)"
 
-    $image = @{
+    $image = [PSCustomObject]@{
         Id = $imageId
         Name = $Name
         Version = $Version
         Method = $Method
         OutputPath = $OutputPath
-        CreatedAt = (Get-Date).ToIso8601String()
+        BackupFile = $BackupFile
+        SourceConnection = $SourceConnection
+        DatabaseType = $DatabaseType
+        DatabaseName = $DatabaseName
+        SourceDatabase = $SourceDatabase
+        Driver = $Driver
+        AuthenticationMode = $AuthenticationMode
+        CreatedAt = (Get-Date).ToString("o")
         Status = 'Ready'
     }
 
     $script:GoldenImages[$imageId] = $image
+    Save-FlashdbProviderState
     return $image
 }
 
@@ -61,8 +170,9 @@ function Remove-FlashdbGoldenImage {
     )
 
     $script:GoldenImages.Remove($GoldenImageId)
+    Save-FlashdbProviderState
 
-    return @{
+    return [PSCustomObject]@{
         Success = $true
         Message = "Golden image $GoldenImageId deleted"
     }
@@ -78,7 +188,7 @@ function Get-FlashdbGoldenImageInfo {
         return $null
     }
 
-    return @{
+    return [PSCustomObject]@{
         Id = $ImageId
         Name = $image.Name
         Size = 0
@@ -92,22 +202,33 @@ function New-FlashdbClone {
         [string]$GoldenImageId,
         [string]$CloneName,
         [string]$InstancePath,
-        [string]$StoragePath
+        [string]$StoragePath,
+        [string]$DatabaseType = 'sql-server',
+        [string]$DatabaseName,
+        [bool]$CompressionEnabled = $true
     )
+
+    if ($GoldenImageId -and -not $script:GoldenImages.ContainsKey($GoldenImageId)) {
+        throw "Golden image not found: $GoldenImageId"
+    }
 
     $cloneId = "clone-$(Get-Date -Format yyyyMMddHHmmss)-$(Get-Random -Minimum 1000 -Maximum 9999)"
 
-    $clone = @{
+    $clone = [PSCustomObject]@{
         Id = $cloneId
         Name = $CloneName
         GoldenImageId = $GoldenImageId
         InstancePath = $InstancePath
         StoragePath = $StoragePath
-        CreatedAt = (Get-Date).ToIso8601String()
+        DatabaseType = $DatabaseType
+        DatabaseName = if ($DatabaseName) { $DatabaseName } else { "${CloneName}_Clone" }
+        CompressionEnabled = $CompressionEnabled
+        CreatedAt = (Get-Date).ToString("o")
         Status = 'Ready'
     }
 
     $script:Clones[$cloneId] = $clone
+    Save-FlashdbProviderState
     return $clone
 }
 
@@ -135,9 +256,10 @@ function Connect-FlashdbClone {
     $clone = $script:Clones[$CloneId]
     if ($clone) {
         $clone.Status = 'Attached'
+        Save-FlashdbProviderState
     }
 
-    return @{
+    return [PSCustomObject]@{
         Success = $true
         Message = "Clone $CloneId connected"
     }
@@ -151,9 +273,10 @@ function Disconnect-FlashdbClone {
     $clone = $script:Clones[$CloneId]
     if ($clone) {
         $clone.Status = 'Detached'
+        Save-FlashdbProviderState
     }
 
-    return @{
+    return [PSCustomObject]@{
         Success = $true
         Message = "Clone $CloneId disconnected"
     }
@@ -171,8 +294,9 @@ function Remove-FlashdbClone {
     foreach ($cpId in $checkpointsToRemove) {
         $script:Checkpoints.Remove($cpId)
     }
+    Save-FlashdbProviderState
 
-    return @{
+    return [PSCustomObject]@{
         Success = $true
         Message = "Clone $CloneId removed"
     }
@@ -189,18 +313,23 @@ function New-FlashdbCheckpoint {
 
     $cpId = "cp-$(Get-Date -Format yyyyMMddHHmmss)-$(Get-Random -Minimum 1000 -Maximum 9999)"
 
-    $checkpoint = @{
+    if ($CloneId -and -not $script:Clones.ContainsKey($CloneId)) {
+        throw "Clone not found: $CloneId"
+    }
+
+    $checkpoint = [PSCustomObject]@{
         Id = $cpId
         CloneId = $CloneId
         Name = $CheckpointName
         Phase = $Phase
         Description = $Description
-        CreatedAt = (Get-Date).ToIso8601String()
+        CreatedAt = (Get-Date).ToString("o")
         IsFavorite = $false
         Labels = @()
     }
 
     $script:Checkpoints[$cpId] = $checkpoint
+    Save-FlashdbProviderState
     return $checkpoint
 }
 
@@ -238,15 +367,17 @@ function Set-FlashdbCheckpoint {
 
     $checkpoint = $script:Checkpoints[$CheckpointId]
     if ($checkpoint) {
-        if ($null -ne $IsFavorite) {
+        if ($PSBoundParameters.ContainsKey('IsFavorite')) {
             $checkpoint.IsFavorite = $IsFavorite
         }
-        if ($Labels) {
-            $checkpoint.Labels = $Labels
+        if ($PSBoundParameters.ContainsKey('Labels')) {
+            $checkpoint.Labels = @($Labels)
         }
+        Add-OrSetProperty -Target $checkpoint -Name 'UpdatedAt' -Value (Get-Date).ToString("o")
+        Save-FlashdbProviderState
     }
 
-    return @{
+    return [PSCustomObject]@{
         Success = $true
         Message = "Checkpoint updated"
     }
@@ -259,9 +390,29 @@ function Restore-FlashdbCheckpoint {
         [bool]$ReattachAfter = $true
     )
 
-    return @{
+    $checkpoint = $script:Checkpoints[$CheckpointId]
+    if (-not $checkpoint) {
+        throw "Checkpoint not found: $CheckpointId"
+    }
+
+    $clone = $script:Clones[$CloneId]
+    if (-not $clone) {
+        throw "Clone not found: $CloneId"
+    }
+
+    $restoredAt = (Get-Date).ToString("o")
+    Add-OrSetProperty -Target $clone -Name 'LastRestoredCheckpointId' -Value $CheckpointId
+    Add-OrSetProperty -Target $clone -Name 'LastRestoredAt' -Value $restoredAt
+    Add-OrSetProperty -Target $checkpoint -Name 'LastRestoredAt' -Value $restoredAt
+    Save-FlashdbProviderState
+
+    return [PSCustomObject]@{
         Success = $true
         Message = "Checkpoint restored"
+        CloneId = $CloneId
+        CheckpointId = $CheckpointId
+        RestoredAt = $restoredAt
+        ReattachAfter = $ReattachAfter
     }
 }
 
@@ -272,8 +423,9 @@ function Remove-FlashdbCheckpoint {
     )
 
     $script:Checkpoints.Remove($CheckpointId)
+    Save-FlashdbProviderState
 
-    return @{
+    return [PSCustomObject]@{
         Success = $true
         Message = "Checkpoint removed"
     }
@@ -286,7 +438,7 @@ function Get-FlashdbCheckpointDiff {
         [string]$TargetCheckpointId
     )
 
-    return @{
+    return [PSCustomObject]@{
         SourceId = $SourceCheckpointId
         TargetId = $TargetCheckpointId
         Changes = @()

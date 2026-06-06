@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PowerShellService } from '../services/powershellService';
+import { getPooledPowerShellService } from '../services/pooledPowershellService';
 import logger from '../logger';
 
 const router = Router();
-const psService = new PowerShellService();
+const psService = getPooledPowerShellService();
 
 /**
  * POST /api/search/operations

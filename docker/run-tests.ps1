@@ -2,7 +2,7 @@
 # Validates FlashDB functionality in isolated Docker environment
 
 param(
-    [string]$TestType = "all",  # unit, integration, performance, all
+    [string]$TestType = "all",  # smoke, unit, integration, performance, all
     [switch]$Verbose,
     [switch]$GenerateReport
 )
@@ -189,6 +189,12 @@ Write-Host "Phase 2: Functional Tests"
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 $allResults = @()
+$success = $true
+
+if ($TestType -eq "smoke") {
+    Write-Host ""
+    Write-Host "Smoke validation complete: SQL Server connection and FlashDB module import succeeded."
+}
 
 if ($TestType -in @("unit", "all")) {
     $unitResults = Invoke-UnitTests
@@ -198,6 +204,12 @@ if ($TestType -in @("unit", "all")) {
 if ($TestType -in @("integration", "all")) {
     $integrationResults = Invoke-IntegrationTests
     $allResults += $integrationResults
+}
+
+foreach ($result in $allResults) {
+    if ($result -and $result.FailedCount -gt 0) {
+        $success = $false
+    }
 }
 
 # Generate report

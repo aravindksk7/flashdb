@@ -59,8 +59,8 @@ USER nodejs
 EXPOSE 3001
 
 # Health check - Quick failure detection for orchestrators
-HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+    CMD node -e "const req=require('http').get('http://localhost:3001/ready', r=>{r.resume(); process.exit(r.statusCode===200?0:1)}); req.on('error',()=>process.exit(1)); req.setTimeout(4000,()=>{req.destroy(); process.exit(1)})" || exit 1
 
 # Graceful shutdown with Node.js signal handling
 STOPSIGNAL SIGTERM

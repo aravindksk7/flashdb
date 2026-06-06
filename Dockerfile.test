@@ -1,7 +1,6 @@
 # Dockerfile for FlashDB testing environment
-# Minimal test runner - tests are meant to run on Windows with PowerShell
 
-FROM node:18-alpine
+FROM mcr.microsoft.com/powershell:7.4-alpine-3.20
 
 # Install runtime dependencies
 RUN apk add --no-cache curl git bash
@@ -11,8 +10,12 @@ WORKDIR /app/flashdb
 # Create test results directory
 RUN mkdir -p /app/test-results
 
+# Install Pester for PowerShell test execution
+RUN pwsh -NoLogo -NoProfile -Command \
+    "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted; Install-Module Pester -Force -Scope AllUsers -SkipPublisherCheck"
+
 # Copy FlashDB source
 COPY . .
 
-# Simple entrypoint that keeps container running
-ENTRYPOINT ["sh", "-c", "echo 'Test runner ready. Run tests on Windows: ./docker/test-scenario.ps1' && tail -f /dev/null"]
+# Keep the container available for docker compose exec test runs
+CMD ["pwsh", "-NoLogo", "-NoProfile", "-Command", "Write-Host 'Test runner ready. Run: pwsh /app/flashdb/docker/run-tests.ps1'; Start-Sleep -Seconds 2147483"]

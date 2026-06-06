@@ -51,6 +51,12 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+        return 204;
+    }
+
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -115,7 +121,7 @@ RUN addgroup -g 1001 -S nginx && \
 
 # Health check - lightweight HTTP check
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1
+    CMD wget --quiet --tries=1 --spider http://127.0.0.1:3000/ || exit 1
 
 # Expose port
 EXPOSE 3000

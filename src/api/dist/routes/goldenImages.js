@@ -4,26 +4,78 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const powershellService_1 = require("../services/powershellService");
+const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const logger_1 = __importDefault(require("../logger"));
 const router = (0, express_1.Router)();
-const psService = new powershellService_1.PowerShellService();
+const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
+const methodAliases = {
+    BACKUP_RESTORE: 'BackupRestore',
+    BackupRestore: 'BackupRestore',
+    REPLICA_BACKUP: 'ReplicaBackup',
+    ReplicaBackup: 'ReplicaBackup',
+    TABLE_BY_TABLE: 'TableByTableCopy',
+    TableByTableCopy: 'TableByTableCopy'
+};
+const toResponseArray = (value) => {
+    if (value == null)
+        return [];
+    const items = Array.isArray(value) ? value : [value];
+    return items.filter(item => {
+        if (item == null)
+            return false;
+        return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
+    });
+};
 // POST - Create golden image
 router.post('/', async (req, res) => {
     try {
-        const { name, version, method, outputPath, backupFile, sourceConnection } = req.body;
+        const { name, version, method, outputPath, backupFile, sourceConnection, databaseType, databaseName, sourceDatabase, driver, authenticationMode } = req.body;
         if (!name || !version || !method || !outputPath) {
             return res.status(400).json({
                 success: false,
                 message: 'Missing required fields: name, version, method, outputPath'
             });
         }
+        const normalizedMethod = methodAliases[String(method)] || method;
+        if (!['BackupRestore', 'ReplicaBackup', 'TableByTableCopy'].includes(normalizedMethod)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid method. Use BackupRestore, ReplicaBackup, or TableByTableCopy'
+            });
+        }
+        if (normalizedMethod === 'BackupRestore' && !backupFile) {
+            return res.status(400).json({
+                success: false,
+                message: 'BackupRestore requires backupFile'
+            });
+        }
+        if (['ReplicaBackup', 'TableByTableCopy'].includes(normalizedMethod) && !sourceConnection) {
+            return res.status(400).json({
+                success: false,
+                message: `${normalizedMethod} requires sourceConnection`
+            });
+        }
         logger_1.default.info(`Creating golden image: ${name}`);
-        const params = { Name: name, Version: version, Method: method, OutputPath: outputPath };
+        const params = {
+            Name: name,
+            Version: version,
+            Method: normalizedMethod,
+            OutputPath: outputPath
+        };
         if (backupFile)
             params.BackupFile = backupFile;
         if (sourceConnection)
             params.SourceConnection = sourceConnection;
+        if (databaseType)
+            params.DatabaseType = databaseType;
+        if (databaseName)
+            params.DatabaseName = databaseName;
+        if (sourceDatabase)
+            params.SourceDatabase = sourceDatabase;
+        if (driver)
+            params.Driver = driver;
+        if (authenticationMode)
+            params.AuthenticationMode = authenticationMode;
         const image = await psService.executeCommand('New-FlashdbGoldenImage', params);
         return res.status(201).json({
             success: true,
@@ -42,7 +94,7 @@ router.get('/', async (_req, res) => {
         const images = await psService.executeCommand('Get-FlashdbGoldenImage', {});
         return res.json({
             success: true,
-            data: Array.isArray(images) ? images : [images]
+            data: toResponseArray(images)
         });
     }
     catch (error) {

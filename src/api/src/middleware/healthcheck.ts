@@ -29,6 +29,17 @@ interface HealthCheck {
 const startTime = Date.now();
 const API_VERSION = '0.1.0';
 
+function getPowerShellCommand(): string {
+  return process.env.POWERSHELL_COMMAND || (process.platform === 'win32' ? 'powershell' : 'pwsh');
+}
+
+function getFlashdbModulePath(): string {
+  return process.env.FLASHDB_MODULE_PATH ||
+    (process.platform === 'win32'
+      ? 'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1'
+      : '/app/src/FlashDB/FlashDB.psm1');
+}
+
 /**
  * Check API responsiveness
  */
@@ -70,8 +81,7 @@ async function checkFilesystem(): Promise<HealthCheck> {
 
     const responseTime = Date.now() - startCheck;
 
-    // Check disk usage
-    const stats = fs.statSync(logsDir);
+    fs.accessSync(logsDir, fs.constants.W_OK);
     const diskInfo = {
       logsDir: logsDir,
       accessible: true,
@@ -99,7 +109,8 @@ async function checkFilesystem(): Promise<HealthCheck> {
 async function checkPowerShell(): Promise<HealthCheck> {
   const startCheck = Date.now();
   try {
-    const flashdbModulePath = process.env.FLASHDB_MODULE_PATH || 'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1';
+    const flashdbModulePath = getFlashdbModulePath();
+    const powerShellCommand = getPowerShellCommand();
 
     // Check if module file exists
     if (!fs.existsSync(flashdbModulePath)) {
@@ -112,7 +123,7 @@ async function checkPowerShell(): Promise<HealthCheck> {
     }
 
     // Try to spawn PowerShell and get version (no module import, just version check)
-    const result = spawnSync('powershell', ['-Command', '$PSVersionTable.PSVersion.ToString()'], {
+    const result = spawnSync(powerShellCommand, ['-NoLogo', '-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'], {
       timeout: 5000,
       encoding: 'utf-8'
     });
@@ -134,6 +145,7 @@ async function checkPowerShell(): Promise<HealthCheck> {
       responseTime,
       details: {
         powershellVersion: psVersion,
+        executable: powerShellCommand,
         modulePath: flashdbModulePath,
         moduleExists: true
       }
@@ -208,7 +220,9 @@ async function checkDisk(): Promise<HealthCheck> {
     }
 
     // Use PowerShell to get disk space
-    const result = spawnSync('powershell', [
+    const result = spawnSync(getPowerShellCommand(), [
+      '-NoLogo',
+      '-NoProfile',
       '-Command',
       '(Get-Volume -DriveLetter C | Select-Object -Property SizeRemaining,Size) | ConvertTo-Json'
     ], {
@@ -229,7 +243,7 @@ async function checkDisk(): Promise<HealthCheck> {
     let diskInfo;
     try {
       diskInfo = JSON.parse(result.stdout);
-    } catch (e) {
+    } catch {
       // Fallback if JSON parsing fails
       return {
         status: 'degraded',
@@ -276,7 +290,7 @@ async function checkDisk(): Promise<HealthCheck> {
 /**
  * Main health check endpoint
  */
-export async function healthCheckEndpoint(req: Request, res: Response) {
+export async function healthCheckEndpoint(_req: Request, res: Response) {
   try {
     const checkStart = Date.now();
 
@@ -358,7 +372,7 @@ export async function healthCheckEndpoint(req: Request, res: Response) {
 /**
  * Lightweight health check (for load balancers)
  */
-export function livelinessProbe(req: Request, res: Response) {
+export function livelinessProbe(_req: Request, res: Response) {
   res.status(200).json({
     status: 'alive',
     timestamp: new Date().toISOString(),
@@ -369,7 +383,7 @@ export function livelinessProbe(req: Request, res: Response) {
 /**
  * Readiness check (for orchestrators)
  */
-export async function readinessProbe(req: Request, res: Response) {
+export async function readinessProbe(_req: Request, res: Response) {
   try {
     // Quick check that all critical systems are available
     const [apiCheck, filesystemCheck] = await Promise.all([

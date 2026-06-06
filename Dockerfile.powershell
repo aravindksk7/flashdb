@@ -1,7 +1,7 @@
 # PowerShell 7 Docker image with FlashDB module and SQL tools
 # For running backup and maintenance operations
 
-FROM mcr.microsoft.com/powershell:7.4-alpine
+FROM mcr.microsoft.com/powershell:7.4-alpine-3.20
 
 WORKDIR /app
 

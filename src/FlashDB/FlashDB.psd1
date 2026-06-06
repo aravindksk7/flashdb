@@ -69,9 +69,6 @@
     # Required modules
     RequiredModules = @()
 
-    # Module dependencies
-    ExternalModuleDependencies = @()
-
     # Cmdlet definitions
     CmdletsToExport = @()
 
@@ -87,7 +84,4 @@
         'gfcp'    # Get-FlashdbCheckpoint
         'rfc'     # Restore-FlashdbCheckpoint
     )
-
-    # Script module properties
-    ScriptBlockLoggingEnabled = $false
 }

@@ -7,26 +7,34 @@ exports.PowerShellService = void 0;
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const logger_1 = __importDefault(require("../logger"));
-const execAsync = (0, util_1.promisify)(child_process_1.exec);
+const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
 class PowerShellService {
     constructor() {
         this.flashdbModulePath = process.env.FLASHDB_MODULE_PATH ||
-            'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1';
+            (process.platform === 'win32'
+                ? 'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1'
+                : '/app/src/FlashDB/FlashDB.psm1');
+        this.powerShellCommand = process.env.POWERSHELL_COMMAND ||
+            (process.platform === 'win32' ? 'powershell' : 'pwsh');
     }
     async executeCommand(cmdlet, params) {
         try {
             const psCommand = this.buildPowerShellCommand(cmdlet, params);
             logger_1.default.debug(`Executing PowerShell command: ${cmdlet}`);
-            const fullCommand = `powershell -NoProfile -Command "${psCommand.replace(/"/g, '\\"')}"`;
-            const { stdout, stderr } = await execAsync(fullCommand, {
-                maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-                shell: 'cmd.exe'
+            const { stdout, stderr } = await execFileAsync(this.powerShellCommand, [
+                '-NoLogo',
+                '-NoProfile',
+                '-Command',
+                psCommand
+            ], {
+                maxBuffer: 10 * 1024 * 1024,
+                encoding: 'utf8'
             });
             if (stderr) {
                 logger_1.default.warn(`PowerShell stderr: ${stderr}`);
             }
             if (!stdout.trim()) {
-                return {};
+                return null;
             }
             return JSON.parse(stdout.trim());
         }
@@ -39,9 +47,14 @@ class PowerShellService {
         try {
             const psCommand = this.buildPowerShellCommand(cmdlet, params);
             logger_1.default.debug(`Executing PowerShell command: ${cmdlet}`);
-            const { stdout, stderr } = await execAsync(`powershell -NoProfile -Command "${psCommand}"`, {
+            const { stdout, stderr } = await execFileAsync(this.powerShellCommand, [
+                '-NoLogo',
+                '-NoProfile',
+                '-Command',
+                psCommand
+            ], {
                 maxBuffer: 10 * 1024 * 1024,
-                shell: 'powershell.exe'
+                encoding: 'utf8'
             });
             if (stderr) {
                 logger_1.default.warn(`PowerShell stderr: ${stderr}`);
@@ -55,17 +68,39 @@ class PowerShellService {
     }
     buildPowerShellCommand(cmdlet, params) {
         let cmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; `;
-        cmd += `Import-Module '${this.flashdbModulePath}' -WarningAction SilentlyContinue -ErrorAction Stop; `;
-        cmd += cmdlet;
+        cmd += `Import-Module '${this.escapePowerShellString(this.flashdbModulePath)}' -WarningAction SilentlyContinue -ErrorAction Stop; `;
+        let invocation = cmdlet;
         if (params && Object.keys(params).length > 0) {
-            const paramStrings = Object.entries(params).map(([key, value]) => {
-                const escapedValue = String(value).replace(/'/g, "''");
-                return `-${key} '${escapedValue}'`;
-            });
-            cmd += ` ${paramStrings.join(' ')}`;
+            const paramStrings = Object.entries(params)
+                .map(([key, value]) => this.formatPowerShellParameter(key, value))
+                .filter((value) => Boolean(value));
+            invocation += ` ${paramStrings.join(' ')}`;
         }
-        cmd += ' 2>&1 | ConvertTo-Json -Depth 10 -ErrorAction Stop';
+        cmd += `$flashdbResult = ${invocation}; `;
+        cmd += 'ConvertTo-Json -InputObject $flashdbResult -Depth 10 -ErrorAction Stop';
         return cmd;
+    }
+    formatPowerShellParameter(key, value) {
+        if (value === undefined || value === null) {
+            return null;
+        }
+        if (typeof value === 'boolean') {
+            return `-${key}:$${value ? 'true' : 'false'}`;
+        }
+        if (typeof value === 'number') {
+            return `-${key} ${value}`;
+        }
+        if (Array.isArray(value)) {
+            const values = value
+                .filter(item => item !== undefined && item !== null)
+                .map(item => `'${this.escapePowerShellString(String(item))}'`);
+            return `-${key} @(${values.join(', ')})`;
+        }
+        const escapedValue = this.escapePowerShellString(String(value));
+        return `-${key} '${escapedValue}'`;
+    }
+    escapePowerShellString(value) {
+        return value.replace(/'/g, "''");
     }
 }
 exports.PowerShellService = PowerShellService;

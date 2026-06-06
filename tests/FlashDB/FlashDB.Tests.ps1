@@ -140,7 +140,7 @@ Describe "Get-FlashdbGoldenImage" {
             $Result = Get-FlashdbGoldenImage
 
             # Assert
-            $Result | Should -BeOfType @([PSObject], [Array], $null)
+            ($Result -is [array] -or $null -eq $Result) | Should -BeTrue
         }
     }
 
@@ -174,7 +174,14 @@ Describe "New-FlashdbClone" {
     Context "Creating clones" {
         It "Should create clone from golden image ID" {
             # Arrange
-            $GoldenImageId = "golden-prod-20260601"
+            $BackupPath = Join-Path $script:TestRoot "prod-clone-source.bak"
+            "mock backup content" | Set-Content $BackupPath
+            $GoldenImage = New-FlashdbGoldenImage `
+                -BackupFile $BackupPath `
+                -OutputPath (Join-Path $script:GoldenImageRoot "golden-prod-20260601.vhdx") `
+                -Version "20260601" `
+                -Method "BackupRestore"
+            $GoldenImageId = $GoldenImage.Id
             $CloneName = "test-clone-1"
             $InstancePath = "LOCALHOST\SQLEXPRESS"
             $StoragePath = Join-Path $script:CloneRoot "clones"

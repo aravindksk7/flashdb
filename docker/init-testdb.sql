@@ -94,6 +94,7 @@ INSERT INTO dbo.OrderItems (OrderID, ProductName, Quantity, UnitPrice) VALUES
 (4, 'USB Cable', 2, 9.99),
 (5, 'Laptop', 2, 999.99),
 (5, 'Headphones', 1, 149.99);
+GO
 
 -- Create a summary view
 CREATE VIEW vw_OrderSummary AS
@@ -106,12 +107,18 @@ SELECT
 FROM dbo.Customers c
 LEFT JOIN dbo.Orders o ON c.CustomerID = o.CustomerID
 GROUP BY c.CustomerID, c.CustomerName;
+GO
 
 -- Print confirmation
+DECLARE @TotalCustomers INT = (SELECT COUNT(*) FROM dbo.Customers);
+DECLARE @TotalOrders INT = (SELECT COUNT(*) FROM dbo.Orders);
+DECLARE @TotalOrderItems INT = (SELECT COUNT(*) FROM dbo.OrderItems);
+DECLARE @TotalProducts INT = (SELECT COUNT(*) FROM dbo.Products);
+
 PRINT 'Test database created successfully!';
 PRINT 'Tables: Customers, Orders, OrderItems, Products';
-PRINT 'Total Customers: ' + CAST((SELECT COUNT(*) FROM dbo.Customers) AS NVARCHAR(10));
-PRINT 'Total Orders: ' + CAST((SELECT COUNT(*) FROM dbo.Orders) AS NVARCHAR(10));
-PRINT 'Total Order Items: ' + CAST((SELECT COUNT(*) FROM dbo.OrderItems) AS NVARCHAR(10));
-PRINT 'Total Products: ' + CAST((SELECT COUNT(*) FROM dbo.Products) AS NVARCHAR(10));
+PRINT 'Total Customers: ' + CAST(@TotalCustomers AS NVARCHAR(10));
+PRINT 'Total Orders: ' + CAST(@TotalOrders AS NVARCHAR(10));
+PRINT 'Total Order Items: ' + CAST(@TotalOrderItems AS NVARCHAR(10));
+PRINT 'Total Products: ' + CAST(@TotalProducts AS NVARCHAR(10));
 GO

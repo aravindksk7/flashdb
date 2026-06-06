@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
@@ -21,11 +21,16 @@ import {
   livelinessProbe,
   readinessProbe
 } from './middleware/healthcheck';
+import { initializeConnectionPool, shutdownConnectionPool } from './services/connectionPool';
 
 dotenv.config();
 
 const app: Express = express();
 const port = process.env.PORT || 3001;
+
+// Initialize connection pool on startup
+const connectionPool = initializeConnectionPool();
+logger.info('Connection pool initialized on startup');
 
 // Middleware - Order matters!
 app.use(express.json());
@@ -47,6 +52,19 @@ app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }
 app.get('/live', livelinessProbe);
 app.get('/ready', readinessProbe);
 app.get('/health', healthCheckEndpoint);
+
+app.get('/', (_req: Request, res: Response) => {
+  res.json({
+    service: 'flashdb-api',
+    version: '0.1.0',
+    status: 'running',
+    endpoints: {
+      docs: '/api/docs',
+      ready: '/ready',
+      health: '/health'
+    }
+  });
+});
 
 // API Routes
 app.use('/api/golden-images', goldImageRoutes);
@@ -126,7 +144,7 @@ app.get('/metrics', (_req: Request, res: Response) => {
 app.use(errorLoggingMiddleware);
 
 // Error handling middleware
-app.use((err: any, req: Request, res: Response) => {
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   const requestId = res.getHeader('X-Request-ID') || 'unknown';
   const statusCode = err.status || 500;
 
@@ -166,7 +184,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Start server
-app.listen(port, () => {
+const server = app.listen(port, () => {
   const env = process.env.NODE_ENV || 'development';
   const logLevel = process.env.LOG_LEVEL || 'info';
   const flashdbModule = process.env.FLASHDB_MODULE_PATH || 'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1';
@@ -186,7 +204,32 @@ app.listen(port, () => {
   logger.info('  /metrics                   - Prometheus metrics');
   logger.info('  /api/metrics/performance   - Operation performance stats');
   logger.info('  /api/docs                  - API documentation');
+  logger.info('');
+  logger.info('Connection Pool Status:');
+  logger.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
+  logger.info(`  Available: ${connectionPool.getMetrics().available}`);
   logger.info('='.repeat(60));
+});
+
+// Graceful shutdown handler
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM signal received: closing HTTP server');
+  server.close(async () => {
+    logger.info('HTTP server closed');
+    await shutdownConnectionPool();
+    logger.info('Connection pool shut down');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT signal received: closing HTTP server');
+  server.close(async () => {
+    logger.info('HTTP server closed');
+    await shutdownConnectionPool();
+    logger.info('Connection pool shut down');
+    process.exit(0);
+  });
 });
 
 export default app;

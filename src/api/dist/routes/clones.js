@@ -4,14 +4,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const powershellService_1 = require("../services/powershellService");
+const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const logger_1 = __importDefault(require("../logger"));
 const router = (0, express_1.Router)();
-const psService = new powershellService_1.PowerShellService();
+const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
+const toResponseArray = (value) => {
+    if (value == null)
+        return [];
+    const items = Array.isArray(value) ? value : [value];
+    return items.filter(item => {
+        if (item == null)
+            return false;
+        return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
+    });
+};
 // POST - Create clone
 router.post('/', async (req, res) => {
     try {
-        const { goldenImageId, cloneName, instancePath, storagePath } = req.body;
+        const { goldenImageId, cloneName, instancePath, storagePath, databaseType, databaseName, compressionEnabled, attachAfterCreate } = req.body;
         if (!goldenImageId || !cloneName || !instancePath || !storagePath) {
             return res.status(400).json({
                 success: false,
@@ -19,12 +29,26 @@ router.post('/', async (req, res) => {
             });
         }
         logger_1.default.info(`Creating clone: ${cloneName}`);
-        const clone = await psService.executeCommand('New-FlashdbClone', {
+        const params = {
             GoldenImageId: goldenImageId,
             CloneName: cloneName,
             InstancePath: instancePath,
             StoragePath: storagePath
-        });
+        };
+        if (databaseType)
+            params.DatabaseType = databaseType;
+        if (databaseName)
+            params.DatabaseName = databaseName;
+        if (compressionEnabled !== undefined)
+            params.CompressionEnabled = compressionEnabled;
+        const clone = await psService.executeCommand('New-FlashdbClone', params);
+        if (attachAfterCreate === true && clone && typeof clone === 'object') {
+            await psService.executeCommandRaw('Connect-FlashdbClone', {
+                CloneId: clone.Id || clone.id,
+                InstancePath: instancePath
+            });
+            clone.Status = 'Attached';
+        }
         return res.status(201).json({
             success: true,
             data: clone,
@@ -46,7 +70,7 @@ router.get('/', async (_req, res) => {
         const clones = await psService.executeCommand('Get-FlashdbClone', {});
         return res.json({
             success: true,
-            data: Array.isArray(clones) ? clones : [clones],
+            data: toResponseArray(clones),
             message: 'Clones retrieved successfully'
         });
     }

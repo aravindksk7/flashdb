@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { PowerShellService } from '../services/powershellService';
+import { getPooledPowerShellService } from '../services/pooledPowershellService';
+import { getConnectionPool } from '../services/connectionPool';
 import logger from '../logger';
 
 const router = Router();
-const psService = new PowerShellService();
+const psService = getPooledPowerShellService();
 
 /**
  * GET /api/metrics/overview
@@ -230,20 +231,105 @@ router.get('/all', async (_req: Request, res: Response) => {
       })
     ]);
 
+    const overviewData = overview?.overview || {};
+    const operationsLast24h = typeof overviewData.operationsLast24h === 'number'
+      ? overviewData.operationsLast24h
+      : 0;
+
     return res.json({
       success: true,
       data: {
-        overview: overview?.overview || {},
-        cloneStatistics: clones || {},
-        storageMetrics: storage || {},
-        operationMetrics: operations || {},
-        timeline: timeline || {},
+        overview: {
+          totalClonesCreated: overviewData.totalClonesCreated || 0,
+          totalStorageSavedGB: overviewData.totalStorageSavedGB || 0,
+          avgCloneCreationTimeSeconds: overviewData.avgCloneCreationTimeSeconds || 0,
+          operationSuccessRatePercent: overviewData.operationSuccessRatePercent ?? 100,
+          operationsLast24h,
+          activeClonesCount: overviewData.activeClonesCount || 0
+        },
+        cloneStatistics: {
+          totalClones: clones?.totalClones || 0,
+          successfulClones: clones?.successfulClones || 0,
+          failedClones: clones?.failedClones || 0,
+          averageCreationTimeSeconds: clones?.averageCreationTimeSeconds || 0,
+          minCreationTimeSeconds: clones?.minCreationTimeSeconds || 0,
+          maxCreationTimeSeconds: clones?.maxCreationTimeSeconds || 0,
+          successRatePercent: clones?.successRatePercent || 0,
+          creationTimesByGoldenImage: clones?.creationTimesByGoldenImage || []
+        },
+        storageMetrics: {
+          totalUsedGB: storage?.totalUsedGB || 0,
+          totalSavingsGB: storage?.totalSavingsGB || 0,
+          compressionRatioPercent: storage?.compressionRatioPercent || 0,
+          totalParentSizeGB: storage?.totalParentSizeGB || 0,
+          avgCloneSizeGB: storage?.avgCloneSizeGB || 0,
+          cloneStorageBreakdown: storage?.cloneStorageBreakdown || []
+        },
+        operationMetrics: {
+          totalOperations: operations?.totalOperations || 0,
+          successfulOperations: operations?.successfulOperations || 0,
+          failedOperations: operations?.failedOperations || 0,
+          successRatePercent: operations?.successRatePercent ?? 100,
+          operationsByType: operations?.operationsByType || []
+        },
+        timeline: {
+          cloneCreations: timeline?.cloneCreations || [],
+          operations: timeline?.operations || [],
+          timelineStart: timeline?.timelineStart,
+          timelineEnd: timeline?.timelineEnd
+        },
         timestamp: new Date().toISOString()
       },
       message: 'All metrics retrieved successfully'
     });
   } catch (error: any) {
     logger.error(`Error retrieving all metrics: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/metrics/pool
+ * Retrieves connection pool status and metrics
+ * Returns: active connections, idle connections, pool size, error count, etc.
+ */
+router.get('/pool', async (_req: Request, res: Response) => {
+  try {
+    logger.info('Retrieving connection pool metrics');
+    const pool = getConnectionPool();
+    const metrics = pool.getMetrics();
+    const cacheStats = pool.getCacheStats();
+
+    return res.json({
+      success: true,
+      data: {
+        pool: {
+          size: metrics.size,
+          available: metrics.available,
+          idle: metrics.idle,
+          activeConnections: metrics.activeConnections,
+          pending: metrics.pending,
+          totalCreated: metrics.totalCreated,
+          totalDestroyed: metrics.totalDestroyed,
+          errorCount: metrics.errorCount,
+          averageWaitTimeMs: metrics.averageWaitTime
+        },
+        cache: {
+          keys: cacheStats.keys,
+          hits: cacheStats.hits,
+          misses: cacheStats.misses,
+          ksize: cacheStats.ksize,
+          vsize: cacheStats.vsize
+        },
+        timestamp: new Date().toISOString()
+      },
+      message: 'Connection pool metrics retrieved successfully'
+    });
+  } catch (error: any) {
+    logger.error(`Error retrieving pool metrics: ${error.message}`);
     return res.status(500).json({
       success: false,
       message: error.message

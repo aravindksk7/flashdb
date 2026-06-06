@@ -16,13 +16,18 @@ COPY src/api/tsconfig.json ./
 # Build
 RUN npm run build
 
-# Production stage - lightweight for Docker
-FROM node:18-alpine
+# Keep only runtime packages for the final image
+RUN npm prune --omit=dev
+
+# Production stage with PowerShell for FlashDB module execution
+FROM mcr.microsoft.com/powershell:7.4-alpine-3.20
 
 WORKDIR /app
 
-# Install minimal runtime dependencies
+# Install Node.js runtime and minimal tools
 RUN apk add --no-cache \
+    nodejs \
+    npm \
     curl \
     git \
     bash
@@ -30,8 +35,8 @@ RUN apk add --no-cache \
 # Copy package files
 COPY src/api/package*.json ./
 
-# Install production dependencies
-RUN npm ci --only=production
+# Copy production dependencies from builder
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy built code from builder
 COPY --from=builder /app/dist ./dist
@@ -42,12 +47,15 @@ COPY src/FlashDB ./src/FlashDB
 # Create logs directory
 RUN mkdir -p /app/logs
 
+ENV POWERSHELL_COMMAND=pwsh \
+    FLASHDB_MODULE_PATH=/app/src/FlashDB/FlashDB.psm1
+
 # Expose port
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" || exit 1
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+    CMD node -e "const req=require('http').get('http://localhost:3001/ready', r=>{r.resume(); process.exit(r.statusCode===200?0:1)}); req.on('error',()=>process.exit(1)); req.setTimeout(4000,()=>{req.destroy(); process.exit(1)})" || exit 1
 
 # Start API
 CMD ["node", "dist/index.js"]

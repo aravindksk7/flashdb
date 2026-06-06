@@ -67,7 +67,6 @@ function extractOperation(method: string, path: string): string {
 
   // Map common patterns
   const firstSegment = pathSegments[0];
-  const lastSegment = pathSegments[pathSegments.length - 1];
 
   if (path === '/health') return 'health-check';
   if (path === '/api/docs') return 'api-docs';

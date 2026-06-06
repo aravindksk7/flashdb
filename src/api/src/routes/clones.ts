@@ -1,14 +1,32 @@
 import { Router, Request, Response } from 'express';
-import { PowerShellService } from '../services/powershellService';
+import { getPooledPowerShellService } from '../services/pooledPowershellService';
 import logger from '../logger';
 
 const router = Router();
-const psService = new PowerShellService();
+const psService = getPooledPowerShellService();
+
+const toResponseArray = (value: any): any[] => {
+  if (value == null) return [];
+  const items = Array.isArray(value) ? value : [value];
+  return items.filter(item => {
+    if (item == null) return false;
+    return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
+  });
+};
 
 // POST - Create clone
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { goldenImageId, cloneName, instancePath, storagePath } = req.body;
+    const {
+      goldenImageId,
+      cloneName,
+      instancePath,
+      storagePath,
+      databaseType,
+      databaseName,
+      compressionEnabled,
+      attachAfterCreate
+    } = req.body;
 
     if (!goldenImageId || !cloneName || !instancePath || !storagePath) {
       return res.status(400).json({
@@ -19,12 +37,25 @@ router.post('/', async (req: Request, res: Response) => {
 
     logger.info(`Creating clone: ${cloneName}`);
 
-    const clone = await psService.executeCommand('New-FlashdbClone', {
+    const params: any = {
       GoldenImageId: goldenImageId,
       CloneName: cloneName,
       InstancePath: instancePath,
       StoragePath: storagePath
-    });
+    };
+    if (databaseType) params.DatabaseType = databaseType;
+    if (databaseName) params.DatabaseName = databaseName;
+    if (compressionEnabled !== undefined) params.CompressionEnabled = compressionEnabled;
+
+    const clone = await psService.executeCommand('New-FlashdbClone', params);
+
+    if (attachAfterCreate === true && clone && typeof clone === 'object') {
+      await psService.executeCommandRaw('Connect-FlashdbClone', {
+        CloneId: (clone as any).Id || (clone as any).id,
+        InstancePath: instancePath
+      });
+      (clone as any).Status = 'Attached';
+    }
 
     return res.status(201).json({
       success: true,
@@ -49,7 +80,7 @@ router.get('/', async (_req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      data: Array.isArray(clones) ? clones : [clones],
+      data: toResponseArray(clones),
       message: 'Clones retrieved successfully'
     });
   } catch (error: any) {

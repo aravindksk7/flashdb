@@ -16,6 +16,8 @@ interface MetricsData {
     successfulClones: number;
     failedClones: number;
     averageCreationTimeSeconds: number;
+    minCreationTimeSeconds: number;
+    maxCreationTimeSeconds: number;
     successRatePercent: number;
   };
   storageMetrics: {
@@ -58,7 +60,7 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshInterval, setRefreshInterval] = useState(30); // seconds
 
-  const API_BASE = 'http://localhost:3001/api';
+  const API_BASE = '/api';
 
   // Load metrics on mount and set up auto-refresh
   useEffect(() => {

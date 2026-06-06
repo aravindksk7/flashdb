@@ -12,7 +12,7 @@ Tests SQL Server provider implementation including:
 #>
 
 BeforeAll {
-    $ModulePath = Join-Path $PSScriptRoot "..\..\src\FlashDB\FlashDB.psd1"
+    $ModulePath = Join-Path $PSScriptRoot "..\..\..\src\FlashDB\FlashDB.psd1"
     Import-Module $ModulePath -Force -ErrorAction Stop
 
     # Test configuration

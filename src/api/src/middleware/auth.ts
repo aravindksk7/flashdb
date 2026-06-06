@@ -36,12 +36,6 @@ const INACTIVITY_TIMEOUT_MS = 1 * 60 * 60 * 1000; // 1 hour
  * Generate a secure token
  */
 export function generateToken(userId: string, apiKey?: string): string {
-  const payload = {
-    userId,
-    iat: Date.now(),
-    exp: Date.now() + SESSION_TIMEOUT_MS
-  };
-
   // Simple token generation (for production, use proper JWT library)
   const token = crypto.randomBytes(32).toString('hex');
   const sessionId = crypto.randomBytes(16).toString('hex');

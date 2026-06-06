@@ -1,26 +1,35 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import logger from '../logger';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export class PowerShellService {
   private flashdbModulePath: string;
+  private powerShellCommand: string;
 
   constructor() {
     this.flashdbModulePath = process.env.FLASHDB_MODULE_PATH ||
-      'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1';
+      (process.platform === 'win32'
+        ? 'C:\\flashdb\\src\\FlashDB\\FlashDB.psm1'
+        : '/app/src/FlashDB/FlashDB.psm1');
+    this.powerShellCommand = process.env.POWERSHELL_COMMAND ||
+      (process.platform === 'win32' ? 'powershell' : 'pwsh');
   }
 
-  async executeCommand<T>(cmdlet: string, params?: Record<string, any>): Promise<T> {
+  async executeCommand<T = any>(cmdlet: string, params?: Record<string, any>): Promise<T> {
     try {
       const psCommand = this.buildPowerShellCommand(cmdlet, params);
       logger.debug(`Executing PowerShell command: ${cmdlet}`);
 
-      const fullCommand = `powershell -NoProfile -Command "${psCommand.replace(/"/g, '\\"')}"`;
-      const { stdout, stderr } = await execAsync(fullCommand, {
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-        shell: 'cmd.exe'
+      const { stdout, stderr } = await execFileAsync(this.powerShellCommand, [
+        '-NoLogo',
+        '-NoProfile',
+        '-Command',
+        psCommand
+      ], {
+        maxBuffer: 10 * 1024 * 1024,
+        encoding: 'utf8'
       });
 
       if (stderr) {
@@ -28,7 +37,7 @@ export class PowerShellService {
       }
 
       if (!stdout.trim()) {
-        return {} as T;
+        return null as T;
       }
 
       return JSON.parse(stdout.trim()) as T;
@@ -43,9 +52,14 @@ export class PowerShellService {
       const psCommand = this.buildPowerShellCommand(cmdlet, params);
       logger.debug(`Executing PowerShell command: ${cmdlet}`);
 
-      const { stdout, stderr } = await execAsync(`powershell -NoProfile -Command "${psCommand}"`, {
+      const { stdout, stderr } = await execFileAsync(this.powerShellCommand, [
+        '-NoLogo',
+        '-NoProfile',
+        '-Command',
+        psCommand
+      ], {
         maxBuffer: 10 * 1024 * 1024,
-        shell: 'powershell.exe'
+        encoding: 'utf8'
       });
 
       if (stderr) {
@@ -61,18 +75,46 @@ export class PowerShellService {
 
   private buildPowerShellCommand(cmdlet: string, params?: Record<string, any>): string {
     let cmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; `;
-    cmd += `Import-Module '${this.flashdbModulePath}' -WarningAction SilentlyContinue -ErrorAction Stop; `;
-    cmd += cmdlet;
+    cmd += `Import-Module '${this.escapePowerShellString(this.flashdbModulePath)}' -WarningAction SilentlyContinue -ErrorAction Stop; `;
+    let invocation = cmdlet;
 
     if (params && Object.keys(params).length > 0) {
-      const paramStrings = Object.entries(params).map(([key, value]) => {
-        const escapedValue = String(value).replace(/'/g, "''");
-        return `-${key} '${escapedValue}'`;
-      });
-      cmd += ` ${paramStrings.join(' ')}`;
+      const paramStrings = Object.entries(params)
+        .map(([key, value]) => this.formatPowerShellParameter(key, value))
+        .filter((value): value is string => Boolean(value));
+      invocation += ` ${paramStrings.join(' ')}`;
     }
 
-    cmd += ' 2>&1 | ConvertTo-Json -Depth 10 -ErrorAction Stop';
+    cmd += `$flashdbResult = ${invocation}; `;
+    cmd += 'ConvertTo-Json -InputObject $flashdbResult -Depth 10 -ErrorAction Stop';
     return cmd;
+  }
+
+  private formatPowerShellParameter(key: string, value: any): string | null {
+    if (value === undefined || value === null) {
+      return null;
+    }
+
+    if (typeof value === 'boolean') {
+      return `-${key}:$${value ? 'true' : 'false'}`;
+    }
+
+    if (typeof value === 'number') {
+      return `-${key} ${value}`;
+    }
+
+    if (Array.isArray(value)) {
+      const values = value
+        .filter(item => item !== undefined && item !== null)
+        .map(item => `'${this.escapePowerShellString(String(item))}'`);
+      return `-${key} @(${values.join(', ')})`;
+    }
+
+    const escapedValue = this.escapePowerShellString(String(value));
+    return `-${key} '${escapedValue}'`;
+  }
+
+  private escapePowerShellString(value: string): string {
+    return value.replace(/'/g, "''");
   }
 }
