@@ -840,6 +840,14 @@ Built with modern technologies:
 
 ---
 
+## 👤 Project Credits
+
+**Designed and Built by:** AK (Aravind K)
+
+FlashDB is a complete enterprise-grade database management system designed from the ground up with modern architecture principles, comprehensive security features, and production-ready implementation.
+
+---
+
 **Happy Cloning! 🎉**
 
 For updates and more information, visit: https://github.com/aravindksk7/flashdb
