@@ -77,3 +77,9 @@ docker-compose.override.yml
 
 # Temporary local config
 .claude/settings.local.json
+
+# Development and Configuration Directories (local only)
+.claude/
+.claude-flow/
+.github/
+.swarm/
