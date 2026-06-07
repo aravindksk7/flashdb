@@ -59,6 +59,7 @@ ARCHITECTURE-DIAGRAMS.md
 
 # Irrelevant documentation
 INDUSTRY_COMPARISON.md
+CLAUDE.md
 
 # Lock files for local development (keep package-lock.json)
 pnpm-lock.yaml
