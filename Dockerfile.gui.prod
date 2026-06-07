@@ -9,7 +9,7 @@ WORKDIR /app/flashdb
 COPY src/gui/package*.json ./
 
 # Install dependencies (build stage only)
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY src/gui/src ./src

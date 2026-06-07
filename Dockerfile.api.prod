@@ -9,7 +9,7 @@ WORKDIR /app
 COPY src/api/package*.json ./
 
 # Install dependencies (build stage)
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY src/api/src ./src

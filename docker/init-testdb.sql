@@ -12,7 +12,47 @@ BEGIN
 END
 GO
 
-CREATE DATABASE TestDB;
+DECLARE @DataPath NVARCHAR(4000) = CONVERT(NVARCHAR(4000), SERVERPROPERTY('InstanceDefaultDataPath'));
+DECLARE @LogPath NVARCHAR(4000) = CONVERT(NVARCHAR(4000), SERVERPROPERTY('InstanceDefaultLogPath'));
+
+IF @DataPath IS NULL OR @DataPath = N''
+BEGIN
+    SELECT @DataPath = LEFT(physical_name, LEN(physical_name) - CHARINDEX(
+        CASE WHEN CHARINDEX(N'\', REVERSE(physical_name)) > 0 THEN N'\' ELSE N'/' END,
+        REVERSE(physical_name)
+    ) + 1)
+    FROM sys.master_files
+    WHERE database_id = DB_ID(N'master') AND file_id = 1;
+END
+
+IF @LogPath IS NULL OR @LogPath = N''
+BEGIN
+    SET @LogPath = @DataPath;
+END
+
+IF RIGHT(@DataPath, 1) NOT IN (N'\', N'/')
+BEGIN
+    SET @DataPath = @DataPath + CASE WHEN CHARINDEX(N'/', @DataPath) > 0 THEN N'/' ELSE N'\' END;
+END
+
+IF RIGHT(@LogPath, 1) NOT IN (N'\', N'/')
+BEGIN
+    SET @LogPath = @LogPath + CASE WHEN CHARINDEX(N'/', @LogPath) > 0 THEN N'/' ELSE N'\' END;
+END
+
+DECLARE @FileSuffix NVARCHAR(32) = REPLACE(CONVERT(NVARCHAR(36), NEWID()), N'-', N'');
+DECLARE @CreateDatabaseSql NVARCHAR(MAX) = N'
+CREATE DATABASE TestDB
+ON PRIMARY (
+    NAME = N''TestDB'',
+    FILENAME = N''' + REPLACE(@DataPath + N'FlashDB_TestDB_' + @FileSuffix + N'.mdf', N'''', N'''''') + N'''
+)
+LOG ON (
+    NAME = N''TestDB_log'',
+    FILENAME = N''' + REPLACE(@LogPath + N'FlashDB_TestDB_' + @FileSuffix + N'_log.ldf', N'''', N'''''') + N'''
+);';
+
+EXEC sys.sp_executesql @CreateDatabaseSql;
 GO
 
 USE TestDB;
