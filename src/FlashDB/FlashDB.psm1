@@ -413,6 +413,7 @@ Export-ModuleMember -Function @(
     'Get-FlashdbGoldenImage'
     'Get-FlashdbDatabaseSchema'
     'Update-FlashdbGoldenImage'
+    'Update-FlashdbGoldenImageSizes'
     'Remove-FlashdbGoldenImage'
     'Get-FlashdbGoldenImageInfo'
 

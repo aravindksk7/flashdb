@@ -29,7 +29,11 @@ interface MetricsData {
     cloneStorageBreakdown: Array<{
       cloneId: string;
       cloneName: string;
+      databaseName?: string;
+      tableCount?: number;
+      rows?: number;
       vhdxSizeGB: number;
+      parentSizeGB: number;
       savingsGB: number;
     }>;
   };
@@ -486,6 +490,8 @@ export const Dashboard: React.FC = () => {
               <thead>
                 <tr>
                   <th>Clone Name</th>
+                  <th>Database</th>
+                  <th>Rows</th>
                   <th>VHDX Size</th>
                   <th>Parent Size</th>
                   <th>Storage Saved</th>
@@ -496,12 +502,10 @@ export const Dashboard: React.FC = () => {
                 {metrics.storageMetrics.cloneStorageBreakdown.map((clone) => (
                   <tr key={clone.cloneId}>
                     <td>{clone.cloneName}</td>
+                    <td>{clone.databaseName || 'Unknown'}</td>
+                    <td>{clone.rows?.toLocaleString() || '0'}</td>
                     <td>{clone.vhdxSizeGB.toFixed(2)} GB</td>
-                    <td>
-                      {metrics.storageMetrics.cloneStorageBreakdown.find(
-                        (c) => c.cloneId === clone.cloneId
-                      )?.savingsGB || 0} GB
-                    </td>
+                    <td>{(clone.parentSizeGB || 0).toFixed(2)} GB</td>
                     <td>{clone.savingsGB.toFixed(2)} GB</td>
                     <td>
                       {(

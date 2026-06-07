@@ -1,8 +1,9 @@
 import { getTaskQueue, Task } from './taskQueue';
 import { getPooledPowerShellService } from './pooledPowershellService';
 import { getPgQueueManager } from './pgQueueManager';
-import { getCheckpointOperationRepository } from './repository';
+import { getCheckpointOperationRepository, getCheckpointRepository } from './repository';
 import logger from '../logger';
+import { invalidateCache } from '../middleware/caching';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000; // Base delay, will be exponential
@@ -118,14 +119,23 @@ class TaskWorker {
         task.type === 'restore-checkpoint' ||
         task.type === 'delete-checkpoint'
       ) {
-        const operation = await operationRepo.create(
-          task.payload.checkpointId,
-          task.payload.cloneId,
-          task.type.replace('-checkpoint', '') as any,
-          task.payload.vhdxPath || ''
-        );
-        operationId = operation.id;
-        logger.info(`Created operation record: ${operationId}`);
+        // For create operations, checkpointId doesn't exist yet
+        if (task.type !== 'create-checkpoint') {
+          try {
+            const operation = await operationRepo.create(
+              task.payload.checkpointId,
+              task.payload.cloneId,
+              task.type.replace('-checkpoint', '') as any,
+              task.payload.vhdxPath || ''
+            );
+            operationId = operation.id;
+            logger.info(`Created operation record: ${operationId}`);
+          } catch (operationError: any) {
+            logger.warn(
+              `Skipping checkpoint operation record for task ${task.id}: ${operationError.message}`
+            );
+          }
+        }
       }
 
       let result: any;
@@ -168,11 +178,22 @@ class TaskWorker {
           break;
 
         case 'restore-checkpoint':
-          result = await psService.executeCommandRaw('Restore-FlashdbCheckpoint', {
+          result = await psService.executeCommand('Restore-FlashdbCheckpoint', {
             CloneId: task.payload.cloneId,
             CheckpointId: task.payload.checkpointId,
-            ReattachAfter: task.payload.reattachAfter !== false
+            ReattachAfter: task.payload.reattachAfter !== false,
+            Force: true
           });
+
+          // Mark checkpoint as restored in database
+          try {
+            const checkpointRepo = getCheckpointRepository();
+            await checkpointRepo.markAsRestored(task.payload.checkpointId);
+            logger.info(`Marked checkpoint ${task.payload.checkpointId} as restored in database`);
+          } catch (dbError: any) {
+            logger.warn(`Failed to update checkpoint restoration timestamp: ${dbError.message}`);
+            // Don't fail the restore if DB update fails - the restore still succeeded
+          }
           break;
 
         case 'delete-checkpoint':
@@ -202,15 +223,29 @@ class TaskWorker {
       logger.info(`Task completed successfully: ${task.id}`);
       taskQueue.updateTask(task.id, 'completed', result);
 
+      if (
+        task.type === 'create-checkpoint' ||
+        task.type === 'restore-checkpoint' ||
+        task.type === 'delete-checkpoint'
+      ) {
+        invalidateCache(['/checkpoints', '/metrics']);
+      }
+
       // Update operation record if applicable
       if (operationId) {
-        await operationRepo.update(
-          operationId,
-          'completed',
-          new Date(),
-          undefined,
-          result?.stateHash || result?.postHash
-        );
+        try {
+          await operationRepo.update(
+            operationId,
+            'completed',
+            new Date(),
+            undefined,
+            result?.stateHash || result?.postHash
+          );
+        } catch (operationError: any) {
+          logger.warn(
+            `Failed to update checkpoint operation record ${operationId}: ${operationError.message}`
+          );
+        }
       }
 
       // Update DB if persistence is enabled
@@ -240,12 +275,18 @@ class TaskWorker {
 
         // Update operation record if applicable
         if (operationId) {
-          await operationRepo.update(
-            operationId,
-            'failed',
-            new Date(),
-            errorMessage
-          );
+          try {
+            await operationRepo.update(
+              operationId,
+              'failed',
+              new Date(),
+              errorMessage
+            );
+          } catch (operationError: any) {
+            logger.warn(
+              `Failed to mark checkpoint operation record ${operationId} failed: ${operationError.message}`
+            );
+          }
         }
 
         // Update DB if persistence is enabled

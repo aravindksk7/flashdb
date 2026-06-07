@@ -151,7 +151,8 @@ router.post('/:checkpointId/restore', async (req: Request, res: Response) => {
           await psService.executeCommandRaw('Restore-FlashdbCheckpoint', {
             CloneId: cloneId,
             CheckpointId: checkpointId,
-            ReattachAfter: reattachAfter !== false
+            ReattachAfter: reattachAfter !== false,
+            Force: true
           });
 
           // Invalidate cache for checkpoints and metrics

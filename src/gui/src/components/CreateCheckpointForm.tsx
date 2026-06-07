@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { ConsoleIcon } from './ConsoleIcon';
+import { waitForTaskCompletion } from '../utils/taskPolling';
 
 const API_BASE = '/api';
 
@@ -29,6 +30,7 @@ export const CreateCheckpointForm: React.FC<CreateCheckpointFormProps> = ({
   });
   const [clones, setClones] = useState<Clone[]>([]);
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -72,6 +74,7 @@ export const CreateCheckpointForm: React.FC<CreateCheckpointFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setStatusMessage(null);
     setError(null);
     setSuccess(false);
 
@@ -83,8 +86,15 @@ export const CreateCheckpointForm: React.FC<CreateCheckpointFormProps> = ({
           phase: formData.phase,
           description: formData.description,
           force: formData.force,
+          useQueue: true,
         }
       );
+
+      const taskId = response.data?.data?.taskId;
+      if (response.status === 202 && taskId) {
+        setStatusMessage('Restore point queued. Waiting for completion...');
+        await waitForTaskCompletion(taskId);
+      }
 
       if (response.data.success) {
         setSuccess(true);
@@ -101,8 +111,9 @@ export const CreateCheckpointForm: React.FC<CreateCheckpointFormProps> = ({
         }, 1000);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create restore point');
+      setError(err.response?.data?.message || err.message || 'Failed to create restore point');
     } finally {
+      setStatusMessage(null);
       setLoading(false);
     }
   };
@@ -114,6 +125,7 @@ export const CreateCheckpointForm: React.FC<CreateCheckpointFormProps> = ({
       <h3>Create Restore Point</h3>
 
       {error && <div style={styles.error}>{error}</div>}
+      {statusMessage && <div style={styles.info}>{statusMessage}</div>}
       {success && <div style={styles.success}>Restore point created successfully.</div>}
 
       <form onSubmit={handleSubmit}>
@@ -243,6 +255,13 @@ const styles = {
   success: {
     backgroundColor: 'rgba(52, 211, 153, 0.12)',
     color: '#bbf7d0',
+    padding: '10px',
+    borderRadius: '10px',
+    marginBottom: '15px',
+  },
+  info: {
+    backgroundColor: 'rgba(34, 211, 238, 0.12)',
+    color: '#cffafe',
     padding: '10px',
     borderRadius: '10px',
     marginBottom: '15px',

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { ConsoleIcon } from './ConsoleIcon';
+import { waitForTaskCompletion } from '../utils/taskPolling';
 
 const API_BASE = '/api';
 
@@ -28,6 +29,7 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
   });
   const [goldenImages, setGoldenImages] = useState<GoldenImage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingImages, setLoadingImages] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -36,19 +38,29 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
   }, []);
 
   const fetchGoldenImages = async () => {
+    setLoadingImages(true);
+    setError(null);
     try {
       const response = await axios.get(`${API_BASE}/golden-images`);
       const data = Array.isArray(response.data.data) ? response.data.data : [];
-      setGoldenImages(data
+      const mapped = data
         .map((image: any) => ({
           id: image.id || image.Id || image.imageId || image.ImageId,
           name: image.name || image.Name,
           version: image.version || image.Version || 'Unknown',
           method: image.method || image.Method
         }))
-        .filter((image: GoldenImage) => image.id || image.name));
-    } catch (err) {
+        .filter((image: GoldenImage) => image.id && image.name);
+
+      setGoldenImages(mapped);
+      if (mapped.length === 0 && data.length > 0) {
+        setError('Golden images found but failed to parse. Check browser console.');
+      }
+    } catch (err: any) {
       console.error('Failed to fetch golden images', err);
+      setError(err.response?.data?.message || 'Failed to load golden images. Check server is running.');
+    } finally {
+      setLoadingImages(false);
     }
   };
 
@@ -87,11 +99,27 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
 
       if (response.data.success) {
         setSuccess(true);
+        setError(null);
+
+        // Wait for queued task to complete if task ID is returned
+        const taskId = response.data?.data?.taskId;
+        if (response.status === 202 && taskId) {
+          try {
+            await waitForTaskCompletion(taskId);
+          } catch (waitErr: any) {
+            console.error('Clone creation task failed:', waitErr);
+            setError(waitErr.message || 'Clone creation task failed');
+            setSuccess(false);
+            setLoading(false);
+            return;
+          }
+        }
+
         resetForm();
         setTimeout(() => {
           setSuccess(false);
           onSuccess();
-        }, 2000);
+        }, 500);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create clone');
@@ -111,21 +139,28 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
         <div style={styles.formGrid}>
           <div style={styles.formGroup}>
             <label>Select Golden Image *</label>
-            <select
-              name="goldenImageId"
-              value={formData.goldenImageId}
-              onChange={handleChange}
-              required
-            >
-              <option value="">-- Choose a golden image --</option>
-              {goldenImages.map(img => (
-                <option key={img.id || img.name} value={img.id}>
-                  {img.name || img.id} (v{img.version}{img.method ? `, ${img.method}` : ''})
-                </option>
-              ))}
-            </select>
-            {goldenImages.length === 0 && (
-              <small style={{ color: '#999' }}>No golden images available. Create one first.</small>
+            {loadingImages ? (
+              <div style={{ color: '#999', padding: '8px' }}>Loading golden images...</div>
+            ) : (
+              <>
+                <select
+                  name="goldenImageId"
+                  value={formData.goldenImageId}
+                  onChange={handleChange}
+                  required
+                  disabled={goldenImages.length === 0}
+                >
+                  <option value="">{goldenImages.length === 0 ? '-- No images available --' : '-- Choose a golden image --'}</option>
+                  {goldenImages.map(img => (
+                    <option key={img.id} value={img.id}>
+                      {img.name} (v{img.version}{img.method ? `, ${img.method}` : ''})
+                    </option>
+                  ))}
+                </select>
+                {goldenImages.length === 0 && !error && (
+                  <small style={{ color: '#999' }}>No golden images available. Create one first.</small>
+                )}
+              </>
             )}
           </div>
 

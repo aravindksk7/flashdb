@@ -4,6 +4,7 @@ import './App.css';
 import { CreateGoldenImageForm } from './components/CreateGoldenImageForm';
 import { CreateCloneForm } from './components/CreateCloneForm';
 import { CheckpointManager } from './components/CheckpointManager';
+import { OperationHistory } from './components/OperationHistory';
 import Dashboard from './components/Dashboard';
 import { PoolMetrics } from './components/PoolMetrics';
 import { QueueMetrics } from './components/QueueMetrics';
@@ -20,6 +21,9 @@ interface Clone {
   databaseType: string;
   status: string;
   createdAt: string;
+  tableCount?: number;
+  rowCount?: number;
+  sizeBytes?: number;
 }
 
 interface GoldenImage {
@@ -44,11 +48,12 @@ interface GoldenImage {
   rowCount?: number;
 }
 
-type AppTab = 'dashboard' | 'management' | 'deployment';
+type AppTab = 'dashboard' | 'management' | 'audit' | 'deployment';
 
 const getInitialTab = (): AppTab => {
   const tab = new URLSearchParams(window.location.search).get('tab');
   if (tab === 'management') return 'management';
+  if (tab === 'audit') return 'audit';
   if (tab === 'deployment') return 'deployment';
   return 'dashboard';
 };
@@ -86,7 +91,10 @@ const normalizeClone = (value: any): Clone | null => {
     databaseName: firstValue<string>(value, ['databaseName', 'DatabaseName']) || 'Unknown',
     databaseType: firstValue<string>(value, ['databaseType', 'DatabaseType']) || 'sql-server',
     status: firstValue<string>(value, ['status', 'Status']) || 'Unknown',
-    createdAt: firstValue<string>(value, ['createdAt', 'CreatedAt']) || ''
+    createdAt: firstValue<string>(value, ['createdAt', 'CreatedAt']) || '',
+    tableCount: toNumber(firstValue<number>(value, ['tableCount', 'TableCount'])),
+    rowCount: toNumber(firstValue<number>(value, ['rowCount', 'RowCount'])),
+    sizeBytes: toNumber(firstValue<number>(value, ['sizeBytes', 'SizeBytes', 'size', 'Size']))
   };
 };
 
@@ -137,7 +145,13 @@ const compactNumber = (value: number) => {
 const toneForStatus = (value?: string) => {
   const normalized = (value || '').toLowerCase();
 
-  if (normalized.includes('ready') || normalized.includes('actual') || normalized.includes('healthy')) {
+  if (
+    normalized.includes('ready') ||
+    normalized.includes('actual') ||
+    normalized.includes('healthy') ||
+    normalized.includes('attached') ||
+    normalized.includes('active')
+  ) {
     return 'green';
   }
 
@@ -296,6 +310,8 @@ function App() {
 
   const totalGoldenRows = goldenImages.reduce((sum, image) => sum + (image.rowCount || 0), 0);
   const totalGoldenTables = goldenImages.reduce((sum, image) => sum + (image.tableCount || 0), 0);
+  const totalCloneRows = clones.reduce((sum, clone) => sum + (clone.rowCount || 0), 0);
+  const totalCloneTables = clones.reduce((sum, clone) => sum + (clone.tableCount || 0), 0);
   const activeCloneCount = clones.filter((clone) => toneForStatus(clone.status) === 'green').length;
   const readyImageCount = goldenImages.filter((image) => toneForStatus(image.status || 'Ready') === 'green').length;
   const selectedCloneStatus = selectedClone ? toneForStatus(selectedClone.status) : 'cyan';
@@ -311,8 +327,8 @@ function App() {
         <div className="hero-stats">
           <span className="chip chip-cyan">{compactNumber(goldenImages.length)} golden images</span>
           <span className="chip chip-green">{compactNumber(activeCloneCount)} healthy clones</span>
-          <span className="chip chip-amber">{compactNumber(totalGoldenTables)} tables</span>
-          <span className="chip chip-violet">{compactNumber(totalGoldenRows)} rows</span>
+          <span className="chip chip-amber">{compactNumber(totalGoldenTables + totalCloneTables)} tables</span>
+          <span className="chip chip-violet">{compactNumber(totalGoldenRows + totalCloneRows)} rows</span>
           <span className="chip chip-green">{compactNumber(readyImageCount)} ready images</span>
         </div>
       </header>
@@ -338,6 +354,13 @@ function App() {
         >
           <ConsoleIcon name="schema" className="console-icon" />
           Management
+        </button>
+        <button
+          className={`tab ${activeTab === 'audit' ? 'active' : ''}`}
+          onClick={() => selectTab('audit')}
+        >
+          <ConsoleIcon name="explore" className="console-icon" />
+          Audit
         </button>
       </nav>
 
@@ -615,6 +638,9 @@ function App() {
                     <div className="stat-grid compact">
                       <div className="stat-mini"><span>Created</span><strong>{formatDate(clone.createdAt)}</strong></div>
                       <div className="stat-mini"><span>Golden Image</span><strong>{clone.goldenImageId || 'Unknown'}</strong></div>
+                      <div className="stat-mini"><span>Tables</span><strong>{compactNumber(clone.tableCount || 0)}</strong></div>
+                      <div className="stat-mini"><span>Rows</span><strong>{compactNumber(clone.rowCount || 0)}</strong></div>
+                      <div className="stat-mini"><span>Size</span><strong>{formatBytes(clone.sizeBytes)}</strong></div>
                     </div>
                     <div className="card-actions">
                       <button
@@ -655,12 +681,32 @@ function App() {
                 <span className={`chip chip-${selectedCloneStatus}`}>{selectedClone.status}</span>
               </div>
               <CheckpointManager clone={selectedClone} onChanged={loadData} />
+
               <button className="btn-secondary btn-icon" onClick={() => setSelectedClone(null)}>
                 <ConsoleIcon name="restore" className="console-icon" />
                 Back
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'audit' && (
+        <div className="container">
+          <div className="section">
+            <div className="panel-header">
+              <div>
+                <div className="panel-kicker">Audit trail</div>
+                <h2>Operation History</h2>
+                <p className="workflow-help">Search the complete queue-backed timeline for checkpoint creation, restore, delete, and failed operations.</p>
+              </div>
+              <div className="chip-row">
+                <span className="chip chip-cyan">Searchable</span>
+                <span className="chip chip-green">All clones</span>
+              </div>
+            </div>
+            <OperationHistory title="All Operations" />
+          </div>
         </div>
       )}
 

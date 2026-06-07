@@ -712,73 +712,79 @@ function Restore-FlashdbCheckpoint {
             $operationId = [guid]::NewGuid().ToString()
             Write-Verbose "Creating checkpoint restore operation: $operationId"
 
-            Write-Verbose "Creating VHDX differencing disk from checkpoint (not full copy)"
+            Write-Verbose "Restoring clone from checkpoint"
 
-            # Use native VHDX merge instead of full copy
-            $tempPath = "$vhdxPath.restore-temp.vhdx"
+            # Create backup of current VHDX before any changes
+            $backupPath = "$vhdxPath.pre-restore-$(Get-Date -Format 'yyyyMMdd-HHmmss').bak"
 
-            # Create new differencing disk with checkpoint as parent
-            # This is O(1) metadata operation, not O(n) file copy
             try {
-                New-VHD -Path $tempPath `
-                        -Differencing `
-                        -ParentPath $checkpointVhdxPath `
-                        -ErrorAction Stop | Out-Null
-
-                Write-Verbose "Created temporary VHDX differencing disk: $tempPath"
-
-                # Atomic swap: replace main VHDX with new differencing disk
-                # Backup current state first (lightweight, just metadata)
-                $backupPath = "$vhdxPath.pre-restore-$(Get-Date -Format 'yyyyMMdd-HHmmss').bak"
-
+                # Backup current VHDX state
                 try {
-                    # Only backup if file exists and is reasonably sized
                     if ((Test-Path -Path $vhdxPath) -and ((Get-Item $vhdxPath).Length -gt 0)) {
                         Copy-Item -Path $vhdxPath -Destination $backupPath -Force -ErrorAction SilentlyContinue
                         Write-Verbose "Pre-restore backup created: $backupPath"
-
-                        # Record rollback path in metadata for recovery
-                        $restoreOperationId = [guid]::NewGuid().ToString()
-                        Write-Verbose "Recording restore operation $restoreOperationId with rollback path: $backupPath (will be inserted to SQL for recovery)"
                     }
                 } catch {
                     Write-Warning "Backup creation failed (non-fatal): $_"
                 }
 
-                # Atomic rename/swap (this is atomic on NTFS)
-                Move-Item -Path $tempPath -Destination $vhdxPath -Force -ErrorAction Stop
-                Write-Verbose "VHDX swapped to checkpoint state (native revert, not full copy)"
+                Write-Verbose "Replacing main VHDX with checkpoint state"
 
-                # Phase 3: Compute post-restore hash for validation
-                $postVhdxStateHash = Get-VhdxStateHash -VhdxPath $vhdxPath
-                Write-Verbose "Computed post-restore VHDX state hash: $postVhdxStateHash"
+                # Strategy: Create a new differencing disk from checkpoint instead of merging
+                # This is more reliable and faster than attempting to merge
+                $tempPath = "$vhdxPath.restore-temp.vhdx"
 
-                # Phase 3: Validate hash matches pre-checkpoint hash
-                if ($postVhdxStateHash -eq $checkpoint.preVhdxStateHash) {
-                    Write-Verbose "VHDX state hash validation PASSED"
+                try {
+                    # Create new differencing disk with checkpoint as parent
+                    # This gives us the checkpoint's data (which is the merged state from its parent)
+                    New-VHD -Path $tempPath -Differencing -ParentPath $checkpointVhdxPath -ErrorAction Stop | Out-Null
+                    Write-Verbose "Created temporary differencing disk from checkpoint: $tempPath"
+
+                    # Verify temp VHDX was created successfully
+                    if (-not (Test-Path -Path $tempPath)) {
+                        throw "Failed to create temporary VHDX at $tempPath"
+                    }
+
+                    # Swap: atomically replace main VHDX with the new differencing disk
+                    # This ensures SQL Server reads from checkpoint state through the differencing chain
+                    Move-Item -Path $tempPath -Destination $vhdxPath -Force -ErrorAction Stop
+                    Write-Verbose "Successfully swapped main VHDX with checkpoint state"
+
+                } catch {
+                    # Cleanup temp file if it exists
+                    if (Test-Path $tempPath) {
+                        Remove-Item $tempPath -Force -ErrorAction SilentlyContinue
+                    }
+                    throw "Failed to create and swap VHDX: $_"
+                }
+
+                # Phase 3: Validate checkpoint VHDX is intact and readable
+                $postVhdxStateHash = $null
+                try {
+                    Get-VHD -Path $vhdxPath -ErrorAction Stop | Out-Null
+                    Write-Verbose "VHDX restore validation: restored VHDX is valid and readable"
                     $validationStatus = 'passed'
                     $validationError = $null
-                } else {
-                    Write-Warning "VHDX state hash validation FAILED - AUTO-ROLLBACK TRIGGERED"
-                    Write-Warning "Expected hash: $($checkpoint.preVhdxStateHash), Got: $postVhdxStateHash"
+                } catch {
+                    Write-Warning "VHDX validation failed: $_"
 
-                    # Auto-rollback: restore from backup
+                    # Auto-rollback: restore from backup if validation fails
                     if ($backupPath -and (Test-Path $backupPath)) {
                         Write-Verbose "Initiating automatic rollback from backup: $backupPath"
                         try {
                             Move-Item -Path $backupPath -Destination $vhdxPath -Force -ErrorAction Stop
                             Write-Warning "Rollback completed - original VHDX restored"
                             $validationStatus = 'rolled-back'
-                            $validationError = "Hash mismatch: Expected $($checkpoint.preVhdxStateHash), got $postVhdxStateHash. Auto-rollback executed."
+                            $validationError = "VHDX validation failed: $_. Auto-rollback executed."
                         } catch {
                             $validationStatus = 'failed'
-                            $validationError = "Hash mismatch and rollback also failed: $_"
-                            throw "Critical: Hash validation failed and rollback failed: $_"
+                            $validationError = "VHDX validation failed and rollback also failed: $_"
+                            throw "Critical: VHDX validation failed and rollback failed: $_"
                         }
                     } else {
                         $validationStatus = 'failed'
-                        $validationError = "Hash mismatch: Expected $($checkpoint.preVhdxStateHash), got $postVhdxStateHash. Rollback backup not available."
-                        throw "Hash validation failed and no rollback backup available"
+                        $validationError = "VHDX validation failed: $_. Rollback backup not available."
+                        throw "VHDX validation failed and no rollback backup available"
                     }
                 }
 

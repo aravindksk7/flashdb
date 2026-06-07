@@ -438,6 +438,25 @@ export class CheckpointRepository {
   }
 
   /**
+   * Update checkpoint restored timestamp
+   */
+  async markAsRestored(id: string, restoredAt?: Date): Promise<void> {
+    const timestamp = restoredAt || new Date();
+    const sql = 'UPDATE Checkpoints SET restoredAt = @restoredAt WHERE id = @id';
+
+    try {
+      await this.sqlClient.execute(sql, {
+        id,
+        restoredAt: timestamp
+      });
+      logger.info(`Checkpoint marked as restored: ${id} at ${timestamp.toISOString()}`);
+    } catch (error: any) {
+      logger.error(`Error marking checkpoint as restored: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Delete checkpoint
    */
   async delete(id: string): Promise<void> {
@@ -788,7 +807,7 @@ export class CheckpointOperationRepository {
     limit: number = 100
   ): Promise<CheckpointOperationData[]> {
     let sql = `
-      SELECT TOP @limit *
+      SELECT TOP (@limit) *
       FROM CheckpointOperations
       WHERE cloneId = @cloneId
     `;

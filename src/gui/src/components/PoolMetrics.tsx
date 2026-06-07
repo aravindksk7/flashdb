@@ -57,8 +57,8 @@ export const PoolMetrics: React.FC = () => {
 
   const { pool, cache } = poolData;
   const utilization = pool.size > 0 ? ((pool.size - pool.available) / pool.size) * 100 : 0;
-  const cacheHitRate = (pool.cache?.hits || 0) + (pool.cache?.misses || 0) > 0
-    ? ((pool.cache?.hits || 0) / ((pool.cache?.hits || 0) + (pool.cache?.misses || 0))) * 100
+  const cacheHitRate = (cache.hits || 0) + (cache.misses || 0) > 0
+    ? ((cache.hits || 0) / ((cache.hits || 0) + (cache.misses || 0))) * 100
     : 0;
 
   return (

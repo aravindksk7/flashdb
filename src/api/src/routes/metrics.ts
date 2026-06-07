@@ -320,18 +320,37 @@ router.get('/all', async (_req: Request, res: Response) => {
       return Number.isFinite(parsed) ? parsed : fallback;
     };
     const bytesToGB = (bytes: any): number => toNumber(bytes) / 1024 / 1024 / 1024;
+    const taskQueue = getTaskQueue();
+    const queueSnapshot = taskQueue.getAllTasks();
+    const queueTasks = [
+      ...queueSnapshot.queue,
+      ...queueSnapshot.completed,
+      ...queueSnapshot.failed
+    ].filter(task => /checkpoint$/.test(task.type));
+    const completedTasks = queueTasks.filter(task => task.status === 'completed').length;
+    const failedTasks = queueTasks.filter(task => task.status === 'failed').length;
+    const successfulTaskRate = queueTasks.length > 0 ? (completedTasks / queueTasks.length) * 100 : 100;
+    const goldenImageById = new Map<string, any>();
+    goldenImages.forEach(image => {
+      const id = image.Id || image.id;
+      if (id) goldenImageById.set(String(id), image);
+    });
     const failedClones = cloneItems.filter(clone => /failed/i.test(clone.Status || clone.status || '')).length;
     const successfulClones = Math.max(0, cloneItems.length - failedClones);
     const activeClones = cloneItems.filter(clone => /ready|attached/i.test(clone.Status || clone.status || '')).length;
     const cloneStorageBreakdown = cloneItems.map(clone => {
-      const vhdxSizeGB = bytesToGB(clone.Size || clone.size || clone.VhdxSizeBytes || clone.vhdxSizeBytes);
-      const parentSizeGB = bytesToGB(clone.ParentSize || clone.parentSize || clone.ParentSizeBytes || clone.parentSizeBytes);
+      const goldenImage = goldenImageById.get(String(clone.GoldenImageId || clone.goldenImageId || ''));
+      const cloneSizeBytes = clone.SizeBytes || clone.sizeBytes || clone.Size || clone.size || clone.VhdxSizeBytes || clone.vhdxSizeBytes;
+      const parentSizeBytes = clone.ParentSizeBytes || clone.parentSizeBytes || clone.ParentSize || clone.parentSize || goldenImage?.SizeBytes || goldenImage?.sizeBytes || goldenImage?.Size || goldenImage?.size;
+      const vhdxSizeGB = bytesToGB(cloneSizeBytes || parentSizeBytes);
+      const parentSizeGB = bytesToGB(parentSizeBytes || cloneSizeBytes);
       const savingsGB = Math.max(0, parentSizeGB - vhdxSizeGB);
 
       return {
         cloneId: clone.Id || clone.id,
         cloneName: clone.Name || clone.name,
         databaseName: clone.DatabaseName || clone.databaseName,
+        tableCount: toNumber(clone.TableCount || clone.tableCount),
         rows: toNumber(clone.RowCount || clone.rowCount),
         vhdxSizeGB,
         parentSizeGB,
@@ -343,17 +362,50 @@ router.get('/all', async (_req: Request, res: Response) => {
     const totalSavingsGB = cloneStorageBreakdown.reduce((sum, clone) => sum + clone.savingsGB, 0);
     const compressionRatioPercent = totalParentSizeGB > 0 ? (totalSavingsGB / totalParentSizeGB) * 100 : 0;
     const last24hCutoff = Date.now() - 24 * 60 * 60 * 1000;
-    const operationsLast24h = [...goldenImages, ...cloneItems]
-      .filter(item => {
-        const createdAt = item.CreatedAt || item.createdAt;
+    const operationsLast24h = queueTasks
+      .filter(task => {
+        const createdAt = task.startedAt || task.createdAt;
         return createdAt && new Date(createdAt).getTime() >= last24hCutoff;
       }).length;
+    const operationTypeCounts = queueTasks.reduce((acc, task) => {
+      const type = task.type.replace('-checkpoint', '');
+      if (!acc[type]) {
+        acc[type] = { total: 0, successful: 0 };
+      }
+      acc[type].total++;
+      if (task.status === 'completed') {
+        acc[type].successful++;
+      }
+      return acc;
+    }, {} as Record<string, { total: number; successful: number }>);
+    const operationsByType = Object.entries(operationTypeCounts)
+      .map(([type, counts]) => ({
+        type,
+        count: counts.total,
+        successRatePercent: counts.total > 0 ? (counts.successful / counts.total) * 100 : 100
+      }))
+      .sort((a, b) => b.count - a.count);
+    const operationBuckets = new Map<string, number>();
+    for (let i = 23; i >= 0; i--) {
+      const bucket = new Date(Date.now() - i * 60 * 60 * 1000);
+      bucket.setMinutes(0, 0, 0);
+      operationBuckets.set(bucket.toISOString(), 0);
+    }
+    queueTasks.forEach(task => {
+      const timestamp = task.startedAt || task.createdAt;
+      if (!timestamp) return;
+      const taskTime = new Date(timestamp);
+      if (Number.isNaN(taskTime.getTime()) || taskTime.getTime() < last24hCutoff) return;
+      taskTime.setMinutes(0, 0, 0);
+      const key = taskTime.toISOString();
+      operationBuckets.set(key, (operationBuckets.get(key) || 0) + 1);
+    });
 
     const overviewData = {
       totalClonesCreated: cloneItems.length,
       totalStorageSavedGB: totalSavingsGB,
       avgCloneCreationTimeSeconds: 0,
-      operationSuccessRatePercent: cloneItems.length === 0 ? 100 : (successfulClones / cloneItems.length) * 100,
+      operationSuccessRatePercent: successfulTaskRate,
       operationsLast24h,
       activeClonesCount: activeClones
     };
@@ -379,18 +431,11 @@ router.get('/all', async (_req: Request, res: Response) => {
     };
 
     const operations = {
-      totalOperations: goldenImages.length + cloneItems.length,
-      successfulOperations: goldenImages.length + successfulClones,
-      failedOperations: failedClones,
-      successRatePercent: cloneItems.length === 0 ? 100 : (successfulClones / cloneItems.length) * 100,
-      operationsByType: [
-        { type: 'golden-images', count: goldenImages.length, successRatePercent: 100 },
-        {
-          type: 'clones',
-          count: cloneItems.length,
-          successRatePercent: cloneItems.length === 0 ? 100 : (successfulClones / cloneItems.length) * 100
-        }
-      ]
+      totalOperations: queueTasks.length,
+      successfulOperations: completedTasks,
+      failedOperations: failedTasks,
+      successRatePercent: successfulTaskRate,
+      operationsByType
     };
 
     const timeline = {
@@ -399,7 +444,10 @@ router.get('/all', async (_req: Request, res: Response) => {
         clones: 1,
         cloneName: clone.Name || clone.name
       })),
-      operations: [],
+      operations: Array.from(operationBuckets.entries()).map(([timestamp, operations]) => ({
+        timestamp,
+        operations
+      })),
       timelineStart: new Date(last24hCutoff).toISOString(),
       timelineEnd: new Date().toISOString()
     };

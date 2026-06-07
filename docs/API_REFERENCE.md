@@ -909,21 +909,92 @@ Get storage usage metrics.
 
 Get operation performance metrics.
 
+Operation metrics are derived from durable task queue history for checkpoint create, restore, and delete operations. This keeps dashboard totals accurate even when the SQL checkpoint operation table has no rows.
+
 **Response (200):**
 ```json
 {
   "success": true,
   "data": {
-    "totalOperations": 1234,
-    "successfulOperations": 1210,
-    "failedOperations": 24,
-    "averageOperationTime": 3500,
-    "byType": {
-      "create-clone": {"count": 500, "avgTime": 3200},
-      "delete-clone": {"count": 300, "avgTime": 2500},
-      "restore-checkpoint": {"count": 434, "avgTime": 4100}
-    }
+    "totalOperations": 5,
+    "successfulOperations": 4,
+    "failedOperations": 1,
+    "successRatePercent": 80,
+    "operationsByType": [
+      {"type": "delete", "count": 2, "successRatePercent": 100},
+      {"type": "restore", "count": 2, "successRatePercent": 50},
+      {"type": "create", "count": 1, "successRatePercent": 100}
+    ]
   }
+}
+```
+
+---
+
+### Query Operation History
+
+#### GET /operations
+
+Get global operation history. Optional query parameters:
+
+- `cloneId`: filter to one clone
+- `checkpointId`: filter to one checkpoint
+- `operationType`: `create`, `restore`, or `delete`
+- `status`: `pending`, `processing`, `completed`, or `failed`
+- `limit`: maximum rows, default `100`
+
+The response merges SQL audit records with durable task queue history. Queue-backed rows include `source: "queue"` and are used by the GUI Audit tab.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "36166055-4b93-4729-a7af-6ca9a22d2beb",
+      "cloneId": "clone-20260607033049-3949",
+      "checkpointId": "cp-20260607043537-2642",
+      "checkpointName": "cp-20260607043537-2642",
+      "type": "restore",
+      "status": "completed",
+      "timestamp": "2026-06-07T04:37:51.782Z",
+      "completedAt": "2026-06-07T04:37:57.042Z",
+      "message": "Operation completed successfully",
+      "source": "queue"
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+### Get Clone Operation Timeline
+
+#### GET /operations/timeline/{cloneId}
+
+Get the complete queue-backed and SQL-backed operation timeline for one clone. This is the endpoint used by clone-specific audit views.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "301fafcf-d2f3-4cd8-a505-8c11eb3a3ac7",
+      "cloneId": "clone-20260607033049-3949",
+      "checkpointId": "",
+      "checkpointName": "Before ETL",
+      "type": "create",
+      "status": "completed",
+      "timestamp": "2026-06-07T04:35:36.780Z",
+      "completedAt": "2026-06-07T04:35:38.833Z",
+      "message": "Operation completed successfully",
+      "source": "queue"
+    }
+  ],
+  "count": 1,
+  "cloneId": "clone-20260607033049-3949"
 }
 ```
 

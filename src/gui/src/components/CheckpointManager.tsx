@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { CreateCheckpointForm } from './CreateCheckpointForm';
 import { ConsoleIcon } from './ConsoleIcon';
+import { waitForTaskCompletion } from '../utils/taskPolling';
 
 const API_BASE = '/api';
 
@@ -80,7 +81,9 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
     setError(null);
 
     try {
-      const response = await axios.get(`${API_BASE}/clones/${clone.id}/checkpoints`);
+      const response = await axios.get(`${API_BASE}/clones/${clone.id}/checkpoints`, {
+        params: { _t: Date.now() }
+      });
       const data = Array.isArray(response.data.data) ? response.data.data : [];
       const normalized = data
         .map(normalizeCheckpoint)
@@ -143,13 +146,18 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
     if (!window.confirm(`Restore clone "${clone.name}" to "${checkpoint.name}"?`)) return;
 
     try {
-      await axios.post(`${API_BASE}/clones/${clone.id}/checkpoints/${checkpoint.id}/restore`, {
+      setMessage('Restore queued. Waiting for completion...');
+      const response = await axios.post(`${API_BASE}/clones/${clone.id}/checkpoints/${checkpoint.id}/restore`, {
         reattachAfter: true
       });
+      const taskId = response.data?.data?.taskId;
+      if (response.status === 202 && taskId) {
+        await waitForTaskCompletion(taskId);
+      }
       await refreshAll();
-      showMessage('Restore requested successfully.');
+      showMessage('Restore completed.');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to restore point');
+      setError(err.response?.data?.message || err.message || 'Failed to restore point');
     }
   };
 
@@ -157,11 +165,16 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
     if (!window.confirm(`Delete restore point "${checkpoint.name}"?`)) return;
 
     try {
-      await axios.delete(`${API_BASE}/clones/${clone.id}/checkpoints/${checkpoint.id}`);
+      setMessage('Delete queued. Waiting for completion...');
+      const response = await axios.delete(`${API_BASE}/clones/${clone.id}/checkpoints/${checkpoint.id}`);
+      const taskId = response.data?.data?.taskId;
+      if (response.status === 202 && taskId) {
+        await waitForTaskCompletion(taskId);
+      }
       await refreshAll();
       showMessage('Restore point deleted.');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete restore point');
+      setError(err.response?.data?.message || err.message || 'Failed to delete restore point');
     }
   };
 

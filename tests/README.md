@@ -171,6 +171,8 @@ The FlashDB test suite provides comprehensive coverage across multiple test cate
 
 **File**: `FlashDB.Integration.Tests.ps1`
 
+**Restore Regression**: `RestoreOrders.Tests.ps1`
+
 #### Coverage Areas
 
 - **Complete Workflows**
@@ -210,6 +212,8 @@ The FlashDB test suite provides comprehensive coverage across multiple test cate
   - Row count consistency after restore
   - Schema consistency verification
   - Data corruption detection
+  - Checkpoint restore rollback on `[TestDB_Clone_1].[dbo].[Orders]`
+  - Probe row cleanup after restoring a checkpoint
 
 - **Error Recovery**
   - Instance offline scenarios
@@ -320,9 +324,26 @@ Invoke-Pester -Path tests/Providers/SqlServer -PassThru
 # Integration tests only
 Invoke-Pester -Path tests/Integration -PassThru
 
+# Restore rollback regression for TestDB_Clone_1.dbo.Orders
+Invoke-Pester -Path tests/Integration/RestoreOrders.Tests.ps1 -PassThru
+
 # Performance tests only
 Invoke-Pester -Path tests/Performance -PassThru
 ```
+
+### Restore Orders Regression
+
+`tests/Integration/RestoreOrders.Tests.ps1` validates the GUI restore workflow at
+the database level. It creates a checkpoint for `TestDB_Clone_1`, inserts an
+`FBRT%` probe row into `[TestDB_Clone_1].[dbo].[Orders]`, restores the checkpoint,
+and verifies that the probe row is gone.
+
+Prerequisites:
+
+- Pester 5.0+
+- FlashDB API and SQL Server stack running
+- `TestDB_Clone_1` online with the sample `dbo.Orders` table
+- API reachable at the configured base URL
 
 ### Running API Tests
 

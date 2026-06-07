@@ -891,6 +891,85 @@ Or in-progress:
 
 ---
 
+#### GET /api/operations
+
+Get global operation history. This endpoint powers the GUI Audit tab and returns both SQL audit rows and durable queue-backed checkpoint tasks.
+
+**Query Parameters:**
+
+- `cloneId` (optional): filter to a clone
+- `checkpointId` (optional): filter to a checkpoint
+- `operationType` (optional): `create`, `restore`, or `delete`
+- `status` (optional): `pending`, `processing`, `completed`, or `failed`
+- `limit` (optional): maximum rows; default `100`
+
+**Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "36166055-4b93-4729-a7af-6ca9a22d2beb",
+      "cloneId": "clone-20260607033049-3949",
+      "checkpointId": "cp-20260607043537-2642",
+      "checkpointName": "cp-20260607043537-2642",
+      "type": "restore",
+      "status": "completed",
+      "timestamp": "2026-06-07T04:37:51.782Z",
+      "completedAt": "2026-06-07T04:37:57.042Z",
+      "message": "Operation completed successfully",
+      "source": "queue"
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+#### GET /api/operations/timeline/{cloneId}
+
+Get the complete operation timeline for one clone. The timeline is sorted newest-first and merges SQL operation rows with durable queue task history.
+
+**Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "301fafcf-d2f3-4cd8-a505-8c11eb3a3ac7",
+      "cloneId": "clone-20260607033049-3949",
+      "checkpointId": "",
+      "checkpointName": "Before ETL",
+      "type": "create",
+      "status": "completed",
+      "timestamp": "2026-06-07T04:35:36.780Z",
+      "completedAt": "2026-06-07T04:35:38.833Z",
+      "message": "Operation completed successfully",
+      "source": "queue"
+    }
+  ],
+  "count": 1,
+  "cloneId": "clone-20260607033049-3949"
+}
+```
+
+---
+
+### GUI Statistics and Audit Data Sources
+
+The GUI dashboard displays values from live API/provider state:
+
+- Healthy clones include `Ready`, `Attached`, `Active`, and `Healthy` statuses.
+- Golden image and clone size values are SQL Server database file sizes when available.
+- Clone cards display table count, row count, and size returned by `/api/clones`.
+- Dashboard operation counts, last-24h activity, success rate, and operation type distribution are derived from durable queue history.
+- The Audit tab uses `/api/operations` and supports client-side search and type/status filters.
+
+---
+
 ## Error Handling
 
 ### Standard Error Response

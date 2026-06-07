@@ -29,6 +29,28 @@ function Add-OrSetProperty {
     }
 }
 
+function Get-FlashdbPropertyValue {
+    param(
+        [object]$Target,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [object]$Default = $null
+    )
+
+    if ($null -eq $Target) {
+        return $Default
+    }
+
+    $property = $Target.PSObject.Properties[$Name]
+    if ($null -eq $property -or $null -eq $property.Value) {
+        return $Default
+    }
+
+    return $property.Value
+}
+
 function Initialize-FlashdbProviderState {
     if (-not (Test-Path -Path $script:FlashdbStatePath -PathType Leaf)) {
         return
@@ -201,6 +223,186 @@ function Invoke-FlashdbSqlQuery {
     $table = [System.Data.DataTable]::new()
     [void]$adapter.Fill($table)
     Write-Output -NoEnumerate $table
+}
+
+function Get-FlashdbSqlDatabaseSizeBytes {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DatabaseName
+    )
+
+    $connection = $null
+    try {
+        $serverBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $ConnectionString -DatabaseName 'master'
+        $connection = New-FlashdbSqlConnection -Builder $serverBuilder
+        $dbId = ConvertTo-FlashdbSqlIdentifier -Name $DatabaseName
+
+        $sizeQuery = @"
+SELECT ISNULL(SUM(CAST(size as bigint)) * 8192, 0) as TotalBytes
+FROM $dbId.sys.database_files
+WHERE state_desc = 'ONLINE';
+"@
+
+        return [int64](Invoke-FlashdbSqlScalar -Connection $connection -Sql $sizeQuery)
+    } finally {
+        if ($connection) {
+            $connection.Dispose()
+        }
+    }
+}
+
+function Test-FlashdbSqlDatabaseExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DatabaseName
+    )
+
+    $connection = $null
+    try {
+        $serverBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $ConnectionString -DatabaseName 'master'
+        $connection = New-FlashdbSqlConnection -Builder $serverBuilder
+        $databaseLiteral = $DatabaseName.Replace("'", "''")
+        return ([int](Invoke-FlashdbSqlScalar -Connection $connection -Sql "SELECT COUNT(*) FROM sys.databases WHERE name = N'$databaseLiteral';")) -gt 0
+    } finally {
+        if ($connection) {
+            $connection.Dispose()
+        }
+    }
+}
+
+function Remove-FlashdbSqlDatabase {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DatabaseName
+    )
+
+    $connection = $null
+    try {
+        $serverBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $ConnectionString -DatabaseName 'master'
+        $connection = New-FlashdbSqlConnection -Builder $serverBuilder
+        $databaseLiteral = $DatabaseName.Replace("'", "''")
+        $databaseId = ConvertTo-FlashdbSqlIdentifier -Name $DatabaseName
+        $exists = [int](Invoke-FlashdbSqlScalar -Connection $connection -Sql "SELECT COUNT(*) FROM sys.databases WHERE name = N'$databaseLiteral';")
+
+        if ($exists -gt 0) {
+            Invoke-FlashdbSqlNonQuery -Connection $connection -Sql @"
+ALTER DATABASE $databaseId SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+DROP DATABASE $databaseId;
+"@
+        }
+    } finally {
+        if ($connection) {
+            $connection.Dispose()
+        }
+    }
+}
+
+function Rename-FlashdbSqlDatabase {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CurrentName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NewName
+    )
+
+    $connection = $null
+    try {
+        $serverBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $ConnectionString -DatabaseName 'master'
+        $connection = New-FlashdbSqlConnection -Builder $serverBuilder
+        $currentId = ConvertTo-FlashdbSqlIdentifier -Name $CurrentName
+        $newId = ConvertTo-FlashdbSqlIdentifier -Name $NewName
+
+        Invoke-FlashdbSqlNonQuery -Connection $connection -Sql "ALTER DATABASE $currentId MODIFY NAME = $newId;"
+    } finally {
+        if ($connection) {
+            $connection.Dispose()
+        }
+    }
+}
+
+function Restore-FlashdbSqlDatabaseFromCheckpoint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CheckpointDatabase,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetDatabase
+    )
+
+    if (-not (Test-FlashdbSqlDatabaseExists -ConnectionString $ConnectionString -DatabaseName $CheckpointDatabase)) {
+        throw "Checkpoint database not found: $CheckpointDatabase"
+    }
+
+    $safeTargetName = $TargetDatabase -replace '[^A-Za-z0-9_]', '_'
+    $restoreDatabase = "FlashDB_Restore_${safeTargetName}_$(Get-Date -Format yyyyMMddHHmmss)_$(Get-Random -Minimum 1000 -Maximum 9999)"
+    $restoreCreated = $false
+    $renamed = $false
+
+    try {
+        $copyResult = Copy-FlashdbSqlDatabaseTables `
+            -ConnectionString $ConnectionString `
+            -SourceDatabase $CheckpointDatabase `
+            -TargetDatabase $restoreDatabase
+
+        $restoreCreated = $true
+
+        Remove-FlashdbSqlDatabase -ConnectionString $ConnectionString -DatabaseName $TargetDatabase
+        Rename-FlashdbSqlDatabase -ConnectionString $ConnectionString -CurrentName $restoreDatabase -NewName $TargetDatabase
+        $renamed = $true
+
+        return [PSCustomObject]@{
+            DatabaseName = $TargetDatabase
+            SourceDatabase = $CheckpointDatabase
+            TableCount = $copyResult.TableCount
+            RowCount = $copyResult.RowCount
+            Tables = @($copyResult.Tables)
+        }
+    } catch {
+        if ($restoreCreated -and -not $renamed) {
+            try {
+                Remove-FlashdbSqlDatabase -ConnectionString $ConnectionString -DatabaseName $restoreDatabase
+            } catch {
+                Write-Warning "Failed to clean up restore database $restoreDatabase`: $_"
+            }
+        }
+
+        throw
+    }
+}
+
+function Get-FlashdbCloneSourceConnection {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Clone
+    )
+
+    $cloneConnection = Get-FlashdbPropertyValue -Target $Clone -Name 'SourceConnection'
+    if ($cloneConnection) {
+        return $cloneConnection
+    }
+
+    $goldenImageId = Get-FlashdbPropertyValue -Target $Clone -Name 'GoldenImageId'
+    if ($goldenImageId -and $script:GoldenImages.ContainsKey($goldenImageId)) {
+        return Get-FlashdbPropertyValue -Target $script:GoldenImages[$goldenImageId] -Name 'SourceConnection'
+    }
+
+    return $null
 }
 
 function Get-FlashdbDatabaseSchema {
@@ -489,6 +691,17 @@ function New-FlashdbGoldenImage {
 
     $imageId = "golden-$(Get-Date -Format yyyyMMddHHmmss)-$(Get-Random -Minimum 1000 -Maximum 9999)"
 
+    # Calculate database size if it exists
+    $sizeBytes = 0
+    if ($sqlCopy) {
+        try {
+            $sizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $SourceConnection -DatabaseName $sqlCopy.DatabaseName
+        } catch {
+            Write-Verbose "Failed to query golden image database size: $_"
+            $sizeBytes = 0
+        }
+    }
+
     $image = [PSCustomObject]@{
         Id = $imageId
         Name = $Name
@@ -507,6 +720,7 @@ function New-FlashdbGoldenImage {
         Actualized = [bool]$sqlCopy
         TableCount = if ($sqlCopy) { $sqlCopy.TableCount } else { 0 }
         RowCount = if ($sqlCopy) { $sqlCopy.RowCount } else { 0 }
+        SizeBytes = $sizeBytes
         CopiedTables = if ($sqlCopy) { @($sqlCopy.Tables) } else { @() }
         CreatedAt = (Get-Date).ToString("o")
         Status = 'Ready'
@@ -609,6 +823,87 @@ function Remove-FlashdbGoldenImage {
     }
 }
 
+function Update-FlashdbGoldenImageSize {
+    param(
+        [string]$GoldenImageId
+    )
+
+    $image = $script:GoldenImages[$GoldenImageId]
+    if (-not $image) {
+        throw "Golden image not found: $GoldenImageId"
+    }
+
+    $sizeBytes = 0
+    $databaseType = Get-FlashdbPropertyValue -Target $image -Name 'DatabaseType' -Default 'sql-server'
+    $goldenDatabaseName = Get-FlashdbPropertyValue -Target $image -Name 'GoldenDatabaseName'
+    $sourceConnection = Get-FlashdbPropertyValue -Target $image -Name 'SourceConnection'
+
+    if ($databaseType -eq 'sql-server' -and $goldenDatabaseName -and $sourceConnection) {
+        try {
+            $sizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $sourceConnection -DatabaseName $goldenDatabaseName
+
+            if ($sizeBytes -gt 0) {
+                Add-OrSetProperty -Target $image -Name 'SizeBytes' -Value $sizeBytes
+                Add-OrSetProperty -Target $image -Name 'LastSizeUpdateAt' -Value (Get-Date).ToString("o")
+                Save-FlashdbProviderState
+                Write-Verbose "Updated golden image size: $GoldenImageId = $sizeBytes bytes"
+            }
+        } catch {
+            Write-Verbose "Failed to update golden image size for $GoldenImageId : $_"
+        }
+    } else {
+        $outputPath = Get-FlashdbPropertyValue -Target $image -Name 'OutputPath'
+        if ($outputPath -and (Test-Path -Path $outputPath -PathType Leaf)) {
+            $sizeBytes = [int64](Get-Item -Path $outputPath).Length
+            Add-OrSetProperty -Target $image -Name 'SizeBytes' -Value $sizeBytes
+            Add-OrSetProperty -Target $image -Name 'LastSizeUpdateAt' -Value (Get-Date).ToString("o")
+            Save-FlashdbProviderState
+        }
+    }
+
+    return $sizeBytes
+}
+
+function Update-FlashdbGoldenImageSizes {
+    param(
+        [switch]$Force
+    )
+
+    $updated = 0
+    $failed = 0
+    $skipped = 0
+
+    foreach ($imageId in @($script:GoldenImages.Keys)) {
+        $image = $script:GoldenImages[$imageId]
+        $currentSizeBytes = [int64](Get-FlashdbPropertyValue -Target $image -Name 'SizeBytes' -Default 0)
+
+        # Skip if already has recent size data and not forced
+        if (-not $Force -and $currentSizeBytes -gt 0) {
+            $skipped++
+            continue
+        }
+
+        try {
+            $sizeBytes = Update-FlashdbGoldenImageSize -GoldenImageId $imageId -ErrorAction Stop
+            if ($sizeBytes -gt 0) {
+                $updated++
+            } else {
+                $skipped++
+            }
+        } catch {
+            $failed++
+            Write-Verbose "Failed to update size for $imageId : $_"
+        }
+    }
+
+    return [PSCustomObject]@{
+        TotalImages = $script:GoldenImages.Count
+        Updated = $updated
+        Failed = $failed
+        Skipped = $skipped
+    }
+}
+
 function Get-FlashdbGoldenImageInfo {
     param(
         [string]$ImageId
@@ -619,12 +914,25 @@ function Get-FlashdbGoldenImageInfo {
         return $null
     }
 
+    # Use stored size if available, otherwise try to calculate it
+    $storedSizeBytes = [int64](Get-FlashdbPropertyValue -Target $image -Name 'SizeBytes' -Default 0)
+    $sizeBytes = if ($storedSizeBytes -gt 0) {
+        $storedSizeBytes
+    } else {
+        # Try to update size for existing golden images that don't have it
+        Update-FlashdbGoldenImageSize -GoldenImageId $ImageId -ErrorAction SilentlyContinue
+    }
+
     return [PSCustomObject]@{
         Id = $ImageId
         Name = $image.Name
-        Size = 0
-        Tables = 0
-        Rows = 0
+        Size = $sizeBytes
+        SizeGB = [math]::Round($sizeBytes / 1GB, 2)
+        Tables = [int](Get-FlashdbPropertyValue -Target $image -Name 'TableCount' -Default 0)
+        Rows = [int64](Get-FlashdbPropertyValue -Target $image -Name 'RowCount' -Default 0)
+        DatabaseName = Get-FlashdbPropertyValue -Target $image -Name 'GoldenDatabaseName' -Default (Get-FlashdbPropertyValue -Target $image -Name 'DatabaseName')
+        CreatedAt = Get-FlashdbPropertyValue -Target $image -Name 'CreatedAt'
+        Status = Get-FlashdbPropertyValue -Target $image -Name 'Status'
     }
 }
 
@@ -654,6 +962,16 @@ function New-FlashdbClone {
     }
 
     $cloneId = "clone-$(Get-Date -Format yyyyMMddHHmmss)-$(Get-Random -Minimum 1000 -Maximum 9999)"
+    $finalDatabaseName = if ($sqlCopy) { $sqlCopy.DatabaseName } elseif ($DatabaseName) { $DatabaseName } else { "${CloneName}_Clone" }
+    $cloneSizeBytes = 0
+    if ($sqlCopy -and $image.SourceConnection) {
+        try {
+            $cloneSizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $image.SourceConnection -DatabaseName $finalDatabaseName
+        } catch {
+            Write-Verbose "Failed to query clone database size: $_"
+            $cloneSizeBytes = 0
+        }
+    }
 
     $clone = [PSCustomObject]@{
         Id = $cloneId
@@ -662,19 +980,109 @@ function New-FlashdbClone {
         InstancePath = $InstancePath
         StoragePath = $StoragePath
         DatabaseType = $DatabaseType
-        DatabaseName = if ($sqlCopy) { $sqlCopy.DatabaseName } elseif ($DatabaseName) { $DatabaseName } else { "${CloneName}_Clone" }
+        DatabaseName = $finalDatabaseName
         CompressionEnabled = $CompressionEnabled
         SourceGoldenDatabaseName = if ($sqlCopy) { $sqlCopy.SourceDatabase } else { $null }
         Actualized = [bool]$sqlCopy
         TableCount = if ($sqlCopy) { $sqlCopy.TableCount } else { 0 }
         RowCount = if ($sqlCopy) { $sqlCopy.RowCount } else { 0 }
+        SizeBytes = $cloneSizeBytes
         CreatedAt = (Get-Date).ToString("o")
         Status = 'Ready'
     }
 
     $script:Clones[$cloneId] = $clone
     Save-FlashdbProviderState
+
+    # Also create JSON metadata file for compatibility with CloneManagement.ps1
+    if ($StoragePath -and (Test-Path -Path $StoragePath -PathType Container)) {
+        $metadata = @{
+            clone = @{
+                id = $cloneId
+                name = $CloneName
+                createdAt = (Get-Date).ToUniversalTime().ToString("o")
+                createdBy = [Environment]::UserName
+                vhdxPath = ""  # GoldenImageProvider doesn't use VHDX files
+                size = @{
+                    allocated = 0
+                    used = 0
+                }
+            }
+            golden = @{
+                id = $GoldenImageId
+                parentHash = ""
+            }
+            database = @{
+                type = $DatabaseType
+                databaseName = $finalDatabaseName
+                instancePath = $InstancePath
+            }
+            attachment = @{
+                status = "detached"
+                attachedAt = $null
+                detachedAt = $null
+                lastVerifiedAt = $null
+            }
+            checkpoints = @()
+            lifecycle = @{
+                status = "active"
+                expirationPolicy = "manual"
+                expiresAt = $null
+                tags = @()
+            }
+            operations = @{
+                lastOperation = "clone-created"
+                lastOperationAt = (Get-Date).ToUniversalTime().ToString("o")
+                operationLog = @(
+                    @{
+                        operation = "clone-created"
+                        timestamp = (Get-Date).ToUniversalTime().ToString("o")
+                        status = "success"
+                    }
+                )
+            }
+        }
+
+        $metadataPath = Join-Path $StoragePath "$cloneId.json"
+        try {
+            $metadata | ConvertTo-Json -Depth 10 | Out-File -FilePath $metadataPath -Encoding UTF8 -Force
+        } catch {
+            Write-Warning "Failed to save clone metadata JSON: $_"
+        }
+    }
+
     return $clone
+}
+
+function Update-FlashdbCloneSize {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Clone
+    )
+
+    $currentSizeBytes = [int64](Get-FlashdbPropertyValue -Target $Clone -Name 'SizeBytes' -Default 0)
+    if ($currentSizeBytes -gt 0) {
+        return $currentSizeBytes
+    }
+
+    $databaseType = Get-FlashdbPropertyValue -Target $Clone -Name 'DatabaseType'
+    $databaseName = Get-FlashdbPropertyValue -Target $Clone -Name 'DatabaseName'
+    $sourceConnection = Get-FlashdbCloneSourceConnection -Clone $Clone
+    if ($databaseType -ne 'sql-server' -or -not $databaseName -or -not $sourceConnection) {
+        return 0
+    }
+
+    try {
+        $sizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $sourceConnection -DatabaseName $databaseName
+        if ($sizeBytes -gt 0) {
+            Add-OrSetProperty -Target $Clone -Name 'SizeBytes' -Value $sizeBytes
+            Save-FlashdbProviderState
+        }
+        return $sizeBytes
+    } catch {
+        Write-Verbose "Failed to update clone size for $databaseName`: $_"
+        return 0
+    }
 }
 
 function Get-FlashdbClone {
@@ -683,11 +1091,18 @@ function Get-FlashdbClone {
     )
 
     if ($CloneId) {
-        return $script:Clones[$CloneId]
+        $clone = $script:Clones[$CloneId]
+        if ($clone) {
+            Update-FlashdbCloneSize -Clone $clone | Out-Null
+        }
+        return $clone
     }
 
     if ($script:Clones.Count -eq 0) {
         return @()
+    }
+    foreach ($clone in @($script:Clones.Values)) {
+        Update-FlashdbCloneSize -Clone $clone | Out-Null
     }
     return @($script:Clones.Values)
 }
@@ -762,6 +1177,33 @@ function New-FlashdbCheckpoint {
         throw "Clone not found: $CloneId"
     }
 
+    $clone = $script:Clones[$CloneId]
+    $sqlCopy = $null
+    $checkpointDatabaseName = $null
+    $sourceCloneDatabaseName = $null
+    $sizeBytes = 0
+
+    if ($clone) {
+        $databaseType = Get-FlashdbPropertyValue -Target $clone -Name 'DatabaseType'
+        $sourceCloneDatabaseName = Get-FlashdbPropertyValue -Target $clone -Name 'DatabaseName'
+        $sourceConnection = Get-FlashdbCloneSourceConnection -Clone $clone
+
+        if ($databaseType -eq 'sql-server' -and $sourceCloneDatabaseName -and $sourceConnection) {
+            $checkpointDatabaseName = "FlashDB_Checkpoint_$($cpId -replace '[^A-Za-z0-9_]', '_')"
+            $sqlCopy = Copy-FlashdbSqlDatabaseTables `
+                -ConnectionString $sourceConnection `
+                -SourceDatabase $sourceCloneDatabaseName `
+                -TargetDatabase $checkpointDatabaseName
+
+            try {
+                $sizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $sourceConnection -DatabaseName $checkpointDatabaseName
+            } catch {
+                Write-Verbose "Failed to query checkpoint database size: $_"
+                $sizeBytes = 0
+            }
+        }
+    }
+
     $checkpoint = [PSCustomObject]@{
         Id = $cpId
         CloneId = $CloneId
@@ -771,6 +1213,13 @@ function New-FlashdbCheckpoint {
         CreatedAt = (Get-Date).ToString("o")
         IsFavorite = $false
         Labels = @()
+        CheckpointDatabaseName = $checkpointDatabaseName
+        SourceCloneDatabaseName = $sourceCloneDatabaseName
+        Actualized = [bool]$sqlCopy
+        TableCount = if ($sqlCopy) { $sqlCopy.TableCount } else { 0 }
+        RowCount = if ($sqlCopy) { $sqlCopy.RowCount } else { 0 }
+        SizeBytes = $sizeBytes
+        CopiedTables = if ($sqlCopy) { @($sqlCopy.Tables) } else { @() }
     }
 
     $script:Checkpoints[$cpId] = $checkpoint
@@ -832,7 +1281,8 @@ function Restore-FlashdbCheckpoint {
     param(
         [string]$CloneId,
         [string]$CheckpointId,
-        [bool]$ReattachAfter = $true
+        [bool]$ReattachAfter = $true,
+        [switch]$Force
     )
 
     $checkpoint = $script:Checkpoints[$CheckpointId]
@@ -843,6 +1293,41 @@ function Restore-FlashdbCheckpoint {
     $clone = $script:Clones[$CloneId]
     if (-not $clone) {
         throw "Clone not found: $CloneId"
+    }
+
+    $restoreResult = $null
+    $databaseType = Get-FlashdbPropertyValue -Target $clone -Name 'DatabaseType'
+    $targetDatabaseName = Get-FlashdbPropertyValue -Target $clone -Name 'DatabaseName'
+    $checkpointDatabaseName = Get-FlashdbPropertyValue -Target $checkpoint -Name 'CheckpointDatabaseName'
+    $sourceConnection = Get-FlashdbCloneSourceConnection -Clone $clone
+
+    if ($databaseType -eq 'sql-server') {
+        if (-not $checkpointDatabaseName) {
+            throw "Checkpoint $CheckpointId does not contain SQL snapshot data. Create a new checkpoint before restoring SQL data."
+        }
+
+        if (-not $targetDatabaseName) {
+            throw "Clone $CloneId does not have a SQL database name."
+        }
+
+        if (-not $sourceConnection) {
+            throw "Clone $CloneId does not have a SQL source connection."
+        }
+
+        $restoreResult = Restore-FlashdbSqlDatabaseFromCheckpoint `
+            -ConnectionString $sourceConnection `
+            -CheckpointDatabase $checkpointDatabaseName `
+            -TargetDatabase $targetDatabaseName
+
+        Add-OrSetProperty -Target $clone -Name 'TableCount' -Value $restoreResult.TableCount
+        Add-OrSetProperty -Target $clone -Name 'RowCount' -Value $restoreResult.RowCount
+        try {
+            $restoredSizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $sourceConnection -DatabaseName $targetDatabaseName
+            Add-OrSetProperty -Target $clone -Name 'SizeBytes' -Value $restoredSizeBytes
+        } catch {
+            Write-Verbose "Failed to query restored clone database size: $_"
+        }
+        Add-OrSetProperty -Target $clone -Name 'Status' -Value $(if ($ReattachAfter) { 'Attached' } else { 'Ready' })
     }
 
     $restoredAt = (Get-Date).ToString("o")
@@ -858,14 +1343,40 @@ function Restore-FlashdbCheckpoint {
         CheckpointId = $CheckpointId
         RestoredAt = $restoredAt
         ReattachAfter = $ReattachAfter
+        DatabaseName = $targetDatabaseName
+        CheckpointDatabaseName = $checkpointDatabaseName
+        TableCount = if ($restoreResult) { $restoreResult.TableCount } else { 0 }
+        RowCount = if ($restoreResult) { $restoreResult.RowCount } else { 0 }
+        SizeBytes = if ($restoreResult) { Get-FlashdbPropertyValue -Target $clone -Name 'SizeBytes' -Default 0 } else { 0 }
     }
 }
 
 function Remove-FlashdbCheckpoint {
     param(
         [string]$CloneId,
-        [string]$CheckpointId
+        [string]$CheckpointId,
+        [switch]$Force
     )
+
+    $checkpoint = $script:Checkpoints[$CheckpointId]
+    if ($checkpoint) {
+        $checkpointDatabaseName = Get-FlashdbPropertyValue -Target $checkpoint -Name 'CheckpointDatabaseName'
+        $clone = if ($CloneId -and $script:Clones.ContainsKey($CloneId)) { $script:Clones[$CloneId] } else { $script:Clones[$checkpoint.CloneId] }
+
+        if ($checkpointDatabaseName) {
+            $sourceConnection = if ($clone) { Get-FlashdbCloneSourceConnection -Clone $clone } else { $null }
+            if ($sourceConnection) {
+                Remove-FlashdbSqlDatabase -ConnectionString $sourceConnection -DatabaseName $checkpointDatabaseName
+            } elseif (-not $Force) {
+                throw "Cannot remove checkpoint database $checkpointDatabaseName because no SQL source connection was found."
+            }
+        }
+
+        if ($clone -and (Get-FlashdbPropertyValue -Target $clone -Name 'LastRestoredCheckpointId') -eq $CheckpointId) {
+            Add-OrSetProperty -Target $clone -Name 'LastRestoredCheckpointId' -Value $null
+            Add-OrSetProperty -Target $clone -Name 'LastRestoredAt' -Value $null
+        }
+    }
 
     $script:Checkpoints.Remove($CheckpointId)
     Save-FlashdbProviderState

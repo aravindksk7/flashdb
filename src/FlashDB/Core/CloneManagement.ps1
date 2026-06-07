@@ -392,9 +392,54 @@ function Connect-FlashdbClone {
             $vhdDisk = Get-VHD -Path $vhdxPath -ErrorAction Stop
             Write-Verbose "VHDX mounted successfully, disk attached"
 
-            # Attach database to SQL instance (delegated to provider)
-            # This would call the SQL Server provider's AttachDatabase method
-            # Get-FlashdbProvider($metadata.database.type).AttachDatabase(...)
+            # Attach database to SQL instance
+            $instanceName = $targetInstance
+            $databaseName = $metadata.database.name
+
+            if ($instanceName -and $databaseName) {
+                Write-Verbose "Attaching database to SQL Server: $databaseName on $instanceName"
+                try {
+                    # Find the primary data file for the database
+                    $mdfFile = $null
+
+                    # Common locations for database files
+                    $searchPaths = @(
+                        "C:\Program Files\Microsoft SQL Server\*\MSSQL*\DATA\*$databaseName*_Primary.mdf",
+                        "D:\Data\*\*\DATA\*$databaseName*_Primary.mdf",
+                        "E:\Data\*\*\DATA\*$databaseName*_Primary.mdf",
+                        "$($metadata.clone.storagePath)\*_Primary.mdf"
+                    )
+
+                    foreach ($pattern in $searchPaths) {
+                        $files = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue
+                        if ($files) {
+                            $mdfFile = $files[0].FullName
+                            break
+                        }
+                    }
+
+                    if ($mdfFile) {
+                        Write-Verbose "Found database file: $mdfFile"
+
+                        # Create database with files attached
+                        $attachQuery = @"
+CREATE DATABASE [$databaseName]
+ON (FILENAME = '$mdfFile')
+FOR ATTACH;
+"@
+                        Invoke-Sqlcmd -ServerInstance $instanceName `
+                                      -Query $attachQuery `
+                                      -QueryTimeout 60 `
+                                      -ErrorAction Stop | Out-Null
+                        Write-Verbose "Database attached to SQL Server successfully"
+                    } else {
+                        Write-Warning "Could not find database files for $databaseName"
+                    }
+                } catch {
+                    Write-Warning "Failed to attach database to SQL Server: $_"
+                    # Non-fatal - metadata still updated
+                }
+            }
 
             # Update metadata
             $metadata.attachment.status = 'attached'
@@ -481,12 +526,44 @@ function Disconnect-FlashdbClone {
 
             Write-Verbose "Detaching clone: $CloneId"
 
-            # Close database connections (delegated to provider)
-            # Get-FlashdbProvider($metadata.database.type).DetachDatabase(...)
+            # Close database connections from SQL Server (required for VHDX detach)
+            $instanceName = $metadata.database.instanceName
+            $databaseName = $metadata.database.name
+
+            if ($instanceName -and $databaseName) {
+                Write-Verbose "Detaching database from SQL Server: $databaseName on $instanceName"
+                try {
+                    # Set SQL Server to single-user mode and detach database
+                    $detachQuery = @"
+ALTER DATABASE [$databaseName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+EXEC sp_detach_db N'$databaseName', 'true';
+"@
+                    Invoke-Sqlcmd -ServerInstance $instanceName `
+                                  -Query $detachQuery `
+                                  -QueryTimeout 60 `
+                                  -ErrorAction Stop | Out-Null
+                    Write-Verbose "Database detached from SQL Server successfully"
+                } catch {
+                    if ($Force) {
+                        Write-Warning "Failed to detach database but continuing due to Force flag: $_"
+                    } else {
+                        throw "Failed to detach database from SQL Server: $_`nUse -Force to bypass"
+                    }
+                }
+            } else {
+                Write-Warning "Database metadata incomplete, skipping SQL Server detach"
+            }
 
             # Dismount VHDX using actual Windows API
-            Dismount-VHD -Path $metadata.clone.vhdxPath -ErrorAction Stop | Out-Null
-            Write-Verbose "VHDX dismounted successfully"
+            try {
+                Dismount-VHD -Path $metadata.clone.vhdxPath -ErrorAction Stop | Out-Null
+                Write-Verbose "VHDX dismounted successfully"
+            } catch {
+                Write-Warning "Failed to dismount VHDX: $_"
+                if (-not $Force) {
+                    throw "Failed to dismount VHDX: $_`nUse -Force to bypass"
+                }
+            }
 
             # Update metadata
             $metadata.attachment.status = 'detached'

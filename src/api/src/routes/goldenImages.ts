@@ -157,6 +157,14 @@ router.post('/schema', async (req: Request, res: Response) => {
 // GET - List golden images
 router.get('/', async (_req: Request, res: Response) => {
   try {
+    // Try to update sizes for old golden images, but don't fail if this errors
+    try {
+      await psService.executeCommand('Update-FlashdbGoldenImageSizes', {});
+    } catch (sizeError: any) {
+      logger.warn(`Failed to update golden image sizes (non-blocking): ${sizeError.message}`);
+    }
+
+    // Get all golden images
     const images = await psService.executeCommand('Get-FlashdbGoldenImage', {});
     return res.json({
       success: true,

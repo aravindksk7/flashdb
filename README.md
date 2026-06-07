@@ -398,12 +398,28 @@ View real-time system metrics and health status.
 
 1. Click **Metrics Dashboard** tab
 2. View:
-   - **Overview:** Total clones, storage saved, success rates
+   - **Overview:** Total clones, healthy attached/ready clones, storage saved, success rates
    - **Pool Metrics:** Connection pool status and utilization
-   - **Queue Metrics:** Task queue depth and success rates
+   - **Queue Metrics:** Task queue depth, completed/failed tasks, and success rates
    - **Cluster Status:** Instance health and heartbeat status
 
-### Step 5: Access Deployment Guide
+Dashboard statistics are backed by live provider state and durable queue history:
+- Clone counts treat `Ready`, `Attached`, `Active`, and `Healthy` states as healthy.
+- Golden image and clone sizes use SQL Server database file size when available.
+- Operation counts and success rates come from queued create/restore/delete checkpoint tasks.
+- Clone cards show real table count, row count, and size values returned by the API.
+
+### Step 5: Review Audit History
+
+View and search the complete operation trail.
+
+1. Click **Audit** tab
+2. Search by operation ID, clone ID, checkpoint ID/name, status, or error message
+3. Filter by operation type (`create`, `restore`, `delete`) and status (`completed`, `failed`, etc.)
+
+The Audit tab is backed by the durable task queue and includes completed and failed restore-point operations even when the SQL operation table is empty.
+
+### Step 6: Access Deployment Guide
 
 Learn how to deploy FlashDB to production.
 
@@ -490,8 +506,11 @@ Response:
       "id": "clone-1",
       "name": "TestClone-01",
       "goldenImageId": "golden-1",
-      "status": "ready",
+      "status": "Attached",
       "databaseName": "TestDB_Clone_01",
+      "tableCount": 2,
+      "rowCount": 13,
+      "sizeBytes": 16777216,
       "createdAt": "2026-06-06T10:05:00Z"
     }
   ]
@@ -645,6 +664,40 @@ Response:
   }
 }
 ```
+
+### Operation History
+
+#### Global Operation History
+```bash
+GET /api/operations?limit=250
+
+Response:
+{
+  "success": true,
+  "data": [
+    {
+      "id": "36166055-4b93-4729-a7af-6ca9a22d2beb",
+      "cloneId": "clone-20260607033049-3949",
+      "checkpointId": "cp-20260607043537-2642",
+      "checkpointName": "cp-20260607043537-2642",
+      "type": "restore",
+      "status": "completed",
+      "timestamp": "2026-06-07T04:37:51.782Z",
+      "completedAt": "2026-06-07T04:37:57.042Z",
+      "message": "Operation completed successfully",
+      "source": "queue"
+    }
+  ],
+  "count": 1
+}
+```
+
+#### Clone Operation Timeline
+```bash
+GET /api/operations/timeline/:cloneId
+```
+
+Operation history responses merge SQL audit rows with durable queue tasks. Queue-backed entries use `source: "queue"` and are the source used by the GUI Audit tab.
 
 ### Health Checks
 

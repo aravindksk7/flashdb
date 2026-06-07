@@ -5,6 +5,26 @@ All notable changes to FlashDB are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Searchable Audit tab for durable operation history across clone, checkpoint,
+  restore, and delete tasks.
+- Operation history API endpoints for global audit queries and per-clone
+  timelines.
+- Integration regression test for restoring `[TestDB_Clone_1].[dbo].[Orders]`
+  from a checkpoint.
+
+### Fixed
+- GUI healthy clone counts now include attached and active SQL Server clones.
+- Dashboard statistics now use real clone sizes, table counts, row counts, and
+  queue-backed operation success rates instead of placeholder values.
+- Golden image and clone size displays now report actual SQL Server database file
+  sizes.
+- Checkpoint restore now restores clone data from the checkpoint database and
+  validates rollback behavior against the `Orders` table.
+- Audit and operation history now remain available after queued tasks complete.
+
 ## [1.0.0] - 2026-06-06
 
 ### Phase 1 Features - Core Database Virtualization
