@@ -24,7 +24,7 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess, gol
     databaseType: 'sql-server',
     databaseName: 'TestDB_Clone',
     instancePath: 'sql-server',
-    storagePath: '/app/data/clones',
+    storagePath: '/app/data',
     compressionEnabled: true,
     attachAfterCreate: false,
   });
@@ -91,7 +91,7 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess, gol
       databaseType: 'sql-server',
       databaseName: 'TestDB_Clone',
       instancePath: 'sql-server',
-      storagePath: '/app/data/clones',
+      storagePath: '/app/data',
       compressionEnabled: true,
       attachAfterCreate: false,
     });
@@ -107,9 +107,6 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess, gol
       const response = await axios.post(`${API_BASE}/clones`, formData);
 
       if (response.data.success) {
-        setSuccess(true);
-        setError(null);
-
         // Wait for queued task to complete if task ID is returned
         const taskId = response.data?.data?.taskId;
         if (response.status === 202 && taskId) {
@@ -118,12 +115,14 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess, gol
           } catch (waitErr: any) {
             console.error('Clone creation task failed:', waitErr);
             setError(waitErr.message || 'Clone creation task failed');
-            setSuccess(false);
             setLoading(false);
             return;
           }
         }
 
+        // Only show success AFTER task completes successfully
+        setSuccess(true);
+        setError(null);
         resetForm();
         setTimeout(() => {
           setSuccess(false);
@@ -224,7 +223,7 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess, gol
               name="storagePath"
               value={formData.storagePath}
               onChange={handleChange}
-              placeholder="/app/data/clones"
+              placeholder="/app/data"
               required
             />
           </div>

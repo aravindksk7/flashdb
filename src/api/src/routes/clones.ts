@@ -1,14 +1,70 @@
 import { Router, Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { getPooledPowerShellService } from '../services/pooledPowershellService';
 import { getTaskQueue } from '../services/taskQueue';
+import { enqueueTask } from '../services/durableTaskQueue';
 import { getCloneValidationService } from '../services/cloneValidationService';
 import { getAuditMetricsService } from '../services/auditMetricsService';
+import { getMetadataService } from '../services/metadataService';
+import { getSqlClient } from '../services/sqlClient';
 import logger from '../logger';
 import { invalidateCache } from '../middleware/caching';
 import { withLock, getLockInfo } from '../middleware/lockMiddleware';
 
 const router = Router();
 const psService = getPooledPowerShellService();
+const metadataService = getMetadataService();
+
+const isWindowsAbsolutePath = (input: string): boolean => /^[a-zA-Z]:[\\/]/.test(input);
+
+const normalizePathForMatch = (input: string): string => input.replace(/\\/g, '/').toLowerCase();
+
+function resolveMappedStoragePath(requestedPath: string): string {
+  const trimmed = requestedPath.trim();
+
+  if (process.env.NODE_ENV === 'test') return trimmed;
+  if (process.platform === 'win32' || !isWindowsAbsolutePath(trimmed)) return trimmed;
+
+  const rawMappings = process.env.FLASHDB_STORAGE_PATH_MAPPINGS || '{}';
+  let mappings: Record<string, string> = {};
+  try {
+    mappings = JSON.parse(rawMappings);
+  } catch {
+    throw new Error('Invalid FLASHDB_STORAGE_PATH_MAPPINGS JSON.');
+  }
+
+  const normalizedRequested = normalizePathForMatch(trimmed);
+  const normalizedEntries = Object.entries(mappings)
+    .map(([source, target]) => ({
+      source: normalizePathForMatch(String(source).trim()),
+      target: String(target).trim(),
+    }))
+    .filter(entry => entry.source.length > 0 && entry.target.length > 0)
+    .sort((a, b) => b.source.length - a.source.length);
+
+  const match = normalizedEntries.find(entry =>
+    normalizedRequested === entry.source || normalizedRequested.startsWith(`${entry.source}/`)
+  );
+
+  if (!match) {
+    throw new Error(
+      `Storage path '${trimmed}' is a Windows path but no container mapping exists. Set FLASHDB_STORAGE_PATH_MAPPINGS.`
+    );
+  }
+
+  const suffix = normalizedRequested.slice(match.source.length).replace(/^\//, '');
+  return suffix ? path.posix.join(match.target, suffix) : match.target;
+}
+
+function assertStoragePathExists(storagePath: string): void {
+  if (!fs.existsSync(storagePath)) {
+    throw new Error(`Storage path does not exist in runtime environment: ${storagePath}`);
+  }
+  if (!fs.statSync(storagePath).isDirectory()) {
+    throw new Error(`Storage path is not a directory: ${storagePath}`);
+  }
+}
 
 const toResponseArray = (value: any): any[] => {
   if (value == null) return [];
@@ -18,6 +74,100 @@ const toResponseArray = (value: any): any[] => {
     return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
   });
 };
+
+function parseJsonField(value: any): any {
+  if (!value || typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeValidationStatus(value: any, rowStatus?: string, findings: any[] = []): 'Healthy' | 'Unhealthy' | 'Pending' {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized === 'healthy' || normalized === 'success') return 'Healthy';
+  if (normalized === 'unhealthy' || normalized === 'failed' || normalized === 'failure') return 'Unhealthy';
+  if (rowStatus === 'pending' || rowStatus === 'processing') return 'Pending';
+  if (rowStatus === 'failed') return 'Unhealthy';
+  if (findings.some((finding: any) => finding?.severity === 'Error')) return 'Unhealthy';
+  return rowStatus === 'completed' ? 'Healthy' : 'Pending';
+}
+
+function mapValidationTaskRow(row: any): any {
+  const payload = parseJsonField(row.payload) || {};
+  const result = parseJsonField(row.result) || {};
+  const findings = Array.isArray(result.findings) ? result.findings : [];
+  const validationId = result.validationId || payload.validationId || row.id;
+
+  return {
+    cloneId: result.cloneId || payload.cloneId || '',
+    validationId,
+    taskId: row.id,
+    status: normalizeValidationStatus(result.status || result.result, row.status, findings),
+    findings,
+    findingsCount: findings.length,
+    validatedAt: result.validatedAt || row.completedAt || row.startedAt || row.createdAt,
+    duration: result.duration,
+    taskStatus: row.status
+  };
+}
+
+async function getPersistentValidationTasks(
+  cloneId: string,
+  validationId?: string,
+  limit: number = 100
+): Promise<any[]> {
+  try {
+    const sqlClient = getSqlClient();
+    const result = await sqlClient.query<any>(
+      `SELECT TOP (@limit)
+          [id],
+          [type],
+          [status],
+          [payload],
+          [createdAt],
+          [startedAt],
+          [completedAt],
+          [result]
+       FROM (
+          SELECT
+            [id],
+            [type],
+            [status],
+            [payload],
+            [created_at] AS [createdAt],
+            [started_at] AS [startedAt],
+            [completed_at] AS [completedAt],
+            [result]
+          FROM [dbo].[flashdb_queue]
+          WHERE [type] = 'validate-clone'
+          UNION ALL
+          SELECT
+            [id],
+            [type],
+            [status],
+            [payload],
+            [created_at] AS [createdAt],
+            [started_at] AS [startedAt],
+            [completed_at] AS [completedAt],
+            [result]
+          FROM [dbo].[flashdb_queue_archive]
+          WHERE [type] = 'validate-clone'
+       ) AS validations
+       ORDER BY COALESCE([completedAt], [startedAt], [createdAt]) DESC`,
+      { limit }
+    );
+
+    return (result.recordset || [])
+      .map(mapValidationTaskRow)
+      .filter(item => item.cloneId === cloneId)
+      .filter(item => !validationId || item.validationId === validationId);
+  } catch (error: any) {
+    logger.debug(`Persistent validation tasks unavailable: ${error.message}`);
+    return [];
+  }
+}
 
 // POST - Create clone (queued)
 router.post('/', async (req: Request, res: Response) => {
@@ -43,6 +193,27 @@ router.post('/', async (req: Request, res: Response) => {
 
     logger.info(`Creating clone: ${cloneName}`);
 
+    // Validate that golden image exists before queueing task
+    const sqlClient = getSqlClient();
+    const goldenImageCheck = await sqlClient.query<any>(
+      `SELECT [id] FROM [dbo].[GoldenImages] WHERE [id] = @goldenImageId`,
+      { goldenImageId }
+    );
+
+    if (!goldenImageCheck.recordset || goldenImageCheck.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `Golden image not found: ${goldenImageId}`
+      });
+    }
+
+    const requestedStoragePath = String(storagePath).trim();
+    const runtimeStoragePath = resolveMappedStoragePath(requestedStoragePath);
+    assertStoragePathExists(runtimeStoragePath);
+    if (runtimeStoragePath !== requestedStoragePath) {
+      logger.info(`Mapped clone storage path '${requestedStoragePath}' -> '${runtimeStoragePath}'`);
+    }
+
     // Lock on source to prevent concurrent clones from same golden image
     const lockResourceId = `clone-creation:${goldenImageId}`;
 
@@ -50,12 +221,11 @@ router.post('/', async (req: Request, res: Response) => {
       const { result: task, lockContext } = await withLock(lockResourceId, async () => {
         // Use task queue for async processing
         if (useQueue !== false) {
-          const taskQueue = getTaskQueue();
-          const task = taskQueue.enqueue('create-clone', {
+          const task = await enqueueTask('create-clone', {
             goldenImageId,
             cloneName,
             instancePath,
-            storagePath,
+            storagePath: runtimeStoragePath,
             databaseType,
             databaseName,
             compressionEnabled,
@@ -72,7 +242,7 @@ router.post('/', async (req: Request, res: Response) => {
             GoldenImageId: goldenImageId,
             CloneName: cloneName,
             InstancePath: instancePath,
-            StoragePath: storagePath
+            StoragePath: runtimeStoragePath
           };
           if (databaseType) params.DatabaseType = databaseType;
           if (databaseName) params.DatabaseName = databaseName;
@@ -136,13 +306,35 @@ router.get('/', async (_req: Request, res: Response) => {
   try {
     logger.info('Retrieving all clones');
 
-    const clones = await psService.executeCommand('Get-FlashdbClone', {});
+    const clones = toResponseArray(await psService.executeCommand('Get-FlashdbClone', {}));
 
-    return res.json({
-      success: true,
-      data: toResponseArray(clones),
-      message: 'Clones retrieved successfully'
-    });
+    // Try to enrich with database data (vhdxPath, etc.)
+    try {
+      const sqlClient = getSqlClient();
+      const dbClones = await sqlClient.query<any>(
+        `SELECT [id], [vhdxPath] FROM [dbo].[Clones]`,
+        {}
+      );
+      const dbMap = new Map((dbClones.recordset || []).map((row: any) => [row.id, row]));
+
+      const enrichedClones = clones.map((clone: any) => ({
+        ...clone,
+        vhdxPath: (clone as any).VhdxPath || dbMap.get((clone as any).Id || (clone as any).id)?.vhdxPath || null
+      }));
+
+      return res.json({
+        success: true,
+        data: enrichedClones,
+        message: 'Clones retrieved successfully'
+      });
+    } catch (dbError: any) {
+      logger.debug(`Database enrichment unavailable: ${dbError.message}, returning PowerShell data only`);
+      return res.json({
+        success: true,
+        data: clones,
+        message: 'Clones retrieved successfully'
+      });
+    }
   } catch (error: any) {
     logger.error(`Error retrieving clones: ${error.message}`);
     return res.status(500).json({
@@ -167,6 +359,21 @@ router.get('/:cloneId', async (req: Request, res: Response) => {
         success: false,
         message: `Clone not found: ${cloneId}`
       });
+    }
+
+    // Try to enrich with database data
+    try {
+      const sqlClient = getSqlClient();
+      const dbResult = await sqlClient.query<any>(
+        `SELECT [vhdxPath] FROM [dbo].[Clones] WHERE [id] = @cloneId`,
+        { cloneId }
+      );
+      const dbClone = dbResult.recordset?.[0];
+      if (dbClone && dbClone.vhdxPath) {
+        (clone as any).vhdxPath = dbClone.vhdxPath;
+      }
+    } catch (dbError: any) {
+      logger.debug(`Database enrichment unavailable for clone ${cloneId}: ${dbError.message}`);
     }
 
     return res.json({
@@ -259,8 +466,7 @@ router.delete('/:cloneId', async (req: Request, res: Response) => {
       const { result: task, lockContext } = await withLock(lockResourceId, async () => {
         // Use task queue for async processing
         if (useQueue !== 'false') {
-          const taskQueue = getTaskQueue();
-          const task = taskQueue.enqueue('delete-clone', {
+          const task = await enqueueTask('delete-clone', {
             cloneId,
             deleteVhdx: deleteVhdx === 'true'
           });
@@ -275,6 +481,9 @@ router.delete('/:cloneId', async (req: Request, res: Response) => {
             CloneId: cloneId,
             DeleteVhdx: deleteVhdx === 'true'
           });
+
+          // Keep API metadata store consistent with provider deletion.
+          await metadataService.deleteClone(cloneId);
 
           // Invalidate cache for clones and metrics
           invalidateCache(['/clones', '/metrics']);
@@ -399,8 +608,7 @@ router.post('/:cloneId/validate', async (req: Request, res: Response) => {
               };
             } else {
               // Asynchronous mode: queue validation task
-              const taskQueue = getTaskQueue();
-              const task = taskQueue.enqueue('validate-clone', {
+              const task = await enqueueTask('validate-clone', {
                 cloneId,
                 validationId
               });
@@ -514,6 +722,43 @@ router.get('/:cloneId/validation-status', async (req: Request, res: Response) =>
       });
     }
 
+    const persistentValidationTasks = await getPersistentValidationTasks(
+      cloneId,
+      typeof validationId === 'string' ? validationId : undefined,
+      250
+    );
+
+    if (persistentValidationTasks.length > 0) {
+      const latestTaskValidation = persistentValidationTasks[0];
+      const responseData: any = {
+        cloneId,
+        validationId: latestTaskValidation.validationId,
+        status: latestTaskValidation.status,
+        findings: latestTaskValidation.findings,
+        validatedAt: latestTaskValidation.validatedAt,
+        duration: latestTaskValidation.duration,
+        taskId: latestTaskValidation.taskId,
+        taskStatus: latestTaskValidation.taskStatus
+      };
+
+      if (includeHistory === 'true') {
+        const historyTasks = await getPersistentValidationTasks(cloneId, undefined, 250);
+        responseData.history = historyTasks.slice(0, 10).map(item => ({
+          validationId: item.validationId,
+          status: item.status,
+          findingsCount: item.findingsCount,
+          validatedAt: item.validatedAt,
+          taskId: item.taskId
+        }));
+      }
+
+      return res.json({
+        success: true,
+        data: responseData,
+        message: 'Validation status retrieved'
+      });
+    }
+
     // Get latest validation from audit service
     const auditService = getAuditMetricsService();
     const validationOperations = await auditService.getValidationOperations(cloneId);
@@ -604,6 +849,44 @@ router.get('/:cloneId/validation-history', async (req: Request, res: Response) =
           message: `Clone not found: ${cloneId}`,
           timestamp: new Date().toISOString()
         }
+      });
+    }
+
+    const persistentValidationTasks = await getPersistentValidationTasks(cloneId, undefined, 500);
+    if (persistentValidationTasks.length > 0) {
+      let filteredTasks = persistentValidationTasks;
+      if (status) {
+        filteredTasks = filteredTasks.filter((item: any) => item.status === status);
+      }
+
+      const total = filteredTasks.length;
+      const validations = filteredTasks.slice(offset, offset + limit).map((item: any) => {
+        const errorCount = item.findings.filter((finding: any) => finding.severity === 'Error').length;
+        const warningCount = item.findings.filter((finding: any) => finding.severity === 'Warning').length;
+
+        return {
+          validationId: item.validationId,
+          taskId: item.taskId,
+          status: item.status,
+          findings: item.findings,
+          findingsCount: item.findingsCount,
+          errorCount,
+          warningCount,
+          validatedAt: item.validatedAt,
+          duration: item.duration?.elapsedMs || 0
+        };
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          cloneId,
+          validations,
+          total,
+          limit,
+          offset
+        },
+        message: 'Validation history retrieved'
       });
     }
 
@@ -744,8 +1027,7 @@ router.post('/:cloneId/repair', async (req: Request, res: Response) => {
               });
 
               // Queue the repair task
-              const taskQueue = getTaskQueue();
-              const task = taskQueue.enqueue('repair-clone', {
+              const task = await enqueueTask('repair-clone', {
                 cloneId,
                 repairId,
                 isDryRun: false,
