@@ -41,15 +41,21 @@ export class SqlClient {
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_DELAY_MS = 100;
   private isInitialized = false;
+  private initializePromise: Promise<void> | null = null;
   private healthCheckInterval: NodeJS.Timeout | null = null;
 
   /**
    * Initialize the SQL client and connection pool
    */
   async initialize(): Promise<void> {
-    if (this.isInitialized) {
+    if (this.isInitialized && this.pool?.connected) {
       logger.debug('SQL client already initialized');
       return;
+    }
+
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval as any);
+      this.healthCheckInterval = null;
     }
 
     const config: sql.config = {
@@ -88,12 +94,27 @@ export class SqlClient {
     }
   }
 
+  private async ensureConnected(): Promise<void> {
+    if (this.isInitialized && this.pool?.connected) {
+      return;
+    }
+
+    if (!this.initializePromise) {
+      this.initializePromise = this.initialize().finally(() => {
+        this.initializePromise = null;
+      });
+    }
+
+    await this.initializePromise;
+  }
+
   /**
    * Start periodic health checks on the connection pool
    */
   private startHealthCheck(): void {
     this.healthCheckInterval = setInterval(async () => {
       try {
+        await this.ensureConnected();
         const request = new sql.Request(this.pool);
         await request.query('SELECT 1');
         logger.debug('SQL connection health check passed');
@@ -118,6 +139,7 @@ export class SqlClient {
 
     while (attempt < this.MAX_RETRY_ATTEMPTS) {
       try {
+        await this.ensureConnected();
         const request = new sql.Request(this.pool);
         (request as any).connectionTimeout = this.CONNECTION_TIMEOUT;
         (request as any).timeout = this.QUERY_TIMEOUT;
@@ -127,7 +149,9 @@ export class SqlClient {
           request.input(key, value);
         }
 
-        const result = await request.query(sqlString);
+        // Prepend QUOTED_IDENTIFIER setting to ensure bracketed identifiers work
+        const fullQuery = `SET QUOTED_IDENTIFIER ON;\n${sqlString}`;
+        const result = await request.query(fullQuery);
         const executionTime = Date.now() - startTime;
 
         this.recordMetrics(executionTime);
@@ -176,7 +200,9 @@ export class SqlClient {
           request.input(key, value);
         }
 
-        const result = await request.query(sqlString);
+        // Prepend QUOTED_IDENTIFIER setting to ensure bracketed identifiers work
+        const fullQuery = `SET QUOTED_IDENTIFIER ON;\n${sqlString}`;
+        const result = await request.query(fullQuery);
         const executionTime = Date.now() - startTime;
 
         this.recordMetrics(executionTime);
@@ -213,6 +239,7 @@ export class SqlClient {
     let transaction: sql.Transaction | null = null;
 
     try {
+      await this.ensureConnected();
       const connection = await (this.pool as any).acquire();
       transaction = new sql.Transaction(connection);
 
