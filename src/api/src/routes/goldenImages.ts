@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getPooledPowerShellService } from '../services/pooledPowershellService';
+import { getMetadataService } from '../services/metadataService';
 import { invalidateCache } from '../middleware/caching';
 import logger from '../logger';
 
@@ -101,6 +102,30 @@ router.post('/', async (req: Request, res: Response) => {
     if (selectedTableList.length > 0) params.SelectedTables = selectedTableList;
 
     const image = await psService.executeCommand('New-FlashdbGoldenImage', params);
+
+    // Persist golden image to metadata database for FK constraint validation
+    try {
+      const metadataService = getMetadataService();
+      const imageId = image?.id || image?.Id;
+      const imageName = image?.name || image?.Name || name;
+      if (imageId) {
+        await metadataService.saveGoldenImage({
+          id: imageId,
+          name: imageName,
+          version: version,
+          method: normalizedMethod,
+          outputPath: outputPath,
+          status: 'Ready',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        logger.info(`Persisted golden image to database: ${imageId}`);
+      }
+    } catch (dbError: any) {
+      logger.warn(`Failed to persist golden image to database: ${dbError.message}`);
+      // Don't fail the response - PowerShell creation succeeded, just DB persistence failed
+    }
+
     invalidateCache(['/golden-images', '/metrics']);
 
     return res.status(201).json({

@@ -550,18 +550,24 @@ export class MetadataService {
     }
 
     try {
-      const query = `
-        INSERT INTO golden_images (id, name, version, method, output_path, status, created_at, updated_at)
-        VALUES (@id, @name, @version, @method, @outputPath, @status, @createdAt, @updatedAt)
-        ON CONFLICT (id) DO UPDATE SET
-          name = @name,
-          version = @version,
-          status = @status,
-          updated_at = @updatedAt
+      const upsertQuery = `
+        IF EXISTS (SELECT 1 FROM [dbo].[GoldenImages] WHERE [id] = @id)
+          UPDATE [dbo].[GoldenImages]
+          SET [imageName] = @name,
+              [updatedAt] = GETUTCDATE()
+          WHERE [id] = @id
+        ELSE
+          INSERT INTO [dbo].[GoldenImages] ([id], [imageName], [imagePath], [createdAt], [updatedAt])
+          VALUES (@id, @name, @imagePath, GETUTCDATE(), GETUTCDATE())
       `;
 
-      // Execute query with parameters
-      // Actual implementation would use the SQL client
+      await this.sqlClient.query(upsertQuery, {
+        id: metadata.id,
+        name: metadata.name || 'Unknown',
+        imagePath: metadata.outputPath || ''
+      });
+
+      logger.info(`[MetadataService] Golden image persisted: ${metadata.id}`);
     } catch (error) {
       logger.error(`[MetadataService] Failed to save golden image metadata: ${error}`);
       throw error;
@@ -716,27 +722,18 @@ export class MetadataService {
     }
 
     try {
-      // Validate clone exists before deleting
-      const clone = await this.getClone(cloneId);
-      if (!clone) {
+      // Checkpoints are defined with ON DELETE CASCADE in schema.sql, so deleting
+      // from Clones is sufficient and keeps this operation idempotent.
+      const deleteClone = `DELETE FROM [dbo].[Clones] WHERE [id] = @cloneId`;
+      const deleteResult = await this.sqlClient.query(deleteClone, { cloneId });
+      const deleted = deleteResult.rowsAffected?.[0] || 0;
+
+      if (deleted === 0) {
         logger.warn(`[MetadataService] Clone not found: ${cloneId}`);
-        return; // Idempotent: no-op if already deleted
+        return;
       }
 
-      // Step 1: Delete all checkpoints for this clone (cascade)
-      const deleteCheckpoints = `DELETE FROM checkpoints WHERE clone_id = @cloneId`;
-      const checkpointResult = await this.sqlClient.query(deleteCheckpoints, {
-        cloneId,
-      });
-      logger.debug(
-        `[MetadataService] Deleted ${checkpointResult.rowsAffected[0]} checkpoints`
-      );
-
-      // Step 2: Delete the clone itself
-      const deleteClone = `DELETE FROM clones WHERE id = @cloneId`;
-      await this.sqlClient.query(deleteClone, { cloneId });
-
-      logger.info(`[MetadataService] Clone and dependents deleted: ${cloneId}`);
+      logger.info(`[MetadataService] Clone deleted from database: ${cloneId}`);
     } catch (error) {
       logger.error(`[MetadataService] Failed to delete clone: ${error}`);
       throw error;
