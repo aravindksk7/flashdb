@@ -20,7 +20,7 @@ import {
   RepairAttemptMetadata,
   ValidationFinding,
 } from '../types/providerContract';
-import { getSqlClient } from './sqlClient';
+import { getSqlClient, SqlClient } from './sqlClient';
 import logger from '../logger';
 
 /**
@@ -512,7 +512,9 @@ export const REPAIR_ATTEMPT_SCHEMA: MetadataFieldDefinition[] = [
  * All operations are persisted to PostgreSQL.
  */
 export class MetadataService {
-  private sqlClient = getSqlClient();
+  private getSqlClient(): SqlClient {
+    return getSqlClient();
+  }
 
   async initialize(): Promise<void> {
     logger.info('[MetadataService] Initializing metadata tables');
@@ -528,7 +530,7 @@ export class MetadataService {
   }
 
   private async createTablesIfNotExist(): Promise<void> {
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, skipping table creation');
       return;
     }
@@ -544,7 +546,7 @@ export class MetadataService {
   async saveGoldenImage(metadata: GoldenImageMetadata): Promise<void> {
     logger.debug(`[MetadataService] Saving golden image: ${metadata.id}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot save golden image metadata');
       return;
     }
@@ -561,7 +563,7 @@ export class MetadataService {
           VALUES (@id, @name, @imagePath, GETUTCDATE(), GETUTCDATE())
       `;
 
-      await this.sqlClient.query(upsertQuery, {
+      await this.getSqlClient().query(upsertQuery, {
         id: metadata.id,
         name: metadata.name || 'Unknown',
         imagePath: metadata.outputPath || ''
@@ -577,7 +579,7 @@ export class MetadataService {
   async getGoldenImage(imageId: string): Promise<GoldenImageMetadata | null> {
     logger.debug(`[MetadataService] Retrieving golden image: ${imageId}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot retrieve golden image metadata');
       return null;
     }
@@ -595,7 +597,7 @@ export class MetadataService {
   async deleteGoldenImage(imageId: string): Promise<void> {
     logger.debug(`[MetadataService] Deleting golden image: ${imageId}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot delete golden image');
       return;
     }
@@ -615,7 +617,7 @@ export class MetadataService {
           SELECT id FROM clones WHERE golden_image_id = @imageId
         )
       `;
-      const checkpointResult = await this.sqlClient.query(deleteCheckpoints, {
+      const checkpointResult = await this.getSqlClient().query(deleteCheckpoints, {
         imageId,
       });
       logger.debug(
@@ -624,14 +626,14 @@ export class MetadataService {
 
       // Step 2: Delete all clones for this image
       const deleteClones = `DELETE FROM clones WHERE golden_image_id = @imageId`;
-      const cloneResult = await this.sqlClient.query(deleteClones, { imageId });
+      const cloneResult = await this.getSqlClient().query(deleteClones, { imageId });
       logger.debug(
         `[MetadataService] Deleted ${cloneResult.rowsAffected[0]} clones`
       );
 
       // Step 3: Delete the golden image itself
       const deleteImage = `DELETE FROM golden_images WHERE id = @imageId`;
-      await this.sqlClient.query(deleteImage, { imageId });
+      await this.getSqlClient().query(deleteImage, { imageId });
 
       logger.info(
         `[MetadataService] Golden image and all dependents deleted: ${imageId}`
@@ -649,7 +651,7 @@ export class MetadataService {
   async saveClone(metadata: CloneMetadata): Promise<void> {
     logger.debug(`[MetadataService] Saving clone: ${metadata.id}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot save clone metadata');
       return;
     }
@@ -666,7 +668,7 @@ export class MetadataService {
   async getClone(cloneId: string): Promise<CloneMetadata | null> {
     logger.debug(`[MetadataService] Retrieving clone: ${cloneId}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot retrieve clone metadata');
       return null;
     }
@@ -683,7 +685,7 @@ export class MetadataService {
   async listClones(filter?: { goldenImageId?: string }): Promise<CloneMetadata[]> {
     logger.debug('[MetadataService] Listing clones');
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot list clones');
       return [];
     }
@@ -700,7 +702,7 @@ export class MetadataService {
   async updateCloneStatus(cloneId: string, status: string): Promise<void> {
     logger.debug(`[MetadataService] Updating clone status: ${cloneId} -> ${status}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot update clone status');
       return;
     }
@@ -716,7 +718,7 @@ export class MetadataService {
   async deleteClone(cloneId: string): Promise<void> {
     logger.debug(`[MetadataService] Deleting clone: ${cloneId}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot delete clone');
       return;
     }
@@ -724,17 +726,17 @@ export class MetadataService {
     try {
       // Explicitly delete CheckpointOperations first to avoid constraint violations
       const deleteOps = `DELETE FROM [dbo].[CheckpointOperations] WHERE [cloneId] = @cloneId`;
-      const opsResult = await this.sqlClient.query(deleteOps, { cloneId });
+      const opsResult = await this.getSqlClient().query(deleteOps, { cloneId });
       logger.debug(`[MetadataService] Deleted ${opsResult.rowsAffected?.[0] || 0} checkpoint operations`);
 
       // Explicitly delete Checkpoints (also via CASCADE in schema, but be explicit)
       const deleteCheckpoints = `DELETE FROM [dbo].[Checkpoints] WHERE [cloneId] = @cloneId`;
-      const cpResult = await this.sqlClient.query(deleteCheckpoints, { cloneId });
+      const cpResult = await this.getSqlClient().query(deleteCheckpoints, { cloneId });
       logger.debug(`[MetadataService] Deleted ${cpResult.rowsAffected?.[0] || 0} checkpoints`);
 
       // Finally delete the Clone itself
       const deleteClone = `DELETE FROM [dbo].[Clones] WHERE [id] = @cloneId`;
-      const deleteResult = await this.sqlClient.query(deleteClone, { cloneId });
+      const deleteResult = await this.getSqlClient().query(deleteClone, { cloneId });
       const deleted = deleteResult.rowsAffected?.[0] || 0;
 
       if (deleted === 0) {
@@ -756,7 +758,7 @@ export class MetadataService {
   async saveCheckpoint(metadata: CheckpointMetadata): Promise<void> {
     logger.debug(`[MetadataService] Saving checkpoint: ${metadata.id}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot save checkpoint metadata');
       return;
     }
@@ -772,7 +774,7 @@ export class MetadataService {
   async getCheckpoint(cloneId: string, checkpointId: string): Promise<CheckpointMetadata | null> {
     logger.debug(`[MetadataService] Retrieving checkpoint: ${checkpointId}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot retrieve checkpoint metadata');
       return null;
     }
@@ -789,7 +791,7 @@ export class MetadataService {
   async updateCheckpointPin(cloneId: string, checkpointId: string, isPinned: boolean): Promise<void> {
     logger.debug(`[MetadataService] Updating checkpoint pin: ${checkpointId} -> ${isPinned}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot update checkpoint pin');
       return;
     }
@@ -805,7 +807,7 @@ export class MetadataService {
   async deleteCheckpoint(cloneId: string, checkpointId: string): Promise<void> {
     logger.debug(`[MetadataService] Deleting checkpoint: ${checkpointId}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot delete checkpoint');
       return;
     }
@@ -833,7 +835,7 @@ export class MetadataService {
         DELETE FROM checkpoints
         WHERE id = @checkpointId AND clone_id = @cloneId
       `;
-      await this.sqlClient.query(deleteQuery, { checkpointId, cloneId });
+      await this.getSqlClient().query(deleteQuery, { checkpointId, cloneId });
 
       logger.info(`[MetadataService] Checkpoint deleted: ${checkpointId}`);
     } catch (error) {
@@ -849,7 +851,7 @@ export class MetadataService {
   async saveHost(metadata: HostMetadata): Promise<void> {
     logger.debug(`[MetadataService] Saving host: ${metadata.id}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot save host metadata');
       return;
     }
@@ -865,7 +867,7 @@ export class MetadataService {
   async getHost(hostId: string): Promise<HostMetadata | null> {
     logger.debug(`[MetadataService] Retrieving host: ${hostId}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot retrieve host metadata');
       return null;
     }
@@ -886,7 +888,7 @@ export class MetadataService {
   async saveRepairAttempt(metadata: RepairAttemptMetadata): Promise<void> {
     logger.debug(`[MetadataService] Saving repair attempt: ${metadata.id}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot save repair attempt metadata');
       return;
     }
@@ -902,7 +904,7 @@ export class MetadataService {
   async getRepairAttempt(repairId: string): Promise<RepairAttemptMetadata | null> {
     logger.debug(`[MetadataService] Retrieving repair attempt: ${repairId}`);
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       logger.warn('[MetadataService] SQL client not available, cannot retrieve repair attempt');
       return null;
     }
@@ -945,7 +947,7 @@ export class MetadataService {
   async healthCheck(): Promise<{ isHealthy: boolean; message: string }> {
     logger.debug('[MetadataService] Performing health check');
 
-    if (!this.sqlClient) {
+    if (!this.getSqlClient()) {
       return {
         isHealthy: false,
         message: 'SQL client not available',
