@@ -716,37 +716,43 @@ export class MetadataService {
   }
 
   async deleteClone(cloneId: string): Promise<void> {
-    logger.debug(`[MetadataService] Deleting clone: ${cloneId}`);
+    logger.info(`[MetadataService] Starting clone deletion: ${cloneId}`);
 
-    if (!this.getSqlClient()) {
-      logger.warn('[MetadataService] SQL client not available, cannot delete clone');
-      return;
+    const sqlClient = this.getSqlClient();
+    if (!sqlClient) {
+      logger.error('[MetadataService] CRITICAL: SQL client is null, cannot delete clone');
+      throw new Error('SQL client not available');
     }
 
     try {
-      // Explicitly delete CheckpointOperations first to avoid constraint violations
+      // Explicitly delete CheckpointOperations first (they have FK to Clones without CASCADE)
       const deleteOps = `DELETE FROM [dbo].[CheckpointOperations] WHERE [cloneId] = @cloneId`;
-      const opsResult = await this.getSqlClient().query(deleteOps, { cloneId });
-      logger.debug(`[MetadataService] Deleted ${opsResult.rowsAffected?.[0] || 0} checkpoint operations`);
+      logger.info(`[MetadataService] Step 1/3: Deleting checkpoint operations for ${cloneId}`);
+      const opsResult = await sqlClient.query(deleteOps, { cloneId });
+      const opsDeleted = opsResult.rowsAffected?.[0] || 0;
+      logger.info(`[MetadataService] Deleted ${opsDeleted} checkpoint operations`);
 
-      // Explicitly delete Checkpoints (also via CASCADE in schema, but be explicit)
+      // Explicitly delete Checkpoints (will also cascade-delete CheckpointOperations via FK)
       const deleteCheckpoints = `DELETE FROM [dbo].[Checkpoints] WHERE [cloneId] = @cloneId`;
-      const cpResult = await this.getSqlClient().query(deleteCheckpoints, { cloneId });
-      logger.debug(`[MetadataService] Deleted ${cpResult.rowsAffected?.[0] || 0} checkpoints`);
+      logger.info(`[MetadataService] Step 2/3: Deleting checkpoints for ${cloneId}`);
+      const cpResult = await sqlClient.query(deleteCheckpoints, { cloneId });
+      const cpDeleted = cpResult.rowsAffected?.[0] || 0;
+      logger.info(`[MetadataService] Deleted ${cpDeleted} checkpoints`);
 
       // Finally delete the Clone itself
-      const deleteClone = `DELETE FROM [dbo].[Clones] WHERE [id] = @cloneId`;
-      const deleteResult = await this.getSqlClient().query(deleteClone, { cloneId });
-      const deleted = deleteResult.rowsAffected?.[0] || 0;
+      const deleteCloneQuery = `DELETE FROM [dbo].[Clones] WHERE [id] = @cloneId`;
+      logger.info(`[MetadataService] Step 3/3: Deleting clone record ${cloneId}`);
+      const deleteResult = await sqlClient.query(deleteCloneQuery, { cloneId });
+      const cloneDeleted = deleteResult.rowsAffected?.[0] || 0;
 
-      if (deleted === 0) {
-        logger.warn(`[MetadataService] Clone not found: ${cloneId}`);
+      if (cloneDeleted === 0) {
+        logger.warn(`[MetadataService] Clone not found in database: ${cloneId}`);
         return;
       }
 
-      logger.info(`[MetadataService] Clone and all dependents deleted from database: ${cloneId}`);
-    } catch (error) {
-      logger.error(`[MetadataService] Failed to delete clone: ${error}`);
+      logger.info(`[MetadataService] ✓ Successfully deleted clone ${cloneId} (ops=${opsDeleted}, checkpoints=${cpDeleted}, clone=1)`);
+    } catch (error: any) {
+      logger.error(`[MetadataService] ✗ FAILED to delete clone ${cloneId}: ${error.message}`);
       throw error;
     }
   }
