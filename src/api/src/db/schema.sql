@@ -150,12 +150,11 @@ GO
 -- Useful on API startup to recover from crashes
 IF OBJECT_ID('[dbo].[sp_CleanupOrphanedCheckpointOperations]', 'P') IS NOT NULL
     DROP PROCEDURE [dbo].[sp_CleanupOrphanedCheckpointOperations];
-
 GO
 
 CREATE PROCEDURE [dbo].[sp_CleanupOrphanedCheckpointOperations]
-    @HoursBack INT = 1,  -- Operations older than this are considered abandoned
-    @CleanupMode BIT = 0  -- 0 = Report only, 1 = Clean (delete records)
+    @HoursBack INT = 1,
+    @CleanupMode BIT = 0
 AS
 BEGIN
     SET NOCOUNT ON;
