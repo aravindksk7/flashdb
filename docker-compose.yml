@@ -38,24 +38,68 @@ services:
       - -c
       - |
         set -e
+        set -x
+
+        echo "Starting SQL Server initialization..."
+
+        # Find sqlcmd
         if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
-          SQLCMD=(/opt/mssql-tools18/bin/sqlcmd -b -C -S sql-server -U sa -P 'FlashDB@Password123')
+          SQLCMD="/opt/mssql-tools18/bin/sqlcmd"
+          echo "Using sqlcmd from mssql-tools18"
         elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then
-          SQLCMD=(/opt/mssql-tools/bin/sqlcmd -b -S sql-server -U sa -P 'FlashDB@Password123')
+          SQLCMD="/opt/mssql-tools/bin/sqlcmd"
+          echo "Using sqlcmd from mssql-tools"
         else
-          echo "sqlcmd not found in SQL Server image" >&2
+          echo "ERROR: sqlcmd not found in SQL Server image" >&2
           exit 1
         fi
 
-        DB_EXISTS="$$("$${SQLCMD[@]}" -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN DB_ID(N'TestDB') IS NULL THEN 0 ELSE 1 END;" | tr -d '[:space:]')"
-        if [ "$$DB_EXISTS" = "1" ]; then
-          "$${SQLCMD[@]}" -Q "DECLARE @sql nvarchar(max) = N''; SELECT @sql += N'KILL ' + CAST(session_id AS nvarchar(10)) + N';' FROM sys.dm_exec_sessions WHERE database_id = DB_ID(N'TestDB') AND session_id <> @@SPID; IF LEN(@sql) > 0 EXEC (@sql); IF DATABASEPROPERTYEX(N'TestDB', N'UserAccess') <> N'MULTI_USER' ALTER DATABASE TestDB SET MULTI_USER WITH ROLLBACK IMMEDIATE;"
+        # Wait for SQL Server to be ready (with timeout)
+        echo "Waiting for SQL Server to be ready on sql-server:1433..."
+        for i in {1..60}; do
+          if "$SQLCMD" -b -C -S sql-server -U sa -P 'FlashDB@Password123' -Q "SELECT 1" >/dev/null 2>&1; then
+            echo "SQL Server is ready!"
+            break
+          fi
+          echo "Attempt $i: Waiting for SQL Server..."
+          sleep 1
+          if [ $i -eq 60 ]; then
+            echo "ERROR: SQL Server did not become ready within 60 seconds" >&2
+            exit 1
+          fi
+        done
+
+        # Check if TestDB already exists
+        echo "Checking if TestDB already exists..."
+        DB_EXISTS=$("$SQLCMD" -b -C -S sql-server -U sa -P 'FlashDB@Password123' -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN DB_ID(N'TestDB') IS NULL THEN 0 ELSE 1 END;" | tr -d '[:space:]')
+
+        if [ "$DB_EXISTS" = "1" ]; then
           echo "TestDB already exists; skipping SQL init scripts."
           exit 0
         fi
 
-        "$${SQLCMD[@]}" -i /init-testdb.sql
-        "$${SQLCMD[@]}" -d TestDB -i /api-schema.sql
+        echo "TestDB does not exist; initializing..."
+
+        # Run init script
+        echo "Running init-testdb.sql..."
+        "$SQLCMD" -b -C -S sql-server -U sa -P 'FlashDB@Password123' -i /init-testdb.sql
+
+        if [ $? -ne 0 ]; then
+          echo "ERROR: init-testdb.sql failed" >&2
+          exit 1
+        fi
+
+        # Run schema script
+        echo "Running api-schema.sql..."
+        "$SQLCMD" -b -C -S sql-server -U sa -P 'FlashDB@Password123' -d TestDB -i /api-schema.sql
+
+        if [ $? -ne 0 ]; then
+          echo "ERROR: api-schema.sql failed" >&2
+          exit 1
+        fi
+
+        echo "SQL Server initialization completed successfully!"
+        exit 0
     networks:
       - flashdb-network
 

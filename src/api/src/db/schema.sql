@@ -4,18 +4,23 @@
 -- Drop tables if they exist (for fresh initialization)
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[CheckpointOperations]') AND type in (N'U'))
     DROP TABLE [dbo].[CheckpointOperations];
+GO
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[OperationMetrics]') AND type in (N'U'))
     DROP TABLE [dbo].[OperationMetrics];
+GO
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Checkpoints]') AND type in (N'U'))
     DROP TABLE [dbo].[Checkpoints];
+GO
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Clones]') AND type in (N'U'))
     DROP TABLE [dbo].[Clones];
+GO
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[GoldenImages]') AND type in (N'U'))
     DROP TABLE [dbo].[GoldenImages];
+GO
 
 -- Golden Images Table
 CREATE TABLE [dbo].[GoldenImages] (
@@ -32,6 +37,7 @@ CREATE TABLE [dbo].[GoldenImages] (
 
 CREATE INDEX [IX_GoldenImages_ImageName] ON [dbo].[GoldenImages] ([imageName]);
 CREATE INDEX [IX_GoldenImages_CreatedAt] ON [dbo].[GoldenImages] ([createdAt]);
+GO
 
 -- Clones Table
 CREATE TABLE [dbo].[Clones] (
@@ -40,6 +46,7 @@ CREATE TABLE [dbo].[Clones] (
     [cloneName] NVARCHAR(255) NOT NULL,
     [instancePath] NVARCHAR(MAX) NOT NULL,
     [storagePath] NVARCHAR(MAX) NOT NULL,
+    [vhdxPath] NVARCHAR(MAX),
     [status] NVARCHAR(50) DEFAULT 'Pending',
     [databaseType] NVARCHAR(50),
     [databaseName] NVARCHAR(255),
@@ -55,6 +62,8 @@ CREATE INDEX [IX_Clones_CloneName] ON [dbo].[Clones] ([cloneName]);
 CREATE INDEX [IX_Clones_Status] ON [dbo].[Clones] ([status]);
 CREATE INDEX [IX_Clones_GoldenImageId] ON [dbo].[Clones] ([goldenImageId]);
 CREATE INDEX [IX_Clones_CreatedAt] ON [dbo].[Clones] ([createdAt] DESC);
+CREATE INDEX [IX_Clones_VhdxPath] ON [dbo].[Clones] ([vhdxPath]);
+GO
 
 -- Checkpoints Table
 CREATE TABLE [dbo].[Checkpoints] (
@@ -84,6 +93,7 @@ CREATE INDEX [IX_Checkpoints_CreatedAt] ON [dbo].[Checkpoints] ([createdAt] DESC
 CREATE INDEX [IX_Checkpoints_IsFavorite] ON [dbo].[Checkpoints] ([isFavorite]);
 CREATE INDEX [IX_Checkpoints_ParentCheckpointId] ON [dbo].[Checkpoints] ([parentCheckpointId]);
 CREATE INDEX [IX_Checkpoints_IsOrphaned] ON [dbo].[Checkpoints] ([isOrphaned]);
+GO
 
 -- Checkpoint Operations Table for atomic transaction tracking
 CREATE TABLE [dbo].[CheckpointOperations] (
@@ -111,6 +121,7 @@ CREATE INDEX [IX_CheckpointOperations_CheckpointId] ON [dbo].[CheckpointOperatio
 CREATE INDEX [IX_CheckpointOperations_Status] ON [dbo].[CheckpointOperations] ([status]);
 CREATE INDEX [IX_CheckpointOperations_CloneId] ON [dbo].[CheckpointOperations] ([cloneId]);
 CREATE INDEX [IX_CheckpointOperations_ValidationStatus] ON [dbo].[CheckpointOperations] ([validationStatus]);
+GO
 
 -- Operation Metrics Table
 CREATE TABLE [dbo].[OperationMetrics] (
@@ -128,6 +139,7 @@ CREATE INDEX [IX_OperationMetrics_OperationType] ON [dbo].[OperationMetrics] ([o
 CREATE INDEX [IX_OperationMetrics_Status] ON [dbo].[OperationMetrics] ([status]);
 CREATE INDEX [IX_OperationMetrics_StartedAt] ON [dbo].[OperationMetrics] ([startedAt] DESC);
 CREATE INDEX [IX_OperationMetrics_TargetId] ON [dbo].[OperationMetrics] ([targetId]);
+GO
 
 -- Orphaned Operation Recovery Procedure
 -- Cleans up incomplete checkpoint operations that are >1 hour old
@@ -178,3 +190,4 @@ BEGIN
 
     DROP TABLE #OrphanedOps;
 END;
+GO
