@@ -48,18 +48,32 @@ jest-coverage/
 *.swp
 *.swo
 
-# Architecture and Diagram files (development/documentation only)
-*.mmd
-architecture*.html
-dataflow*.html
-dataflow.mmd
-architecture.txt
-render-diagrams.js
-ARCHITECTURE-DIAGRAMS.md
+# Development documentation (generated during work, not part of production)
+SPECIFICATION_*.md
+ARCHITECTURE_CHECKPOINT_DB_FIX.md
+BEFORE_AFTER_VISUAL_GUIDE.md
+COMPLETION_REPORT.txt
+FIXES_COMPLETION_REPORT.md
+GUI_FIXES_*.md
+IMPLEMENTATION_*.md
+INFRASTRUCTURE_TAB_README.md
+PHASE*_*.md
+QUICK_REFERENCE.md
+TEST_COVERAGE_REPORT.md
+VHDX_PATH_*.md
 
-# Irrelevant documentation
-INDUSTRY_COMPARISON.md
-CLAUDE.md
+# Agent and local development
+.agents/
+.claude/
+.claude-flow/
+.codex/
+.swarm/
+agentdb.rvf
+agentdb.rvf.lock
+
+# Keep GitHub workflows
+.github/workflows/
+.github/copilot-instructions.md
 
 # Lock files for local development (keep package-lock.json)
 pnpm-lock.yaml
@@ -78,28 +92,3 @@ docker-compose.override.yml
 
 # Temporary local config
 .claude/settings.local.json
-
-# Development and Configuration Directories (local only)
-.claude/
-.claude-flow/
-.github/
-.swarm/
-
-# Keep workflows and Copilot instructions trackable
-!.github/
-.github/*
-!.github/workflows/
-!.github/workflows/**
-!.github/copilot-instructions.md
-
-# Codex local configuration
-.codex/
-
-# Claude Flow runtime data
-.claude-flow/data/
-.claude-flow/logs/
-
-# Environment variables
-.env
-.env.local
-.env.*.local
