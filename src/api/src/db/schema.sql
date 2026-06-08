@@ -1,6 +1,9 @@
 -- FlashDB Database Schema
 -- Direct MSSQL implementation for optimized query performance
 
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- Drop tables if they exist (for fresh initialization)
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[CheckpointOperations]') AND type in (N'U'))
     DROP TABLE [dbo].[CheckpointOperations];
@@ -47,6 +50,7 @@ CREATE TABLE [dbo].[Clones] (
     [instancePath] NVARCHAR(MAX) NOT NULL,
     [storagePath] NVARCHAR(MAX) NOT NULL,
     [vhdxPath] NVARCHAR(MAX),
+    [vhdxPathHash] AS CAST(HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX), ISNULL([vhdxPath], N''))) AS BINARY(32)) PERSISTED,
     [status] NVARCHAR(50) DEFAULT 'Pending',
     [databaseType] NVARCHAR(50),
     [databaseName] NVARCHAR(255),
@@ -62,7 +66,7 @@ CREATE INDEX [IX_Clones_CloneName] ON [dbo].[Clones] ([cloneName]);
 CREATE INDEX [IX_Clones_Status] ON [dbo].[Clones] ([status]);
 CREATE INDEX [IX_Clones_GoldenImageId] ON [dbo].[Clones] ([goldenImageId]);
 CREATE INDEX [IX_Clones_CreatedAt] ON [dbo].[Clones] ([createdAt] DESC);
-CREATE INDEX [IX_Clones_VhdxPath] ON [dbo].[Clones] ([vhdxPath]);
+CREATE INDEX [IX_Clones_VhdxPathHash] ON [dbo].[Clones] ([vhdxPathHash]);
 GO
 
 -- Checkpoints Table
@@ -113,7 +117,7 @@ CREATE TABLE [dbo].[CheckpointOperations] (
     [completedAt] DATETIME2(7),
     [errorMessage] NVARCHAR(MAX),
     [rollbackPath] NVARCHAR(MAX),
-    FOREIGN KEY ([cloneId]) REFERENCES [dbo].[Clones] ([id]),
+    FOREIGN KEY ([cloneId]) REFERENCES [dbo].[Clones] ([id]) ON DELETE CASCADE,
     FOREIGN KEY ([checkpointId]) REFERENCES [dbo].[Checkpoints] ([id]) ON DELETE CASCADE
 );
 

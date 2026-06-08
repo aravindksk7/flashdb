@@ -722,8 +722,17 @@ export class MetadataService {
     }
 
     try {
-      // Checkpoints are defined with ON DELETE CASCADE in schema.sql, so deleting
-      // from Clones is sufficient and keeps this operation idempotent.
+      // Explicitly delete CheckpointOperations first to avoid constraint violations
+      const deleteOps = `DELETE FROM [dbo].[CheckpointOperations] WHERE [cloneId] = @cloneId`;
+      const opsResult = await this.sqlClient.query(deleteOps, { cloneId });
+      logger.debug(`[MetadataService] Deleted ${opsResult.rowsAffected?.[0] || 0} checkpoint operations`);
+
+      // Explicitly delete Checkpoints (also via CASCADE in schema, but be explicit)
+      const deleteCheckpoints = `DELETE FROM [dbo].[Checkpoints] WHERE [cloneId] = @cloneId`;
+      const cpResult = await this.sqlClient.query(deleteCheckpoints, { cloneId });
+      logger.debug(`[MetadataService] Deleted ${cpResult.rowsAffected?.[0] || 0} checkpoints`);
+
+      // Finally delete the Clone itself
       const deleteClone = `DELETE FROM [dbo].[Clones] WHERE [id] = @cloneId`;
       const deleteResult = await this.sqlClient.query(deleteClone, { cloneId });
       const deleted = deleteResult.rowsAffected?.[0] || 0;
@@ -733,7 +742,7 @@ export class MetadataService {
         return;
       }
 
-      logger.info(`[MetadataService] Clone deleted from database: ${cloneId}`);
+      logger.info(`[MetadataService] Clone and all dependents deleted from database: ${cloneId}`);
     } catch (error) {
       logger.error(`[MetadataService] Failed to delete clone: ${error}`);
       throw error;
