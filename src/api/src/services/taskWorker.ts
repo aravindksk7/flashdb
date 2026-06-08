@@ -1,10 +1,13 @@
 import { getTaskQueue, Task } from './taskQueue';
+import fs from 'fs';
+import path from 'path';
 import { getPooledPowerShellService } from './pooledPowershellService';
 import { getMetadataService } from './metadataService';
 import { getPgQueueManager } from './pgQueueManager';
 import { getCheckpointOperationRepository, getCheckpointRepository } from './repository';
 import { getCloneValidationService } from './cloneValidationService';
 import { getAuditMetricsService } from './auditMetricsService';
+import { getSqlClient } from './sqlClient';
 import logger from '../logger';
 import { invalidateCache } from '../middleware/caching';
 
@@ -17,6 +20,87 @@ class TaskWorker {
   private pollInterval: NodeJS.Timeout | null = null;
   private inFlightTasks: Set<string> = new Set();
   private usePersistence: boolean = false; // Whether to use DB persistence
+
+  private isWindowsAbsolutePath(input: string): boolean {
+    return /^[a-zA-Z]:[\\/]/.test(input);
+  }
+
+  private normalizePathForMatch(input: string): string {
+    return input.replace(/\\/g, '/').toLowerCase();
+  }
+
+  private resolveMappedStoragePath(requestedPath: string): string {
+    const trimmed = requestedPath.trim();
+
+    // Keep tests deterministic and focused on task orchestration.
+    if (process.env.NODE_ENV === 'test') {
+      return trimmed;
+    }
+
+    // Only attempt Windows->container mapping when running outside Windows runtime.
+    if (process.platform === 'win32' || !this.isWindowsAbsolutePath(trimmed)) {
+      return trimmed;
+    }
+
+    const rawMappings = process.env.FLASHDB_STORAGE_PATH_MAPPINGS || '{}';
+    let mappings: Record<string, string> = {};
+    try {
+      mappings = JSON.parse(rawMappings);
+    } catch {
+      throw new Error('Invalid FLASHDB_STORAGE_PATH_MAPPINGS JSON.');
+    }
+
+    const normalizedRequested = this.normalizePathForMatch(trimmed);
+    const normalizedEntries = Object.entries(mappings)
+      .map(([source, target]) => ({
+        source: this.normalizePathForMatch(String(source).trim()),
+        target: String(target).trim(),
+      }))
+      .filter(entry => entry.source.length > 0 && entry.target.length > 0)
+      .sort((a, b) => b.source.length - a.source.length);
+
+    const match = normalizedEntries.find(entry =>
+      normalizedRequested === entry.source || normalizedRequested.startsWith(`${entry.source}/`)
+    );
+
+    if (!match) {
+      throw new Error(
+        `Storage path '${trimmed}' is a Windows path but no container mapping exists. Set FLASHDB_STORAGE_PATH_MAPPINGS.`
+      );
+    }
+
+    const suffix = normalizedRequested.slice(match.source.length).replace(/^\//, '');
+    const resolved = suffix ? path.posix.join(match.target, suffix) : match.target;
+    return resolved;
+  }
+
+  private assertStoragePathExists(storagePath: string): void {
+    if (!fs.existsSync(storagePath)) {
+      throw new Error(`Storage path does not exist in runtime environment: ${storagePath}`);
+    }
+    const stat = fs.statSync(storagePath);
+    if (!stat.isDirectory()) {
+      throw new Error(`Storage path is not a directory: ${storagePath}`);
+    }
+  }
+
+  private isRetryableTaskError(task: Task, errorMessage: string): boolean {
+    // create-clone is not idempotent once the target database has been created.
+    // Retrying these errors creates noisy repeated failures and obscures root cause.
+    if (task.type === 'create-clone') {
+      if (/Target database already exists/i.test(errorMessage)) {
+        return false;
+      }
+      if (/Clone created but metadata persistence failed/i.test(errorMessage)) {
+        return false;
+      }
+      if (/foreign key constraint|duplicate key|PRIMARY KEY/i.test(errorMessage)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 
   async startWorker(): Promise<void> {
     if (this.isRunning) {
@@ -41,8 +125,12 @@ class TaskWorker {
             // Add to in-memory queue if not already there
             const existing = taskQueue.getTask(task.id);
             if (!existing) {
-              // Reconstruct task in memory queue
-              taskQueue.enqueue(task.type, task.payload);
+              // Reconstruct task in memory with the original durable task ID.
+              taskQueue.enqueueExisting({
+                ...task,
+                status: 'pending',
+                startedAt: null
+              });
             }
           }
           logger.info(`Loaded ${pendingTasks.length} tasks from DB for recovery`);
@@ -146,12 +234,26 @@ class TaskWorker {
       let result: any;
 
       switch (task.type) {
-        case 'create-clone':
+        case 'create-clone': {
+          const requestedStoragePath = String(task.payload.storagePath || '').trim();
+          if (!requestedStoragePath) {
+            throw new Error('Missing required field: storagePath');
+          }
+
+          const runtimeStoragePath = this.resolveMappedStoragePath(requestedStoragePath);
+          this.assertStoragePathExists(runtimeStoragePath);
+
+          if (runtimeStoragePath !== requestedStoragePath) {
+            logger.info(
+              `Mapped clone storage path '${requestedStoragePath}' -> '${runtimeStoragePath}'`
+            );
+          }
+
           result = await psService.executeCommand('New-FlashdbClone', {
             GoldenImageId: task.payload.goldenImageId,
             CloneName: task.payload.cloneName,
             InstancePath: task.payload.instancePath,
-            StoragePath: task.payload.storagePath,
+            StoragePath: runtimeStoragePath,
             DatabaseType: task.payload.databaseType,
             DatabaseName: task.payload.databaseName,
             CompressionEnabled: task.payload.compressionEnabled
@@ -163,21 +265,72 @@ class TaskWorker {
             });
             (result as any).Status = 'Attached';
           }
+
+          // Persist clone creation result to database
+          if (result && typeof result === 'object') {
+            try {
+              const sqlClient = getSqlClient();
+              const cloneId = (result as any).Id || (result as any).id;
+              const vhdxPath = (result as any).VhdxPath || (result as any).vhdxPath;
+              const databaseName = (result as any).DatabaseName || task.payload.databaseName || '';
+
+              await sqlClient.query(
+                `INSERT INTO [dbo].[Clones]
+                  ([id], [goldenImageId], [cloneName], [instancePath], [storagePath], [vhdxPath],
+                   [status], [databaseType], [databaseName], [compressionEnabled])
+                 VALUES
+                  (@id, @goldenImageId, @cloneName, @instancePath, @storagePath, @vhdxPath,
+                   @status, @databaseType, @databaseName, @compressionEnabled)`,
+                {
+                  id: cloneId,
+                  goldenImageId: task.payload.goldenImageId,
+                  cloneName: task.payload.cloneName,
+                  instancePath: task.payload.instancePath,
+                  storagePath: runtimeStoragePath,
+                  vhdxPath: vhdxPath,
+                  status: (result as any).Status || 'Created',
+                  databaseType: task.payload.databaseType || 'sql-server',
+                  databaseName: databaseName,
+                  compressionEnabled: task.payload.compressionEnabled ? 1 : 0
+                }
+              );
+              logger.info(`Persisted clone to database: ${cloneId} (vhdxPath: ${vhdxPath})`);
+            } catch (dbError: any) {
+              logger.error(`Failed to persist clone to database: ${dbError.message}`);
+              throw new Error(`Clone created but metadata persistence failed: ${dbError.message}`);
+            }
+          }
           break;
+        }
 
         case 'delete-clone':
-          // Use MetadataService for delete (cascades to checkpoints)
-          logger.info(`[TaskWorker] Deleting clone via MetadataService: ${task.payload.cloneId}`);
+          // Delete through provider first so Get-FlashdbClone no longer returns the clone,
+          // then delete metadata for SQL consistency.
+          const deleteCloneId = task.payload.cloneId;
+          const deleteVhdx = task.payload.deleteVhdx === true;
+          logger.info(`[TaskWorker] ┌─ delete-clone task initiated for: ${deleteCloneId}`);
+          logger.info(`[TaskWorker] │ deleteVhdx: ${deleteVhdx}`);
           try {
+            logger.info(`[TaskWorker] ├─ Calling PowerShell: Remove-FlashdbClone`);
+            await psService.executeCommandRaw('Remove-FlashdbClone', {
+              CloneId: deleteCloneId,
+              DeleteVhdx: deleteVhdx,
+            });
+            logger.info(`[TaskWorker] │ PowerShell deletion completed`);
+
+            logger.info(`[TaskWorker] ├─ Calling MetadataService: deleteClone(${deleteCloneId})`);
             const metadataService = getMetadataService();
-            await metadataService.deleteClone(task.payload.cloneId);
+            await metadataService.deleteClone(deleteCloneId);
+            logger.info(`[TaskWorker] │ MetadataService deletion completed`);
+
             result = {
               success: true,
-              message: `Clone ${task.payload.cloneId} and all dependent checkpoints deleted`
+              message: `Clone ${deleteCloneId} deleted from provider and metadata store`
             };
-            logger.info(`[TaskWorker] Clone deleted successfully: ${task.payload.cloneId}`);
+            logger.info(`[TaskWorker] └─ ✓ Clone deletion task completed successfully`);
           } catch (error: any) {
-            logger.error(`[TaskWorker] Failed to delete clone: ${error.message}`);
+            logger.error(`[TaskWorker] └─ ✗ delete-clone task FAILED`);
+            logger.error(`[TaskWorker]    Error: ${error.message}`);
             throw error;
           }
           break;
@@ -333,7 +486,9 @@ class TaskWorker {
       const errorMessage = error.message || String(error);
       logger.error(`Task failed: ${task.id}, error: ${errorMessage}, retry: ${task.retryCount}/${MAX_RETRIES}`);
 
-      if (task.retryCount < MAX_RETRIES) {
+      const shouldRetry = this.isRetryableTaskError(task, errorMessage);
+
+      if (shouldRetry && task.retryCount < MAX_RETRIES) {
         // Retry with exponential backoff
         task.retryCount++;
         const delayMs = RETRY_DELAY_MS * Math.pow(2, task.retryCount - 1);
@@ -345,6 +500,9 @@ class TaskWorker {
           taskQueue.retryTask(task.id);
         }, delayMs);
       } else {
+        if (!shouldRetry) {
+          logger.warn(`Task ${task.id} marked non-retryable; failing immediately.`);
+        }
         // Max retries exceeded
         const taskQueue = getTaskQueue();
         taskQueue.updateTask(task.id, 'failed', undefined, errorMessage);
