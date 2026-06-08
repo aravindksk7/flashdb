@@ -4,11 +4,16 @@
 USE master;
 GO
 
+PRINT 'Starting TestDB initialization...';
+GO
+
 -- Create test database
 IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'TestDB')
 BEGIN
+    PRINT 'Dropping existing TestDB...';
     ALTER DATABASE TestDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
     DROP DATABASE TestDB;
+    PRINT 'TestDB dropped successfully.';
 END
 GO
 
@@ -74,6 +79,7 @@ CREATE TABLE dbo.flashdb_state (
     [updated_at] DATETIME DEFAULT GETUTCDATE()
 );
 CREATE INDEX idx_flashdb_state_expires ON dbo.flashdb_state(expires_at);
+GO
 
 -- Distributed locks for coordinating multiple instances
 CREATE TABLE dbo.flashdb_locks (
@@ -84,6 +90,7 @@ CREATE TABLE dbo.flashdb_locks (
 );
 CREATE INDEX idx_flashdb_locks_owner ON dbo.flashdb_locks(owner_id);
 CREATE INDEX idx_flashdb_locks_expires ON dbo.flashdb_locks(expires_at);
+GO
 
 -- State change operations log for audit trail
 CREATE TABLE dbo.flashdb_operations (
@@ -95,6 +102,7 @@ CREATE TABLE dbo.flashdb_operations (
 );
 CREATE INDEX idx_flashdb_operations_type ON dbo.flashdb_operations(operation_type);
 CREATE INDEX idx_flashdb_operations_time ON dbo.flashdb_operations(timestamp DESC);
+GO
 
 -- ============================================================================
 -- Multi-Instance Cluster Table (Phase 5b.4)
@@ -116,6 +124,7 @@ CREATE INDEX idx_flashdb_instances_status ON dbo.flashdb_instances([status]);
 CREATE INDEX idx_flashdb_instances_heartbeat ON dbo.flashdb_instances([last_heartbeat] DESC);
 CREATE INDEX idx_flashdb_instances_role ON dbo.flashdb_instances([role]);
 CREATE INDEX idx_flashdb_instances_status_heartbeat ON dbo.flashdb_instances([status], [last_heartbeat] DESC);
+GO
 
 -- ============================================================================
 -- Task Queue Tables (Phase 5b.3)
@@ -141,6 +150,7 @@ CREATE INDEX idx_flashdb_queue_created_at ON dbo.flashdb_queue([created_at] DESC
 CREATE INDEX idx_flashdb_queue_status_created ON dbo.flashdb_queue([status], [created_at] DESC);
 CREATE INDEX idx_flashdb_queue_type ON dbo.flashdb_queue([type]);
 CREATE INDEX idx_flashdb_queue_instance ON dbo.flashdb_queue([instance_id]) WHERE [instance_id] IS NOT NULL;
+GO
 
 -- Archive table for completed/failed tasks
 CREATE TABLE dbo.flashdb_queue_archive (
@@ -160,6 +170,7 @@ CREATE INDEX idx_flashdb_queue_archive_status ON dbo.flashdb_queue_archive([stat
 CREATE INDEX idx_flashdb_queue_archive_created ON dbo.flashdb_queue_archive([created_at] DESC);
 CREATE INDEX idx_flashdb_queue_archive_archived ON dbo.flashdb_queue_archive([archived_at] DESC);
 CREATE INDEX idx_flashdb_queue_archive_type ON dbo.flashdb_queue_archive([type]);
+GO
 
 -- Create Customers table
 CREATE TABLE dbo.Customers (
@@ -198,6 +209,7 @@ CREATE TABLE dbo.Products (
     Price DECIMAL(10, 2),
     StockQuantity INT
 );
+GO
 
 -- Insert sample customers
 INSERT INTO dbo.Customers (CustomerName, Email, City) VALUES
@@ -259,6 +271,13 @@ DECLARE @TotalOrderItems INT = (SELECT COUNT(*) FROM dbo.OrderItems);
 DECLARE @TotalProducts INT = (SELECT COUNT(*) FROM dbo.Products);
 DECLARE @QueueTables INT = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN ('flashdb_queue', 'flashdb_queue_archive') AND TABLE_SCHEMA = 'dbo');
 DECLARE @InstanceTable INT = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'flashdb_instances' AND TABLE_SCHEMA = 'dbo');
+
+-- Verify database was created and is accessible
+IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'TestDB')
+BEGIN
+    PRINT 'ERROR: TestDB was not created successfully!';
+    RAISERROR('TestDB creation failed', 16, 1);
+END
 
 PRINT 'Test database created successfully!';
 PRINT 'Tables: Customers, Orders, OrderItems, Products, State Management, Task Queue, Multi-Instance Cluster';

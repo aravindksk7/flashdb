@@ -38,16 +38,32 @@ services:
       - -c
       - |
         set -e
+        echo "SQL Init: Starting database initialization..."
         if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
-          /opt/mssql-tools18/bin/sqlcmd -b -C -S sql-server -U sa -P 'FlashDB@Password123' -i /init-testdb.sql
-          /opt/mssql-tools18/bin/sqlcmd -b -C -S sql-server -U sa -P 'FlashDB@Password123' -d TestDB -i /api-schema.sql
+          SQLCMD="/opt/mssql-tools18/bin/sqlcmd"
         elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then
-          /opt/mssql-tools/bin/sqlcmd -b -S sql-server -U sa -P 'FlashDB@Password123' -i /init-testdb.sql
-          /opt/mssql-tools/bin/sqlcmd -b -S sql-server -U sa -P 'FlashDB@Password123' -d TestDB -i /api-schema.sql
+          SQLCMD="/opt/mssql-tools/bin/sqlcmd"
         else
-          echo "sqlcmd not found in SQL Server image" >&2
+          echo "SQL Init: ERROR - sqlcmd not found in SQL Server image" >&2
           exit 1
         fi
+
+        echo "SQL Init: Running init-testdb.sql..."
+        if ! $SQLCMD -b -C -S sql-server -U sa -P 'FlashDB@Password123' -i /init-testdb.sql; then
+          echo "SQL Init: ERROR - init-testdb.sql failed" >&2
+          exit 1
+        fi
+
+        echo "SQL Init: Waiting for TestDB to be ready..."
+        sleep 2
+
+        echo "SQL Init: Running schema.sql..."
+        if ! $SQLCMD -b -C -S sql-server -U sa -P 'FlashDB@Password123' -d TestDB -i /api-schema.sql; then
+          echo "SQL Init: ERROR - schema.sql failed" >&2
+          exit 1
+        fi
+
+        echo "SQL Init: Database initialization completed successfully!"
     networks:
       - flashdb-network
 
@@ -72,10 +88,12 @@ services:
       SQL_SERVER_PASSWORD: "FlashDB@Password123"
       SQL_DATABASE: "TestDB"
       FLASHDB_STATE_PATH: "/app/logs/flashdb-state.json"
+      FLASHDB_STORAGE_PATH_MAPPINGS: '{"c:/temp":"/app/data","c:/temp/":"/app/data"}'
     ports:
       - "3001:3001"
     volumes:
       - api-logs:/app/logs
+      - api-data:/app/data
     networks:
       - flashdb-network
 
@@ -122,6 +140,7 @@ volumes:
   sql-data:
   sql-logs:
   api-logs:
+  api-data:
   test-results:
 
 networks:
