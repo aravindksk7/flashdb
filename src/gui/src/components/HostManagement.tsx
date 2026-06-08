@@ -210,6 +210,7 @@ export const HostManagement: React.FC<HostManagementProps> = ({ onHostsUpdated }
       {selectedHost && (
         <ConnectionTestPanel
           isOpen={testPanelOpen}
+          initialHost={selectedHost}
           onClose={() => setTestPanelOpen(false)}
           onTestResult={() => {
             setTestPanelOpen(false);

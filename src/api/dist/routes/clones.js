@@ -4,15 +4,60 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
 const taskQueue_1 = require("../services/taskQueue");
+const durableTaskQueue_1 = require("../services/durableTaskQueue");
 const cloneValidationService_1 = require("../services/cloneValidationService");
 const auditMetricsService_1 = require("../services/auditMetricsService");
+const metadataService_1 = require("../services/metadataService");
+const sqlClient_1 = require("../services/sqlClient");
 const logger_1 = __importDefault(require("../logger"));
 const caching_1 = require("../middleware/caching");
 const lockMiddleware_1 = require("../middleware/lockMiddleware");
 const router = (0, express_1.Router)();
 const psService = (0, pooledPowershellService_1.getPooledPowerShellService)();
+const metadataService = (0, metadataService_1.getMetadataService)();
+const isWindowsAbsolutePath = (input) => /^[a-zA-Z]:[\\/]/.test(input);
+const normalizePathForMatch = (input) => input.replace(/\\/g, '/').toLowerCase();
+function resolveMappedStoragePath(requestedPath) {
+    const trimmed = requestedPath.trim();
+    if (process.env.NODE_ENV === 'test')
+        return trimmed;
+    if (process.platform === 'win32' || !isWindowsAbsolutePath(trimmed))
+        return trimmed;
+    const rawMappings = process.env.FLASHDB_STORAGE_PATH_MAPPINGS || '{}';
+    let mappings = {};
+    try {
+        mappings = JSON.parse(rawMappings);
+    }
+    catch {
+        throw new Error('Invalid FLASHDB_STORAGE_PATH_MAPPINGS JSON.');
+    }
+    const normalizedRequested = normalizePathForMatch(trimmed);
+    const normalizedEntries = Object.entries(mappings)
+        .map(([source, target]) => ({
+        source: normalizePathForMatch(String(source).trim()),
+        target: String(target).trim(),
+    }))
+        .filter(entry => entry.source.length > 0 && entry.target.length > 0)
+        .sort((a, b) => b.source.length - a.source.length);
+    const match = normalizedEntries.find(entry => normalizedRequested === entry.source || normalizedRequested.startsWith(`${entry.source}/`));
+    if (!match) {
+        throw new Error(`Storage path '${trimmed}' is a Windows path but no container mapping exists. Set FLASHDB_STORAGE_PATH_MAPPINGS.`);
+    }
+    const suffix = normalizedRequested.slice(match.source.length).replace(/^\//, '');
+    return suffix ? path_1.default.posix.join(match.target, suffix) : match.target;
+}
+function assertStoragePathExists(storagePath) {
+    if (!fs_1.default.existsSync(storagePath)) {
+        throw new Error(`Storage path does not exist in runtime environment: ${storagePath}`);
+    }
+    if (!fs_1.default.statSync(storagePath).isDirectory()) {
+        throw new Error(`Storage path is not a directory: ${storagePath}`);
+    }
+}
 const toResponseArray = (value) => {
     if (value == null)
         return [];
@@ -23,6 +68,160 @@ const toResponseArray = (value) => {
         return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
     });
 };
+function parseJsonField(value) {
+    if (!value || typeof value !== 'string')
+        return value;
+    try {
+        return JSON.parse(value);
+    }
+    catch {
+        return value;
+    }
+}
+function normalizeValidationStatus(value, rowStatus, findings = []) {
+    const normalized = String(value || '').toLowerCase();
+    if (normalized === 'healthy' || normalized === 'success')
+        return 'Healthy';
+    if (normalized === 'unhealthy' || normalized === 'failed' || normalized === 'failure')
+        return 'Unhealthy';
+    if (rowStatus === 'pending' || rowStatus === 'processing')
+        return 'Pending';
+    if (rowStatus === 'failed')
+        return 'Unhealthy';
+    if (findings.some((finding) => finding?.severity === 'Error'))
+        return 'Unhealthy';
+    return rowStatus === 'completed' ? 'Healthy' : 'Pending';
+}
+function mapValidationTaskRow(row) {
+    const payload = parseJsonField(row.payload) || {};
+    const result = parseJsonField(row.result) || {};
+    const findings = Array.isArray(result.findings) ? result.findings : [];
+    const validationId = result.validationId || payload.validationId || row.id;
+    return {
+        cloneId: result.cloneId || payload.cloneId || '',
+        validationId,
+        taskId: row.id,
+        status: normalizeValidationStatus(result.status || result.result, row.status, findings),
+        findings,
+        findingsCount: findings.length,
+        validatedAt: result.validatedAt || row.completedAt || row.startedAt || row.createdAt,
+        duration: result.duration,
+        taskStatus: row.status
+    };
+}
+async function dropSqlCloneDatabaseIfPresent(databaseType, databaseName) {
+    if (String(databaseType || '').toLowerCase() !== 'sql-server') {
+        return;
+    }
+    const dbName = String(databaseName || '').trim();
+    if (!dbName) {
+        return;
+    }
+    const protectedDatabases = new Set([
+        'master',
+        'model',
+        'msdb',
+        'tempdb',
+        String(process.env.SQL_DATABASE || '').toLowerCase(),
+    ]);
+    if (protectedDatabases.has(dbName.toLowerCase())) {
+        logger_1.default.warn(`Skipping drop for protected database: ${dbName}`);
+        return;
+    }
+    const sqlClient = (0, sqlClient_1.getSqlClient)();
+    await sqlClient.query(`DECLARE @db sysname = @databaseName;
+     IF DB_ID(@db) IS NOT NULL
+     BEGIN
+       DECLARE @stmt nvarchar(max) =
+         N'ALTER DATABASE ' + QUOTENAME(@db) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; '
+         + N'DROP DATABASE ' + QUOTENAME(@db) + N';';
+       EXEC sp_executesql @stmt;
+     END`, { databaseName: dbName });
+    logger_1.default.info(`SQL clone database deleted (if existed): ${dbName}`);
+}
+async function resolveCloneDatabaseNameFromTaskHistory(cloneId) {
+    const sqlClient = (0, sqlClient_1.getSqlClient)();
+    const rows = await sqlClient.query(`SELECT TOP (1)
+        COALESCE(
+          NULLIF(JSON_VALUE([result], '$.DatabaseName'), ''),
+          NULLIF(JSON_VALUE([result], '$.databaseName'), ''),
+          NULLIF(JSON_VALUE([payload], '$.databaseName'), '')
+        ) AS [databaseName],
+        COALESCE(
+          NULLIF(JSON_VALUE([result], '$.DatabaseType'), ''),
+          NULLIF(JSON_VALUE([result], '$.databaseType'), ''),
+          NULLIF(JSON_VALUE([payload], '$.databaseType'), '')
+        ) AS [databaseType]
+      FROM (
+        SELECT [type], [payload], [result], [completed_at] AS [completedAt]
+        FROM [dbo].[flashdb_queue]
+        UNION ALL
+        SELECT [type], [payload], [result], [completed_at] AS [completedAt]
+        FROM [dbo].[flashdb_queue_archive]
+      ) AS q
+      WHERE [type] = 'create-clone'
+        AND (
+          JSON_VALUE([result], '$.Id') = @cloneId
+          OR JSON_VALUE([result], '$.id') = @cloneId
+          OR JSON_VALUE([payload], '$.cloneId') = @cloneId
+        )
+      ORDER BY [completedAt] DESC`, { cloneId });
+    const row = Array.isArray(rows) ? rows[0] : null;
+    const dbType = String(row?.databaseType || '').toLowerCase();
+    const dbName = String(row?.databaseName || '').trim();
+    if (dbType && dbType !== 'sql-server') {
+        return undefined;
+    }
+    return dbName || undefined;
+}
+async function getPersistentValidationTasks(cloneId, validationId, limit = 100) {
+    try {
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        const result = await sqlClient.query(`SELECT TOP (@limit)
+          [id],
+          [type],
+          [status],
+          [payload],
+          [createdAt],
+          [startedAt],
+          [completedAt],
+          [result]
+       FROM (
+          SELECT
+            [id],
+            [type],
+            [status],
+            [payload],
+            [created_at] AS [createdAt],
+            [started_at] AS [startedAt],
+            [completed_at] AS [completedAt],
+            [result]
+          FROM [dbo].[flashdb_queue]
+          WHERE [type] = 'validate-clone'
+          UNION ALL
+          SELECT
+            [id],
+            [type],
+            [status],
+            [payload],
+            [created_at] AS [createdAt],
+            [started_at] AS [startedAt],
+            [completed_at] AS [completedAt],
+            [result]
+          FROM [dbo].[flashdb_queue_archive]
+          WHERE [type] = 'validate-clone'
+       ) AS validations
+       ORDER BY COALESCE([completedAt], [startedAt], [createdAt]) DESC`, { limit });
+        return (result.recordset || [])
+            .map(mapValidationTaskRow)
+            .filter(item => item.cloneId === cloneId)
+            .filter(item => !validationId || item.validationId === validationId);
+    }
+    catch (error) {
+        logger_1.default.debug(`Persistent validation tasks unavailable: ${error.message}`);
+        return [];
+    }
+}
 // POST - Create clone (queued)
 router.post('/', async (req, res) => {
     try {
@@ -34,18 +233,32 @@ router.post('/', async (req, res) => {
             });
         }
         logger_1.default.info(`Creating clone: ${cloneName}`);
+        // Validate that golden image exists before queueing task
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        const goldenImageCheck = await sqlClient.query(`SELECT [id] FROM [dbo].[GoldenImages] WHERE [id] = @goldenImageId`, { goldenImageId });
+        if (!goldenImageCheck.recordset || goldenImageCheck.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: `Golden image not found: ${goldenImageId}`
+            });
+        }
+        const requestedStoragePath = String(storagePath).trim();
+        const runtimeStoragePath = resolveMappedStoragePath(requestedStoragePath);
+        assertStoragePathExists(runtimeStoragePath);
+        if (runtimeStoragePath !== requestedStoragePath) {
+            logger_1.default.info(`Mapped clone storage path '${requestedStoragePath}' -> '${runtimeStoragePath}'`);
+        }
         // Lock on source to prevent concurrent clones from same golden image
         const lockResourceId = `clone-creation:${goldenImageId}`;
         try {
             const { result: task, lockContext } = await (0, lockMiddleware_1.withLock)(lockResourceId, async () => {
                 // Use task queue for async processing
                 if (useQueue !== false) {
-                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
-                    const task = taskQueue.enqueue('create-clone', {
+                    const task = await (0, durableTaskQueue_1.enqueueTask)('create-clone', {
                         goldenImageId,
                         cloneName,
                         instancePath,
-                        storagePath,
+                        storagePath: runtimeStoragePath,
                         databaseType,
                         databaseName,
                         compressionEnabled,
@@ -61,7 +274,7 @@ router.post('/', async (req, res) => {
                         GoldenImageId: goldenImageId,
                         CloneName: cloneName,
                         InstancePath: instancePath,
-                        StoragePath: storagePath
+                        StoragePath: runtimeStoragePath
                     };
                     if (databaseType)
                         params.DatabaseType = databaseType;
@@ -122,12 +335,30 @@ router.post('/', async (req, res) => {
 router.get('/', async (_req, res) => {
     try {
         logger_1.default.info('Retrieving all clones');
-        const clones = await psService.executeCommand('Get-FlashdbClone', {});
-        return res.json({
-            success: true,
-            data: toResponseArray(clones),
-            message: 'Clones retrieved successfully'
-        });
+        const clones = toResponseArray(await psService.executeCommand('Get-FlashdbClone', {}));
+        // Try to enrich with database data (vhdxPath, etc.)
+        try {
+            const sqlClient = (0, sqlClient_1.getSqlClient)();
+            const dbClones = await sqlClient.query(`SELECT [id], [vhdxPath] FROM [dbo].[Clones]`, {});
+            const dbMap = new Map((dbClones.recordset || []).map((row) => [row.id, row]));
+            const enrichedClones = clones.map((clone) => ({
+                ...clone,
+                vhdxPath: clone.VhdxPath || dbMap.get(clone.Id || clone.id)?.vhdxPath || null
+            }));
+            return res.json({
+                success: true,
+                data: enrichedClones,
+                message: 'Clones retrieved successfully'
+            });
+        }
+        catch (dbError) {
+            logger_1.default.debug(`Database enrichment unavailable: ${dbError.message}, returning PowerShell data only`);
+            return res.json({
+                success: true,
+                data: clones,
+                message: 'Clones retrieved successfully'
+            });
+        }
     }
     catch (error) {
         logger_1.default.error(`Error retrieving clones: ${error.message}`);
@@ -150,6 +381,18 @@ router.get('/:cloneId', async (req, res) => {
                 success: false,
                 message: `Clone not found: ${cloneId}`
             });
+        }
+        // Try to enrich with database data
+        try {
+            const sqlClient = (0, sqlClient_1.getSqlClient)();
+            const dbResult = await sqlClient.query(`SELECT [vhdxPath] FROM [dbo].[Clones] WHERE [id] = @cloneId`, { cloneId });
+            const dbClone = dbResult.recordset?.[0];
+            if (dbClone && dbClone.vhdxPath) {
+                clone.vhdxPath = dbClone.vhdxPath;
+            }
+        }
+        catch (dbError) {
+            logger_1.default.debug(`Database enrichment unavailable for clone ${cloneId}: ${dbError.message}`);
         }
         return res.json({
             success: true,
@@ -222,7 +465,8 @@ router.post('/:cloneId/detach', async (req, res) => {
 router.delete('/:cloneId', async (req, res) => {
     try {
         const { cloneId } = req.params;
-        const { deleteVhdx, useQueue = true } = req.query;
+        const { deleteVhdx, useQueue = true, databaseName } = req.query;
+        const requestedDatabaseName = typeof databaseName === 'string' ? databaseName.trim() : '';
         logger_1.default.info(`Deleting clone: ${cloneId}`);
         // Lock on clone to prevent delete during active operations
         const lockResourceId = `clone:${cloneId}`;
@@ -230,10 +474,10 @@ router.delete('/:cloneId', async (req, res) => {
             const { result: task, lockContext } = await (0, lockMiddleware_1.withLock)(lockResourceId, async () => {
                 // Use task queue for async processing
                 if (useQueue !== 'false') {
-                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
-                    const task = taskQueue.enqueue('delete-clone', {
+                    const task = await (0, durableTaskQueue_1.enqueueTask)('delete-clone', {
                         cloneId,
-                        deleteVhdx: deleteVhdx === 'true'
+                        deleteVhdx: deleteVhdx === 'true',
+                        databaseName: requestedDatabaseName || undefined,
                     });
                     // Invalidate cache for clones and metrics
                     (0, caching_1.invalidateCache)(['/clones', '/metrics']);
@@ -241,10 +485,35 @@ router.delete('/:cloneId', async (req, res) => {
                 }
                 else {
                     // Synchronous mode (for backward compatibility)
-                    await psService.executeCommandRaw('Remove-FlashdbClone', {
+                    const existingClone = await psService.executeCommand('Get-FlashdbClone', {
                         CloneId: cloneId,
-                        DeleteVhdx: deleteVhdx === 'true'
                     });
+                    let deleteDatabaseName = requestedDatabaseName ||
+                        existingClone?.DatabaseName ||
+                        existingClone?.databaseName;
+                    const deleteDatabaseType = existingClone?.DatabaseType || existingClone?.databaseType;
+                    if (!deleteDatabaseName) {
+                        deleteDatabaseName = await resolveCloneDatabaseNameFromTaskHistory(cloneId);
+                        if (deleteDatabaseName) {
+                            logger_1.default.info(`Resolved clone DB from task history: ${deleteDatabaseName}`);
+                        }
+                    }
+                    try {
+                        await psService.executeCommandRaw('Remove-FlashdbClone', {
+                            CloneId: cloneId,
+                            DeleteVhdx: deleteVhdx === 'true'
+                        });
+                    }
+                    catch (providerError) {
+                        const providerMessage = String(providerError?.message || '');
+                        if (!/not found|cannot find|does not exist/i.test(providerMessage)) {
+                            throw providerError;
+                        }
+                        logger_1.default.warn(`Clone not found in provider (${cloneId}); continuing metadata cleanup`);
+                    }
+                    // Keep API metadata store consistent with provider deletion.
+                    await metadataService.deleteClone(cloneId);
+                    await dropSqlCloneDatabaseIfPresent(deleteDatabaseType || 'sql-server', deleteDatabaseName);
                     // Invalidate cache for clones and metrics
                     (0, caching_1.invalidateCache)(['/clones', '/metrics']);
                     return { success: true, message: 'Clone deleted successfully' };
@@ -358,8 +627,7 @@ router.post('/:cloneId/validate', async (req, res) => {
                         }
                         else {
                             // Asynchronous mode: queue validation task
-                            const taskQueue = (0, taskQueue_1.getTaskQueue)();
-                            const task = taskQueue.enqueue('validate-clone', {
+                            const task = await (0, durableTaskQueue_1.enqueueTask)('validate-clone', {
                                 cloneId,
                                 validationId
                             });
@@ -468,6 +736,35 @@ router.get('/:cloneId/validation-status', async (req, res) => {
                 }
             });
         }
+        const persistentValidationTasks = await getPersistentValidationTasks(cloneId, typeof validationId === 'string' ? validationId : undefined, 250);
+        if (persistentValidationTasks.length > 0) {
+            const latestTaskValidation = persistentValidationTasks[0];
+            const responseData = {
+                cloneId,
+                validationId: latestTaskValidation.validationId,
+                status: latestTaskValidation.status,
+                findings: latestTaskValidation.findings,
+                validatedAt: latestTaskValidation.validatedAt,
+                duration: latestTaskValidation.duration,
+                taskId: latestTaskValidation.taskId,
+                taskStatus: latestTaskValidation.taskStatus
+            };
+            if (includeHistory === 'true') {
+                const historyTasks = await getPersistentValidationTasks(cloneId, undefined, 250);
+                responseData.history = historyTasks.slice(0, 10).map(item => ({
+                    validationId: item.validationId,
+                    status: item.status,
+                    findingsCount: item.findingsCount,
+                    validatedAt: item.validatedAt,
+                    taskId: item.taskId
+                }));
+            }
+            return res.json({
+                success: true,
+                data: responseData,
+                message: 'Validation status retrieved'
+            });
+        }
         // Get latest validation from audit service
         const auditService = (0, auditMetricsService_1.getAuditMetricsService)();
         const validationOperations = await auditService.getValidationOperations(cloneId);
@@ -548,6 +845,40 @@ router.get('/:cloneId/validation-history', async (req, res) => {
                     message: `Clone not found: ${cloneId}`,
                     timestamp: new Date().toISOString()
                 }
+            });
+        }
+        const persistentValidationTasks = await getPersistentValidationTasks(cloneId, undefined, 500);
+        if (persistentValidationTasks.length > 0) {
+            let filteredTasks = persistentValidationTasks;
+            if (status) {
+                filteredTasks = filteredTasks.filter((item) => item.status === status);
+            }
+            const total = filteredTasks.length;
+            const validations = filteredTasks.slice(offset, offset + limit).map((item) => {
+                const errorCount = item.findings.filter((finding) => finding.severity === 'Error').length;
+                const warningCount = item.findings.filter((finding) => finding.severity === 'Warning').length;
+                return {
+                    validationId: item.validationId,
+                    taskId: item.taskId,
+                    status: item.status,
+                    findings: item.findings,
+                    findingsCount: item.findingsCount,
+                    errorCount,
+                    warningCount,
+                    validatedAt: item.validatedAt,
+                    duration: item.duration?.elapsedMs || 0
+                };
+            });
+            return res.json({
+                success: true,
+                data: {
+                    cloneId,
+                    validations,
+                    total,
+                    limit,
+                    offset
+                },
+                message: 'Validation history retrieved'
             });
         }
         // Get validation history from audit service
@@ -674,8 +1005,7 @@ router.post('/:cloneId/repair', async (req, res) => {
                                 operatorId: req.user?.id || req.body.approvedByOperator
                             });
                             // Queue the repair task
-                            const taskQueue = (0, taskQueue_1.getTaskQueue)();
-                            const task = taskQueue.enqueue('repair-clone', {
+                            const task = await (0, durableTaskQueue_1.enqueueTask)('repair-clone', {
                                 cloneId,
                                 repairId,
                                 isDryRun: false,

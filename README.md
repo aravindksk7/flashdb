@@ -52,6 +52,27 @@ FlashDB is a production-ready database cloning and management system designed fo
 8. [Troubleshooting](#troubleshooting)
 9. [Contributing](#contributing)
 10. [License](#license)
+11. [AI Agent Integration (Ruflo)](#ai-agent-integration-ruflo)
+
+---
+
+## AI Agent Integration (Ruflo)
+
+FlashDB is configured to support both Codex and GitHub Copilot with the same Ruflo MCP backend.
+
+- Codex configuration: `.agents/config.toml`
+- Copilot repository instructions: `.github/copilot-instructions.md`
+- MCP server configuration: `.mcp.json`
+
+The MCP configuration exposes both server aliases for compatibility:
+- `ruflo` (preferred)
+- `claude-flow` (legacy alias)
+
+To verify local Ruflo integration, run:
+
+```bash
+npx -y ruflo@latest mcp start --help
+```
 
 ---
 

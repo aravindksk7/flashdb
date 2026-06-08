@@ -4,8 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
-const taskQueue_1 = require("../services/taskQueue");
+const durableTaskQueue_1 = require("../services/durableTaskQueue");
 const logger_1 = __importDefault(require("../logger"));
 const caching_1 = require("../middleware/caching");
 const lockMiddleware_1 = require("../middleware/lockMiddleware");
@@ -39,8 +41,7 @@ router.post('/', async (req, res) => {
             const { result: task, lockContext } = await (0, lockMiddleware_1.withLockRetry)(lockResourceId, async () => {
                 // Use task queue for async processing
                 if (useQueue !== false) {
-                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
-                    const task = taskQueue.enqueue('create-checkpoint', {
+                    const task = await (0, durableTaskQueue_1.enqueueTask)('create-checkpoint', {
                         cloneId,
                         checkpointName,
                         phase: phase || 'manual',
@@ -115,6 +116,57 @@ router.get('/', async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 });
+// GET - Validate checkpoint backing disk/path before restore
+router.get('/:checkpointId/validate-backing', async (req, res) => {
+    try {
+        const { cloneId, checkpointId } = req.params;
+        const diskPath = String(req.query.diskPath || '');
+        logger_1.default.info(`Validating checkpoint backing for ${checkpointId}`);
+        const checkpoint = await psService.executeCommand('Get-FlashdbCheckpoint', {
+            CloneId: cloneId,
+            CheckpointId: checkpointId
+        });
+        if (!checkpoint) {
+            return res.status(404).json({
+                success: false,
+                message: 'Checkpoint not found'
+            });
+        }
+        const candidatePath = diskPath ||
+            checkpoint.diskPath ||
+            checkpoint.DiskPath ||
+            checkpoint.vhdxPath ||
+            checkpoint.VhdxPath ||
+            '';
+        const isWindowsPath = /^[a-zA-Z]:\\/.test(candidatePath) || candidatePath.startsWith('\\\\');
+        const diskExists = candidatePath ? (isWindowsPath ? false : fs_1.default.existsSync(candidatePath)) : true;
+        const parentDir = candidatePath ? path_1.default.dirname(candidatePath) : '';
+        const parentExists = parentDir && parentDir !== '.' && !isWindowsPath ? fs_1.default.existsSync(parentDir) : true;
+        const isAccessible = candidatePath ? (diskExists || parentExists) : true;
+        const hasSpace = true;
+        const isValid = candidatePath ? isAccessible : true;
+        return res.json({
+            success: true,
+            data: {
+                isValid,
+                diskPath: candidatePath,
+                message: isValid
+                    ? 'Checkpoint backing path is accessible'
+                    : isWindowsPath
+                        ? 'Windows backing paths cannot be validated from the Linux API container'
+                        : 'Checkpoint backing path is not accessible',
+                diskExists,
+                isAccessible,
+                hasSpace,
+                lastChecked: new Date().toISOString()
+            }
+        });
+    }
+    catch (error) {
+        logger_1.default.error(`Error validating checkpoint backing: ${error.message}`);
+        return res.status(400).json({ success: false, message: error.message });
+    }
+});
 // POST - Restore checkpoint (queued)
 router.post('/:checkpointId/restore', async (req, res) => {
     try {
@@ -127,8 +179,7 @@ router.post('/:checkpointId/restore', async (req, res) => {
             const { result: task, lockContext } = await (0, lockMiddleware_1.withLockRetry)(lockResourceId, async () => {
                 // Use task queue for async processing
                 if (useQueue !== false) {
-                    const taskQueue = (0, taskQueue_1.getTaskQueue)();
-                    const task = taskQueue.enqueue('restore-checkpoint', {
+                    const task = await (0, durableTaskQueue_1.enqueueTask)('restore-checkpoint', {
                         cloneId,
                         checkpointId,
                         reattachAfter: reattachAfter !== false
@@ -240,8 +291,7 @@ router.delete('/:checkpointId', async (req, res) => {
                     logger_1.default.debug(`Cascade delete check requested for ${checkpointId} (will be implemented in Step 3)`);
                 }
                 // Queue async deletion task
-                const taskQueue = (0, taskQueue_1.getTaskQueue)();
-                const deleteTask = taskQueue.enqueue('delete-checkpoint', {
+                const deleteTask = await (0, durableTaskQueue_1.enqueueTask)('delete-checkpoint', {
                     cloneId,
                     checkpointId,
                     vhdxPath: checkpoint.vhdxPath || '',

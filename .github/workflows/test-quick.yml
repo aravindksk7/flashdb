@@ -1,0 +1,52 @@
+name: FlashDB Quick Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+
+jobs:
+  quick-test:
+    name: Quick Test Suite
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PowerShell
+        uses: actions/setup-powershell@v2
+        with:
+          powershell-version: '7.4'
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -SkipPublisherCheck
+
+      - name: Run Core Module Tests (5 min)
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'tests/FlashDB'
+          $config.Run.Exit = $true
+          Invoke-Pester -Configuration $config
+
+      - name: Run Quick Integration Test (3 min)
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'tests/Integration'
+          $config.Run.Exit = $true
+          $config.Filter.ExcludeTag = 'Slow', 'Performance'
+          Invoke-Pester -Configuration $config
+
+      - name: Results Summary
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "Quick Test Execution Complete"
+          Write-Host "Total time: ~8-10 minutes"
+          Write-Host "Full test suite would take 25-40 minutes"

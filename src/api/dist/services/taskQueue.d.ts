@@ -34,6 +34,7 @@ declare class TaskQueue {
     loadQueue(): void;
     private saveQueue;
     enqueue(type: TaskType, payload: Record<string, any>): Task;
+    enqueueExisting(task: Task): Task;
     dequeue(): Task | null;
     updateTask(id: string, status: TaskStatus, result?: any, error?: string): void;
     getMetrics(): QueueMetrics;

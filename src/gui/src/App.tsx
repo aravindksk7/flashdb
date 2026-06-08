@@ -215,11 +215,16 @@ function App() {
     }
   };
 
-  const handleDeleteClone = async (cloneId: string) => {
+  const handleDeleteClone = async (cloneId: string, databaseName?: string) => {
     if (!window.confirm('Are you sure you want to delete this clone?')) return;
 
     try {
-      const response = await axios.delete(`${API_BASE}/clones/${cloneId}?deleteVhdx=true`);
+      const params = new URLSearchParams({ deleteVhdx: 'true' });
+      if (databaseName && databaseName !== 'Unknown') {
+        params.set('databaseName', databaseName);
+      }
+
+      const response = await axios.delete(`${API_BASE}/clones/${cloneId}?${params.toString()}`);
 
       // If delete was queued (202), wait for task completion
       const taskId = response.data?.data?.taskId;
@@ -689,7 +694,7 @@ function App() {
                     rowCount={clone.rowCount}
                     sizeBytes={clone.sizeBytes}
                     onOpenCheckpoints={() => setSelectedClone(clone)}
-                    onDelete={() => handleDeleteClone(clone.id)}
+                    onDelete={() => handleDeleteClone(clone.id, clone.databaseName)}
                     onAction={loadData}
                     onOperationCompleted={() => operationHistoryRef.current?.refresh()}
                   />

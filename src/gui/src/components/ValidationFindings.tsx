@@ -151,9 +151,18 @@ export const ValidationFindings: React.FC<ValidationFindingsProps> = ({
       )}
 
       {findings.length === 0 ? (
-        <div style={styles.noFindings}>
+        <div
+          style={{
+            ...styles.noFindings,
+            color: status === 'Unhealthy' ? '#d32f2f' : '#2e7d32'
+          }}
+        >
           <div style={styles.noFindingsIcon}>✓</div>
-          <div style={styles.noFindingsText}>No issues found</div>
+          <div style={styles.noFindingsText}>
+            {status === 'Unhealthy'
+              ? 'Validation returned an unhealthy status, but no detailed findings were returned.'
+              : 'No issues found'}
+          </div>
         </div>
       ) : (
         <>

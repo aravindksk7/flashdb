@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import '../styles/Dashboard.css';
+import '../styles/InfrastructureDashboards.css';
 import { ConsoleIcon } from './ConsoleIcon';
 
 interface FeatureFlag {

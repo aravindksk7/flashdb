@@ -84,6 +84,157 @@ class TaskWorker {
     }
   }
 
+  private async dropSqlCloneDatabaseIfPresent(databaseType: any, databaseName?: string): Promise<void> {
+    if (String(databaseType || '').toLowerCase() !== 'sql-server') {
+      return;
+    }
+
+    const dbName = String(databaseName || '').trim();
+    if (!dbName) {
+      return;
+    }
+
+    const protectedDatabases = new Set([
+      'master',
+      'model',
+      'msdb',
+      'tempdb',
+      String(process.env.SQL_DATABASE || '').toLowerCase(),
+    ]);
+
+    if (protectedDatabases.has(dbName.toLowerCase())) {
+      logger.warn(`[TaskWorker] │ Skipping drop for protected database: ${dbName}`);
+      return;
+    }
+
+    const sqlClient = getSqlClient();
+    await sqlClient.query(
+      `DECLARE @db sysname = @databaseName;
+       IF DB_ID(@db) IS NOT NULL
+       BEGIN
+         DECLARE @stmt nvarchar(max) =
+           N'ALTER DATABASE ' + QUOTENAME(@db) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; '
+           + N'DROP DATABASE ' + QUOTENAME(@db) + N';';
+         EXEC sp_executesql @stmt;
+       END`,
+      { databaseName: dbName }
+    );
+
+    logger.info(`[TaskWorker] │ SQL clone database deleted (if existed): ${dbName}`);
+  }
+
+  /**
+   * Phase 4: Drop checkpoint database safely
+   * Called during checkpoint deletion to clean up physical SQL Server database
+   * Non-fatal error handling: logs warnings but doesn't throw
+   */
+  private async dropCheckpointDatabaseSafely(databaseName?: string): Promise<void> {
+    if (!databaseName) {
+      logger.debug('[TaskWorker] No checkpoint database name to drop');
+      return;
+    }
+
+    const dbName = String(databaseName || '').trim();
+    if (!dbName) {
+      logger.debug('[TaskWorker] Empty checkpoint database name after trim');
+      return;
+    }
+
+    // Protect system databases
+    const protectedDatabases = new Set([
+      'master',
+      'model',
+      'msdb',
+      'tempdb',
+      String(process.env.SQL_DATABASE || '').toLowerCase(),
+    ]);
+
+    if (protectedDatabases.has(dbName.toLowerCase())) {
+      logger.warn(`[TaskWorker] Skipping drop for protected checkpoint database: ${dbName}`);
+      return;
+    }
+
+    try {
+      const sqlClient = getSqlClient();
+
+      // Check if database exists
+      const checkQuery = `
+        IF DB_ID(@databaseName) IS NOT NULL
+          SELECT 1
+        ELSE
+          SELECT 0
+      `;
+      const checkResult = await sqlClient.query(checkQuery, { databaseName: dbName });
+      const rows = Array.isArray(checkResult) ? checkResult : [];
+      const dbExists = rows.length > 0 && rows[0]?.[Object.keys(rows[0])[0]];
+
+      if (!dbExists) {
+        logger.info(`[TaskWorker] Checkpoint database not found (already dropped?): ${dbName}`);
+        return;
+      }
+
+      // Drop the database
+      const dropQuery = `
+        DECLARE @db sysname = @databaseName;
+        IF DB_ID(@db) IS NOT NULL
+        BEGIN
+          DECLARE @stmt nvarchar(max) =
+            N'ALTER DATABASE ' + QUOTENAME(@db) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; '
+            + N'DROP DATABASE ' + QUOTENAME(@db) + N';';
+          EXEC sp_executesql @stmt;
+        END
+      `;
+
+      await sqlClient.query(dropQuery, { databaseName: dbName });
+      logger.info(`[TaskWorker] Dropped checkpoint database: ${dbName}`);
+    } catch (error: any) {
+      logger.warn(
+        `[TaskWorker] Failed to drop checkpoint database (non-fatal): ${dbName} - ${error.message}`
+      );
+      // Non-fatal: don't throw, checkpoint metadata is still cleaned up
+    }
+  }
+
+  private async resolveCloneDatabaseNameFromTaskHistory(cloneId: string): Promise<string | undefined> {
+    const sqlClient = getSqlClient();
+    const query = `SELECT TOP (1)
+        COALESCE(
+          NULLIF(JSON_VALUE([result], '$.DatabaseName'), ''),
+          NULLIF(JSON_VALUE([result], '$.databaseName'), ''),
+          NULLIF(JSON_VALUE([payload], '$.databaseName'), '')
+        ) AS [databaseName],
+        COALESCE(
+          NULLIF(JSON_VALUE([result], '$.DatabaseType'), ''),
+          NULLIF(JSON_VALUE([result], '$.databaseType'), ''),
+          NULLIF(JSON_VALUE([payload], '$.databaseType'), '')
+        ) AS [databaseType]
+      FROM (
+        SELECT [type], [payload], [result], [completed_at] AS [completedAt]
+        FROM [dbo].[flashdb_queue]
+        UNION ALL
+        SELECT [type], [payload], [result], [completed_at] AS [completedAt]
+        FROM [dbo].[flashdb_queue_archive]
+      ) AS q
+      WHERE [type] = 'create-clone'
+        AND (
+          JSON_VALUE([result], '$.Id') = @cloneId
+          OR JSON_VALUE([result], '$.id') = @cloneId
+          OR JSON_VALUE([payload], '$.cloneId') = @cloneId
+        )
+      ORDER BY [completedAt] DESC`;
+
+    const rows = await sqlClient.query<any>(query, { cloneId });
+    const row = Array.isArray(rows) ? rows[0] : null;
+    const dbType = String(row?.databaseType || '').toLowerCase();
+    const dbName = String(row?.databaseName || '').trim();
+
+    if (dbType && dbType !== 'sql-server') {
+      return undefined;
+    }
+
+    return dbName || undefined;
+  }
+
   private isRetryableTaskError(task: Task, errorMessage: string): boolean {
     // create-clone is not idempotent once the target database has been created.
     // Retrying these errors creates noisy repeated failures and obscures root cause.
@@ -308,20 +459,56 @@ class TaskWorker {
           // then delete metadata for SQL consistency.
           const deleteCloneId = task.payload.cloneId;
           const deleteVhdx = task.payload.deleteVhdx === true;
+          const payloadDatabaseName =
+            typeof task.payload.databaseName === 'string' ? task.payload.databaseName.trim() : '';
+          const existingClone = await psService.executeCommand('Get-FlashdbClone', {
+            CloneId: deleteCloneId,
+          });
+          let deleteDatabaseName =
+            payloadDatabaseName ||
+            (existingClone as any)?.DatabaseName ||
+            (existingClone as any)?.databaseName;
+          const deleteDatabaseType =
+            (existingClone as any)?.DatabaseType || (existingClone as any)?.databaseType;
+
+          if (!deleteDatabaseName) {
+            deleteDatabaseName = await this.resolveCloneDatabaseNameFromTaskHistory(deleteCloneId);
+            if (deleteDatabaseName) {
+              logger.info(
+                `[TaskWorker] │ Resolved clone DB from task history: ${deleteDatabaseName}`
+              );
+            }
+          }
           logger.info(`[TaskWorker] ┌─ delete-clone task initiated for: ${deleteCloneId}`);
           logger.info(`[TaskWorker] │ deleteVhdx: ${deleteVhdx}`);
           try {
             logger.info(`[TaskWorker] ├─ Calling PowerShell: Remove-FlashdbClone`);
-            await psService.executeCommandRaw('Remove-FlashdbClone', {
-              CloneId: deleteCloneId,
-              DeleteVhdx: deleteVhdx,
-            });
-            logger.info(`[TaskWorker] │ PowerShell deletion completed`);
+            try {
+              await psService.executeCommandRaw('Remove-FlashdbClone', {
+                CloneId: deleteCloneId,
+                DeleteVhdx: deleteVhdx,
+              });
+              logger.info(`[TaskWorker] │ PowerShell deletion completed`);
+            } catch (providerError: any) {
+              const providerMessage = String(providerError?.message || '');
+              if (/not found|cannot find|does not exist/i.test(providerMessage)) {
+                logger.warn(
+                  `[TaskWorker] │ Clone not found in provider (${deleteCloneId}); continuing metadata cleanup`
+                );
+              } else {
+                throw providerError;
+              }
+            }
 
             logger.info(`[TaskWorker] ├─ Calling MetadataService: deleteClone(${deleteCloneId})`);
             const metadataService = getMetadataService();
             await metadataService.deleteClone(deleteCloneId);
             logger.info(`[TaskWorker] │ MetadataService deletion completed`);
+
+            await this.dropSqlCloneDatabaseIfPresent(
+              deleteDatabaseType || 'sql-server',
+              deleteDatabaseName
+            );
 
             result = {
               success: true,
@@ -343,6 +530,32 @@ class TaskWorker {
             Description: task.payload.description,
             Force: task.payload.force || false
           });
+
+          // Phase 2: Capture database name from PowerShell result
+          if (result && typeof result === 'object') {
+            const checkpointDatabaseName = (result as any).DatabaseName || (result as any).databaseName;
+            if (checkpointDatabaseName) {
+              logger.info(
+                `[TaskWorker] Captured checkpoint database: ${checkpointDatabaseName} (checkpoint: ${task.payload.checkpointName})`
+              );
+
+              // Phase 3: Save database name to metadata service
+              try {
+                const metadataService = getMetadataService();
+                const checkpointId = (result as any).Id || (result as any).id;
+                if (checkpointId) {
+                  await metadataService.saveCheckpointDatabaseName(checkpointId, checkpointDatabaseName);
+                  logger.info(
+                    `[TaskWorker] Saved checkpoint database name: ${checkpointDatabaseName} -> ${checkpointId}`
+                  );
+                }
+              } catch (dbError: any) {
+                logger.warn(
+                  `[TaskWorker] Failed to save checkpoint database name: ${dbError.message} (non-fatal)`
+                );
+              }
+            }
+          }
           break;
 
         case 'restore-checkpoint':
@@ -364,32 +577,67 @@ class TaskWorker {
           }
           break;
 
-        case 'delete-checkpoint':
-          // Use MetadataService for delete with pinned protection
-          logger.info(`[TaskWorker] Deleting checkpoint via MetadataService: ${task.payload.checkpointId}`);
+        case 'delete-checkpoint': {
+          // Phase 5a: Get checkpoint metadata including database name before deletion
+          logger.info(`[TaskWorker] ┌─ delete-checkpoint initiated: ${task.payload.checkpointId}`);
+          const checkpointRepo = getCheckpointRepository();
+          let checkpointDatabaseName: string | null = null;
+
           try {
+            logger.info(`[TaskWorker] ├─ Retrieving checkpoint metadata`);
+            const checkpoint = await checkpointRepo.getById(task.payload.checkpointId);
+            if (checkpoint) {
+              checkpointDatabaseName = (checkpoint as any).checkpointDatabaseName || null;
+              if (checkpointDatabaseName) {
+                logger.info(
+                  `[TaskWorker] │ Found checkpoint database: ${checkpointDatabaseName}`
+                );
+              }
+            }
+          } catch (metaError: any) {
+            logger.warn(
+              `[TaskWorker] Failed to retrieve checkpoint metadata: ${metaError.message} (continuing with cleanup)`
+            );
+          }
+
+          // Phase 5b: Delete checkpoint metadata
+          try {
+            logger.info(`[TaskWorker] ├─ Deleting checkpoint metadata`);
             const metadataService = getMetadataService();
             await metadataService.deleteCheckpoint(
               task.payload.cloneId,
               task.payload.checkpointId
             );
+            logger.info(`[TaskWorker] │ Metadata deleted`);
+
+            // Phase 5c: Drop physical database if applicable
+            if (checkpointDatabaseName) {
+              logger.info(`[TaskWorker] ├─ Dropping checkpoint database`);
+              await this.dropCheckpointDatabaseSafely(checkpointDatabaseName);
+              logger.info(`[TaskWorker] │ Database cleanup completed`);
+            }
+
             result = {
               success: true,
               checkpointId: task.payload.checkpointId,
               cloneId: task.payload.cloneId,
               message: 'Checkpoint deleted successfully'
             };
-            logger.info(`[TaskWorker] Checkpoint deleted: ${task.payload.checkpointId}`);
+            logger.info(`[TaskWorker] └─ ✓ Checkpoint deletion completed`);
           } catch (error: any) {
+            logger.error(`[TaskWorker] └─ ✗ delete-checkpoint FAILED`);
+            logger.error(`[TaskWorker]    Error: ${error.message}`);
+
             // Check if error is due to pinned checkpoint
             if (/pinned/i.test(error.message)) {
               logger.warn(`[TaskWorker] Checkpoint is pinned: ${task.payload.checkpointId}`);
               throw new Error(`Cannot delete pinned checkpoint. Unpin first.`);
             }
-            logger.error(`[TaskWorker] Failed to delete checkpoint: ${error.message}`);
+
             throw error;
           }
           break;
+        }
 
         case 'validate-clone': {
           const cloneId = task.payload.cloneId;

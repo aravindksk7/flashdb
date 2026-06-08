@@ -33,11 +33,13 @@ export declare class SqlClient {
     private readonly MAX_RETRY_ATTEMPTS;
     private readonly RETRY_DELAY_MS;
     private isInitialized;
+    private initializePromise;
     private healthCheckInterval;
     /**
      * Initialize the SQL client and connection pool
      */
     initialize(): Promise<void>;
+    private ensureConnected;
     /**
      * Start periodic health checks on the connection pool
      */

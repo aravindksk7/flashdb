@@ -4,15 +4,10 @@
 
 SET QUOTED_IDENTIFIER ON;
 
--- Ensure tables don't exist before creating (for clean recreation if needed)
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[flashdb_queue_archive]') AND type in (N'U'))
-    DROP TABLE [dbo].[flashdb_queue_archive];
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[flashdb_queue]') AND type in (N'U'))
-    DROP TABLE [dbo].[flashdb_queue];
-
 -- Active task queue table
 -- Stores pending and processing tasks with full state tracking
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'flashdb_queue')
+BEGIN
 CREATE TABLE [dbo].[flashdb_queue] (
     [id] NVARCHAR(36) PRIMARY KEY NOT NULL,  -- UUID
     [type] NVARCHAR(50) NOT NULL,  -- Task type: create-clone, delete-clone, create-checkpoint, restore-checkpoint
@@ -27,16 +22,24 @@ CREATE TABLE [dbo].[flashdb_queue] (
     [result] NVARCHAR(MAX) NULL,  -- JSON result if task completed
     [instance_id] NVARCHAR(36) NULL  -- Which API instance is processing this task
 );
+END;
 
 -- Create indexes for efficient queue operations
-CREATE INDEX [IX_flashdb_queue_status] ON [dbo].[flashdb_queue] ([status]);
-CREATE INDEX [IX_flashdb_queue_created_at] ON [dbo].[flashdb_queue] ([created_at] DESC);
-CREATE INDEX [IX_flashdb_queue_status_created] ON [dbo].[flashdb_queue] ([status], [created_at] DESC);
-CREATE INDEX [IX_flashdb_queue_type] ON [dbo].[flashdb_queue] ([type]);
-CREATE INDEX [IX_flashdb_queue_instance] ON [dbo].[flashdb_queue] ([instance_id]) WHERE [instance_id] IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_status' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue]'))
+    CREATE INDEX [IX_flashdb_queue_status] ON [dbo].[flashdb_queue] ([status]);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_created_at' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue]'))
+    CREATE INDEX [IX_flashdb_queue_created_at] ON [dbo].[flashdb_queue] ([created_at] DESC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_status_created' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue]'))
+    CREATE INDEX [IX_flashdb_queue_status_created] ON [dbo].[flashdb_queue] ([status], [created_at] DESC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_type' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue]'))
+    CREATE INDEX [IX_flashdb_queue_type] ON [dbo].[flashdb_queue] ([type]);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_instance' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue]'))
+    CREATE INDEX [IX_flashdb_queue_instance] ON [dbo].[flashdb_queue] ([instance_id]) WHERE [instance_id] IS NOT NULL;
 
 -- Archive table for completed/failed tasks
 -- Stores completed and failed tasks for audit trail and analytics
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'flashdb_queue_archive')
+BEGIN
 CREATE TABLE [dbo].[flashdb_queue_archive] (
     [id] NVARCHAR(36) PRIMARY KEY NOT NULL,  -- UUID (copied from queue)
     [type] NVARCHAR(50) NOT NULL,  -- Task type
@@ -50,9 +53,14 @@ CREATE TABLE [dbo].[flashdb_queue_archive] (
     [result] NVARCHAR(MAX) NULL,  -- JSON result if completed
     [archived_at] DATETIME2(7) NOT NULL DEFAULT GETUTCDATE()  -- When task was archived
 );
+END;
 
 -- Create indexes for archive queries
-CREATE INDEX [IX_flashdb_queue_archive_status] ON [dbo].[flashdb_queue_archive] ([status]);
-CREATE INDEX [IX_flashdb_queue_archive_created] ON [dbo].[flashdb_queue_archive] ([created_at] DESC);
-CREATE INDEX [IX_flashdb_queue_archive_archived] ON [dbo].[flashdb_queue_archive] ([archived_at] DESC);
-CREATE INDEX [IX_flashdb_queue_archive_type] ON [dbo].[flashdb_queue_archive] ([type]);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_archive_status' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue_archive]'))
+    CREATE INDEX [IX_flashdb_queue_archive_status] ON [dbo].[flashdb_queue_archive] ([status]);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_archive_created' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue_archive]'))
+    CREATE INDEX [IX_flashdb_queue_archive_created] ON [dbo].[flashdb_queue_archive] ([created_at] DESC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_archive_archived' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue_archive]'))
+    CREATE INDEX [IX_flashdb_queue_archive_archived] ON [dbo].[flashdb_queue_archive] ([archived_at] DESC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_flashdb_queue_archive_type' AND object_id = OBJECT_ID(N'[dbo].[flashdb_queue_archive]'))
+    CREATE INDEX [IX_flashdb_queue_archive_type] ON [dbo].[flashdb_queue_archive] ([type]);

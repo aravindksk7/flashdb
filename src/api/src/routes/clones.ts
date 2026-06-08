@@ -113,6 +113,87 @@ function mapValidationTaskRow(row: any): any {
   };
 }
 
+async function dropSqlCloneDatabaseIfPresent(databaseType: any, databaseName?: string): Promise<void> {
+  if (String(databaseType || '').toLowerCase() !== 'sql-server') {
+    return;
+  }
+
+  const dbName = String(databaseName || '').trim();
+  if (!dbName) {
+    return;
+  }
+
+  const protectedDatabases = new Set([
+    'master',
+    'model',
+    'msdb',
+    'tempdb',
+    String(process.env.SQL_DATABASE || '').toLowerCase(),
+  ]);
+
+  if (protectedDatabases.has(dbName.toLowerCase())) {
+    logger.warn(`Skipping drop for protected database: ${dbName}`);
+    return;
+  }
+
+  const sqlClient = getSqlClient();
+  await sqlClient.query(
+    `DECLARE @db sysname = @databaseName;
+     IF DB_ID(@db) IS NOT NULL
+     BEGIN
+       DECLARE @stmt nvarchar(max) =
+         N'ALTER DATABASE ' + QUOTENAME(@db) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; '
+         + N'DROP DATABASE ' + QUOTENAME(@db) + N';';
+       EXEC sp_executesql @stmt;
+     END`,
+    { databaseName: dbName }
+  );
+
+  logger.info(`SQL clone database deleted (if existed): ${dbName}`);
+}
+
+async function resolveCloneDatabaseNameFromTaskHistory(cloneId: string): Promise<string | undefined> {
+  const sqlClient = getSqlClient();
+  const rows = await sqlClient.query<any>(
+    `SELECT TOP (1)
+        COALESCE(
+          NULLIF(JSON_VALUE([result], '$.DatabaseName'), ''),
+          NULLIF(JSON_VALUE([result], '$.databaseName'), ''),
+          NULLIF(JSON_VALUE([payload], '$.databaseName'), '')
+        ) AS [databaseName],
+        COALESCE(
+          NULLIF(JSON_VALUE([result], '$.DatabaseType'), ''),
+          NULLIF(JSON_VALUE([result], '$.databaseType'), ''),
+          NULLIF(JSON_VALUE([payload], '$.databaseType'), '')
+        ) AS [databaseType]
+      FROM (
+        SELECT [type], [payload], [result], [completed_at] AS [completedAt]
+        FROM [dbo].[flashdb_queue]
+        UNION ALL
+        SELECT [type], [payload], [result], [completed_at] AS [completedAt]
+        FROM [dbo].[flashdb_queue_archive]
+      ) AS q
+      WHERE [type] = 'create-clone'
+        AND (
+          JSON_VALUE([result], '$.Id') = @cloneId
+          OR JSON_VALUE([result], '$.id') = @cloneId
+          OR JSON_VALUE([payload], '$.cloneId') = @cloneId
+        )
+      ORDER BY [completedAt] DESC`,
+    { cloneId }
+  );
+
+  const row = Array.isArray(rows) ? rows[0] : null;
+  const dbType = String(row?.databaseType || '').toLowerCase();
+  const dbName = String(row?.databaseName || '').trim();
+
+  if (dbType && dbType !== 'sql-server') {
+    return undefined;
+  }
+
+  return dbName || undefined;
+}
+
 async function getPersistentValidationTasks(
   cloneId: string,
   validationId?: string,
@@ -455,7 +536,9 @@ router.post('/:cloneId/detach', async (req: Request, res: Response) => {
 router.delete('/:cloneId', async (req: Request, res: Response) => {
   try {
     const { cloneId } = req.params;
-    const { deleteVhdx, useQueue = true } = req.query;
+    const { deleteVhdx, useQueue = true, databaseName } = req.query;
+    const requestedDatabaseName =
+      typeof databaseName === 'string' ? databaseName.trim() : '';
 
     logger.info(`Deleting clone: ${cloneId}`);
 
@@ -468,7 +551,8 @@ router.delete('/:cloneId', async (req: Request, res: Response) => {
         if (useQueue !== 'false') {
           const task = await enqueueTask('delete-clone', {
             cloneId,
-            deleteVhdx: deleteVhdx === 'true'
+            deleteVhdx: deleteVhdx === 'true',
+            databaseName: requestedDatabaseName || undefined,
           });
 
           // Invalidate cache for clones and metrics
@@ -477,13 +561,43 @@ router.delete('/:cloneId', async (req: Request, res: Response) => {
           return task;
         } else {
           // Synchronous mode (for backward compatibility)
-          await psService.executeCommandRaw('Remove-FlashdbClone', {
+          const existingClone = await psService.executeCommand('Get-FlashdbClone', {
             CloneId: cloneId,
-            DeleteVhdx: deleteVhdx === 'true'
           });
+          let deleteDatabaseName =
+            requestedDatabaseName ||
+            (existingClone as any)?.DatabaseName ||
+            (existingClone as any)?.databaseName;
+          const deleteDatabaseType =
+            (existingClone as any)?.DatabaseType || (existingClone as any)?.databaseType;
+
+          if (!deleteDatabaseName) {
+            deleteDatabaseName = await resolveCloneDatabaseNameFromTaskHistory(cloneId);
+            if (deleteDatabaseName) {
+              logger.info(`Resolved clone DB from task history: ${deleteDatabaseName}`);
+            }
+          }
+
+          try {
+            await psService.executeCommandRaw('Remove-FlashdbClone', {
+              CloneId: cloneId,
+              DeleteVhdx: deleteVhdx === 'true'
+            });
+          } catch (providerError: any) {
+            const providerMessage = String(providerError?.message || '');
+            if (!/not found|cannot find|does not exist/i.test(providerMessage)) {
+              throw providerError;
+            }
+            logger.warn(`Clone not found in provider (${cloneId}); continuing metadata cleanup`);
+          }
 
           // Keep API metadata store consistent with provider deletion.
           await metadataService.deleteClone(cloneId);
+
+          await dropSqlCloneDatabaseIfPresent(
+            deleteDatabaseType || 'sql-server',
+            deleteDatabaseName
+          );
 
           // Invalidate cache for clones and metrics
           invalidateCache(['/clones', '/metrics']);

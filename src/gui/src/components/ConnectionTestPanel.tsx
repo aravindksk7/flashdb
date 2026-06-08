@@ -4,8 +4,9 @@
  * Pre-save testing of host connectivity before registration
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Host } from './HostManagement';
 import { ValidationFindings } from './ValidationFindings';
 import './ConnectionTestPanel.css';
 
@@ -29,12 +30,14 @@ interface ConnectionTestResult {
 
 interface ConnectionTestPanelProps {
   isOpen: boolean;
+  initialHost?: Host | null;
   onClose: () => void;
   onTestResult: () => void;
 }
 
 export const ConnectionTestPanel: React.FC<ConnectionTestPanelProps> = ({
   isOpen,
+  initialHost,
   onClose,
   onTestResult
 }) => {
@@ -44,6 +47,16 @@ export const ConnectionTestPanel: React.FC<ConnectionTestPanelProps> = ({
   });
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<ConnectionTestResult | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setTestData({
+      fqdn: initialHost?.fqdn || '',
+      accessMethod: initialHost?.accessMethod || 'WinRM'
+    });
+    setResult(null);
+  }, [isOpen, initialHost]);
 
   const handleTestConnection = async () => {
     if (!testData.fqdn.trim()) {

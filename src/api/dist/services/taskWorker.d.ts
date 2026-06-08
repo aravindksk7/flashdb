@@ -4,6 +4,19 @@ declare class TaskWorker {
     private pollInterval;
     private inFlightTasks;
     private usePersistence;
+    private isWindowsAbsolutePath;
+    private normalizePathForMatch;
+    private resolveMappedStoragePath;
+    private assertStoragePathExists;
+    private dropSqlCloneDatabaseIfPresent;
+    /**
+     * Phase 4: Drop checkpoint database safely
+     * Called during checkpoint deletion to clean up physical SQL Server database
+     * Non-fatal error handling: logs warnings but doesn't throw
+     */
+    private dropCheckpointDatabaseSafely;
+    private resolveCloneDatabaseNameFromTaskHistory;
+    private isRetryableTaskError;
     startWorker(): Promise<void>;
     stopWorker(gracefulWaitMs?: number): Promise<void>;
     private processNextTask;

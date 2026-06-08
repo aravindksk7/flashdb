@@ -60,15 +60,20 @@ class SqlClient {
         this.MAX_RETRY_ATTEMPTS = 3;
         this.RETRY_DELAY_MS = 100;
         this.isInitialized = false;
+        this.initializePromise = null;
         this.healthCheckInterval = null;
     }
     /**
      * Initialize the SQL client and connection pool
      */
     async initialize() {
-        if (this.isInitialized) {
+        if (this.isInitialized && this.pool?.connected) {
             logger_1.default.debug('SQL client already initialized');
             return;
+        }
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+            this.healthCheckInterval = null;
         }
         const config = {
             server: process.env.SQL_SERVER_HOST || 'localhost',
@@ -103,12 +108,24 @@ class SqlClient {
             throw new Error(`SQL client initialization failed: ${error.message}`);
         }
     }
+    async ensureConnected() {
+        if (this.isInitialized && this.pool?.connected) {
+            return;
+        }
+        if (!this.initializePromise) {
+            this.initializePromise = this.initialize().finally(() => {
+                this.initializePromise = null;
+            });
+        }
+        await this.initializePromise;
+    }
     /**
      * Start periodic health checks on the connection pool
      */
     startHealthCheck() {
         this.healthCheckInterval = setInterval(async () => {
             try {
+                await this.ensureConnected();
                 const request = new sql.Request(this.pool);
                 await request.query('SELECT 1');
                 logger_1.default.debug('SQL connection health check passed');
@@ -131,6 +148,7 @@ class SqlClient {
         let attempt = 0;
         while (attempt < this.MAX_RETRY_ATTEMPTS) {
             try {
+                await this.ensureConnected();
                 const request = new sql.Request(this.pool);
                 request.connectionTimeout = this.CONNECTION_TIMEOUT;
                 request.timeout = this.QUERY_TIMEOUT;
@@ -138,7 +156,9 @@ class SqlClient {
                 for (const [key, value] of Object.entries(params)) {
                     request.input(key, value);
                 }
-                const result = await request.query(sqlString);
+                // Prepend QUOTED_IDENTIFIER setting to ensure bracketed identifiers work
+                const fullQuery = `SET QUOTED_IDENTIFIER ON;\n${sqlString}`;
+                const result = await request.query(fullQuery);
                 const executionTime = Date.now() - startTime;
                 this.recordMetrics(executionTime);
                 logger_1.default.debug(`Query executed in ${executionTime}ms`);
@@ -178,7 +198,9 @@ class SqlClient {
                 for (const [key, value] of Object.entries(params)) {
                     request.input(key, value);
                 }
-                const result = await request.query(sqlString);
+                // Prepend QUOTED_IDENTIFIER setting to ensure bracketed identifiers work
+                const fullQuery = `SET QUOTED_IDENTIFIER ON;\n${sqlString}`;
+                const result = await request.query(fullQuery);
                 const executionTime = Date.now() - startTime;
                 this.recordMetrics(executionTime);
                 logger_1.default.debug(`Execute completed in ${executionTime}ms`);
@@ -206,6 +228,7 @@ class SqlClient {
         const startTime = Date.now();
         let transaction = null;
         try {
+            await this.ensureConnected();
             const connection = await this.pool.acquire();
             transaction = new sql.Transaction(connection);
             await transaction.begin();

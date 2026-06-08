@@ -87,6 +87,7 @@ CREATE TABLE [dbo].[Checkpoints] (
     [stateHash] NVARCHAR(64),
     [transactionLsn] NVARCHAR(50),
     [isOrphaned] BIT DEFAULT 0,
+    [checkpointDatabaseName] NVARCHAR(MAX) NULL,
     FOREIGN KEY ([cloneId]) REFERENCES [dbo].[Clones] ([id]) ON DELETE CASCADE,
     FOREIGN KEY ([parentCheckpointId]) REFERENCES [dbo].[Checkpoints] ([id])
 );

@@ -32,6 +32,9 @@ export interface ValidationResult {
   validationId: string;
   status: 'Healthy' | 'Unhealthy' | 'Pending';
   findings: ValidationFinding[];
+  findingsCount?: number;
+  errorCount?: number;
+  warningCount?: number;
   validatedAt?: string;
   duration?: {
     elapsedMs: number;
@@ -207,16 +210,26 @@ export const getValidationHistory = async (
     );
 
     const data = response.data?.data || response.data || [];
-    return Array.isArray(data)
-      ? data.map((item: any) => ({
+    const validations = Array.isArray(data)
+      ? data
+      : Array.isArray(data.validations)
+        ? data.validations
+        : [];
+
+    return validations
+      .map((item: any) => ({
           cloneId: item.cloneId || cloneId,
           validationId: item.validationId,
           status: normalizeValidationStatus(item.status),
           findings: item.findings || [],
+          findingsCount: item.findingsCount,
+          errorCount: item.errorCount,
+          warningCount: item.warningCount,
           validatedAt: item.validatedAt,
-          duration: item.duration
+          duration: typeof item.duration === 'number'
+            ? { elapsedMs: item.duration }
+            : item.duration
         }))
-      : [];
   } catch (error) {
     throw transformError(error);
   }

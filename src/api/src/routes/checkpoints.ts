@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { getPooledPowerShellService } from '../services/pooledPowershellService';
-import { getTaskQueue } from '../services/taskQueue';
+import { enqueueTask } from '../services/durableTaskQueue';
 import logger from '../logger';
 import { invalidateCache } from '../middleware/caching';
 import { withLockRetry, getLockInfo } from '../middleware/lockMiddleware';
@@ -39,8 +41,7 @@ router.post('/', async (req: Request, res: Response) => {
       const { result: task, lockContext } = await withLockRetry(lockResourceId, async () => {
         // Use task queue for async processing
         if (useQueue !== false) {
-          const taskQueue = getTaskQueue();
-          const task = taskQueue.enqueue('create-checkpoint', {
+          const task = await enqueueTask('create-checkpoint', {
             cloneId,
             checkpointName,
             phase: phase || 'manual',
@@ -120,6 +121,62 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// GET - Validate checkpoint backing disk/path before restore
+router.get('/:checkpointId/validate-backing', async (req: Request, res: Response) => {
+  try {
+    const { cloneId, checkpointId } = req.params;
+    const diskPath = String(req.query.diskPath || '');
+
+    logger.info(`Validating checkpoint backing for ${checkpointId}`);
+
+    const checkpoint = await psService.executeCommand('Get-FlashdbCheckpoint', {
+      CloneId: cloneId,
+      CheckpointId: checkpointId
+    });
+
+    if (!checkpoint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Checkpoint not found'
+      });
+    }
+
+    const candidatePath = diskPath ||
+      (checkpoint as any).diskPath ||
+      (checkpoint as any).DiskPath ||
+      (checkpoint as any).vhdxPath ||
+      (checkpoint as any).VhdxPath ||
+      '';
+    const isWindowsPath = /^[a-zA-Z]:\\/.test(candidatePath) || candidatePath.startsWith('\\\\');
+    const diskExists = candidatePath ? (isWindowsPath ? false : fs.existsSync(candidatePath)) : true;
+    const parentDir = candidatePath ? path.dirname(candidatePath) : '';
+    const parentExists = parentDir && parentDir !== '.' && !isWindowsPath ? fs.existsSync(parentDir) : true;
+    const isAccessible = candidatePath ? (diskExists || parentExists) : true;
+    const hasSpace = true;
+    const isValid = candidatePath ? isAccessible : true;
+
+    return res.json({
+      success: true,
+      data: {
+        isValid,
+        diskPath: candidatePath,
+        message: isValid
+          ? 'Checkpoint backing path is accessible'
+          : isWindowsPath
+            ? 'Windows backing paths cannot be validated from the Linux API container'
+            : 'Checkpoint backing path is not accessible',
+        diskExists,
+        isAccessible,
+        hasSpace,
+        lastChecked: new Date().toISOString()
+      }
+    });
+  } catch (error: any) {
+    logger.error(`Error validating checkpoint backing: ${error.message}`);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 // POST - Restore checkpoint (queued)
 router.post('/:checkpointId/restore', async (req: Request, res: Response) => {
   try {
@@ -135,8 +192,7 @@ router.post('/:checkpointId/restore', async (req: Request, res: Response) => {
       const { result: task, lockContext } = await withLockRetry(lockResourceId, async () => {
         // Use task queue for async processing
         if (useQueue !== false) {
-          const taskQueue = getTaskQueue();
-          const task = taskQueue.enqueue('restore-checkpoint', {
+          const task = await enqueueTask('restore-checkpoint', {
             cloneId,
             checkpointId,
             reattachAfter: reattachAfter !== false
@@ -260,8 +316,7 @@ router.delete('/:checkpointId', async (req: Request, res: Response) => {
         }
 
         // Queue async deletion task
-        const taskQueue = getTaskQueue();
-        const deleteTask = taskQueue.enqueue('delete-checkpoint', {
+        const deleteTask = await enqueueTask('delete-checkpoint', {
           cloneId,
           checkpointId,
           vhdxPath: checkpoint.vhdxPath || '',

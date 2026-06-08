@@ -55,31 +55,43 @@ const path = __importStar(require("path"));
 async function initializeDatabaseSchema() {
     try {
         const sqlClient = (0, sqlClient_1.getSqlClient)();
-        // Read main schema file
-        const schemaPath = path.join(__dirname, 'schema.sql');
-        if (!fs.existsSync(schemaPath)) {
-            logger_1.default.error(`Schema file not found: ${schemaPath}`);
-            throw new Error(`Database schema file not found at ${schemaPath}`);
+        const existingTables = await sqlClient.query(`
+      SELECT COUNT(*) as tableCount
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo'
+        AND TABLE_NAME IN ('GoldenImages', 'Clones', 'Checkpoints', 'CheckpointOperations', 'OperationMetrics')
+    `);
+        const coreTableCount = existingTables.recordset[0]?.tableCount ?? 0;
+        if (coreTableCount > 0) {
+            logger_1.default.info(`Core database schema has ${coreTableCount}/5 table(s); skipping destructive initialization script`);
         }
-        const schemaSQL = fs.readFileSync(schemaPath, 'utf-8');
-        // Split by GO statements and execute each batch
-        const batches = schemaSQL.split(/\nGO\n/i);
-        for (const batch of batches) {
-            const trimmedBatch = batch.trim();
-            if (trimmedBatch.length > 0) {
-                try {
-                    await sqlClient.execute(trimmedBatch);
-                }
-                catch (error) {
-                    // Ignore errors about objects that already exist
-                    if (!error.message.includes('already exists') &&
-                        !error.message.includes('FOREIGN KEY constraint')) {
-                        logger_1.default.warn(`Schema execution warning: ${error.message}`);
+        else {
+            // Read main schema file
+            const schemaPath = path.join(__dirname, 'schema.sql');
+            if (!fs.existsSync(schemaPath)) {
+                logger_1.default.error(`Schema file not found: ${schemaPath}`);
+                throw new Error(`Database schema file not found at ${schemaPath}`);
+            }
+            const schemaSQL = fs.readFileSync(schemaPath, 'utf-8');
+            // Split by GO statements and execute each batch
+            const batches = schemaSQL.split(/\nGO\n/i);
+            for (const batch of batches) {
+                const trimmedBatch = batch.trim();
+                if (trimmedBatch.length > 0) {
+                    try {
+                        await sqlClient.execute(trimmedBatch);
+                    }
+                    catch (error) {
+                        // Ignore errors about objects that already exist
+                        if (!error.message.includes('already exists') &&
+                            !error.message.includes('FOREIGN KEY constraint')) {
+                            logger_1.default.warn(`Schema execution warning: ${error.message}`);
+                        }
                     }
                 }
             }
+            logger_1.default.info('Database schema initialized successfully');
         }
-        logger_1.default.info('Database schema initialized successfully');
         // Initialize state management schema (Phase 5b.1)
         await initializeStateSchema();
         // Initialize queue schema (Phase 5b.3)
@@ -101,6 +113,16 @@ async function initializeDatabaseSchema() {
 async function initializeQueueSchema() {
     try {
         const sqlClient = (0, sqlClient_1.getSqlClient)();
+        const existingTables = await sqlClient.query(`
+      SELECT COUNT(*) as tableCount
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo'
+        AND TABLE_NAME IN ('flashdb_queue', 'flashdb_queue_archive')
+    `);
+        if ((existingTables.recordset[0]?.tableCount ?? 0) === 2) {
+            logger_1.default.info('Queue management schema already exists; preserving queued task history');
+            return;
+        }
         // Read queue schema file
         const queueSchemaPath = path.join(__dirname, 'queueSchema.sql');
         if (!fs.existsSync(queueSchemaPath)) {
@@ -138,6 +160,17 @@ async function initializeQueueSchema() {
 async function initializeStateSchema() {
     try {
         const sqlClient = (0, sqlClient_1.getSqlClient)();
+        const existingTables = await sqlClient.query(`
+      SELECT COUNT(*) as tableCount
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo'
+        AND TABLE_NAME IN ('flashdb_state', 'flashdb_locks', 'flashdb_operations')
+    `);
+        const stateTableCount = existingTables.recordset[0]?.tableCount ?? 0;
+        if (stateTableCount > 0) {
+            logger_1.default.info(`State management schema has ${stateTableCount}/3 table(s); skipping destructive initialization script`);
+            return;
+        }
         // Read state schema file
         const stateSchemaPath = path.join(__dirname, 'stateSchema.sql');
         if (!fs.existsSync(stateSchemaPath)) {
@@ -217,6 +250,16 @@ async function checkStateManagementTables() {
 async function initializeInstanceSchema() {
     try {
         const sqlClient = (0, sqlClient_1.getSqlClient)();
+        const existingTables = await sqlClient.query(`
+      SELECT COUNT(*) as tableCount
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo'
+        AND TABLE_NAME = 'flashdb_instances'
+    `);
+        if ((existingTables.recordset[0]?.tableCount ?? 0) > 0) {
+            logger_1.default.info('Instance cluster schema already exists; preserving instance registry');
+            return;
+        }
         // Read instance schema file
         const instanceSchemaPath = path.join(__dirname, 'instanceSchema.sql');
         if (!fs.existsSync(instanceSchemaPath)) {

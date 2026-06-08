@@ -84,3 +84,22 @@ docker-compose.override.yml
 .claude-flow/
 .github/
 .swarm/
+
+# Keep workflows and Copilot instructions trackable
+!.github/
+.github/*
+!.github/workflows/
+!.github/workflows/**
+!.github/copilot-instructions.md
+
+# Codex local configuration
+.codex/
+
+# Claude Flow runtime data
+.claude-flow/data/
+.claude-flow/logs/
+
+# Environment variables
+.env
+.env.local
+.env.*.local

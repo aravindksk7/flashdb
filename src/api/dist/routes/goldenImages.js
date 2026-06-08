@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const pooledPowershellService_1 = require("../services/pooledPowershellService");
+const metadataService_1 = require("../services/metadataService");
 const caching_1 = require("../middleware/caching");
 const logger_1 = __importDefault(require("../logger"));
 const router = (0, express_1.Router)();
@@ -91,6 +92,29 @@ router.post('/', async (req, res) => {
         if (selectedTableList.length > 0)
             params.SelectedTables = selectedTableList;
         const image = await psService.executeCommand('New-FlashdbGoldenImage', params);
+        // Persist golden image to metadata database for FK constraint validation
+        try {
+            const metadataService = (0, metadataService_1.getMetadataService)();
+            const imageId = image?.id || image?.Id;
+            const imageName = image?.name || image?.Name || name;
+            if (imageId) {
+                await metadataService.saveGoldenImage({
+                    id: imageId,
+                    name: imageName,
+                    version: version,
+                    method: normalizedMethod,
+                    outputPath: outputPath,
+                    status: 'Ready',
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                logger_1.default.info(`Persisted golden image to database: ${imageId}`);
+            }
+        }
+        catch (dbError) {
+            logger_1.default.warn(`Failed to persist golden image to database: ${dbError.message}`);
+            // Don't fail the response - PowerShell creation succeeded, just DB persistence failed
+        }
         (0, caching_1.invalidateCache)(['/golden-images', '/metrics']);
         return res.status(201).json({
             success: true,

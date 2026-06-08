@@ -67,14 +67,37 @@ export const OperationHistory = React.forwardRef<OperationHistoryRef, OperationH
       setError(null);
       const cacheBust = Date.now();
       const endpoint = cloneId
-        ? `${API_BASE}/operations/timeline/${cloneId}?_t=${cacheBust}`
-        : `${API_BASE}/operations?limit=250&_t=${cacheBust}`;
+        ? `${API_BASE}/operations/timeline/${cloneId}?limit=500&_t=${cacheBust}`
+        : `${API_BASE}/operations?limit=500&_t=${cacheBust}`;
+
       const response = await axios.get(endpoint);
+
       if (response.data.success) {
-        setOperations(response.data.data || []);
+        const data = response.data.data || [];
+
+        // Sort by timestamp descending (newest first) to ensure proper chronological order
+        const sortedData = Array.isArray(data)
+          ? data.sort((a: TimelineOperation, b: TimelineOperation) => {
+              const timeA = new Date(a.timestamp).getTime();
+              const timeB = new Date(b.timestamp).getTime();
+              return timeB - timeA;
+            })
+          : [];
+
+        setOperations(sortedData);
+
+        if (sortedData.length === 0) {
+          console.warn('No operations returned from API');
+        }
+      } else {
+        setError(response.data.message || 'Failed to load operation history');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load operation history');
+      const errorMessage = err.response?.data?.message
+        || err.message
+        || 'Failed to load operation history';
+      console.error('Operation history error:', errorMessage, err);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -180,22 +203,34 @@ export const OperationHistory = React.forwardRef<OperationHistoryRef, OperationH
   });
 
   if (loading && operations.length === 0) {
-    return <div className="history-loading">Loading history...</div>;
+    return (
+      <div className="operation-history">
+        <div className="history-loading">
+          <p>Loading audit history...</p>
+        </div>
+      </div>
+    );
   }
 
-  if (error) {
+  if (error && operations.length === 0) {
     return (
-      <div className="history-error">
-        <p>{error}</p>
-        <button onClick={loadHistory}>Retry</button>
+      <div className="operation-history">
+        <div className="history-error">
+          <p>{error}</p>
+          <button onClick={loadHistory} style={{ marginTop: '0.75rem' }}>
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
   if (operations.length === 0) {
     return (
-      <div className="history-empty">
-        <p>No operations recorded yet.</p>
+      <div className="operation-history">
+        <div className="history-empty">
+          <p>No operations recorded yet. Operations will appear here as clones, checkpoints, validations, and repairs are performed.</p>
+        </div>
       </div>
     );
   }
@@ -219,15 +254,24 @@ export const OperationHistory = React.forwardRef<OperationHistoryRef, OperationH
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search operation id, clone, checkpoint, status, or message"
+            aria-label="Search operations"
           />
-          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-            <option value="all">All types</option>
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            aria-label="Filter by operation type"
+          >
+            <option value="all">All types ({uniqueTypes.length})</option>
             {uniqueTypes.map(type => (
               <option key={type} value={type}>{getTypeLabel(type)}</option>
             ))}
           </select>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="all">All statuses</option>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            aria-label="Filter by operation status"
+          >
+            <option value="all">All statuses ({uniqueStatuses.length})</option>
             {uniqueStatuses.map(status => (
               <option key={status} value={status}>{status}</option>
             ))}

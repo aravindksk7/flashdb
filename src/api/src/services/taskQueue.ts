@@ -116,6 +116,16 @@ class TaskQueue {
     return task;
   }
 
+  enqueueExisting(task: Task): Task {
+    const existing = this.getTask(task.id);
+    if (existing) return existing;
+
+    this.queue.push(task);
+    this.saveQueue();
+    logger.info(`Task restored into queue: ${task.id} (${task.type})`);
+    return task;
+  }
+
   dequeue(): Task | null {
     const task = this.queue.find(t => t.status === 'pending');
     if (task) {

@@ -71,8 +71,8 @@ export const AddHostForm: React.FC<AddHostFormProps> = ({
         fqdn: formData.fqdn,
         accessMethod: formData.accessMethod,
         credentialReference: formData.credentialReference || undefined,
-        pathMappings: {},
-        sqlInstances: []
+        pathMappings: initialData?.pathMappings || {},
+        sqlInstances: initialData?.sqlInstances || []
       });
       setSuccess(true);
       setTimeout(() => onCancel(), 800);

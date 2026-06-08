@@ -728,23 +728,59 @@ export class MetadataService {
     try {
       // Step 1: Delete CheckpointOperations
       logger.info(`[MetadataService] ├─ STEP 1: Deleting CheckpointOperations WHERE cloneId=${cloneId}`);
-      const deleteOps = `DELETE FROM [dbo].[CheckpointOperations] WHERE [cloneId] = @cloneId`;
-      const opsResult = await sqlClient.query(deleteOps, { cloneId });
-      const opsDeleted = opsResult.rowsAffected?.[0] || 0;
+      let opsDeleted = 0;
+      try {
+        const deleteOps = `DELETE FROM [dbo].[CheckpointOperations] WHERE [cloneId] = @cloneId`;
+        const opsResult = await sqlClient.query(deleteOps, { cloneId });
+        opsDeleted = opsResult.rowsAffected?.[0] || 0;
+      } catch (error: any) {
+        const message = String(error?.message || '');
+        if (!/Invalid column name|Invalid object name/i.test(message)) {
+          throw error;
+        }
+
+        const deleteOpsFallback = `DELETE FROM [dbo].[checkpointoperations] WHERE [clone_id] = @cloneId`;
+        const opsFallbackResult = await sqlClient.query(deleteOpsFallback, { cloneId });
+        opsDeleted = opsFallbackResult.rowsAffected?.[0] || 0;
+      }
       logger.info(`[MetadataService] │  └─ Deleted ${opsDeleted} rows from CheckpointOperations`);
 
       // Step 2: Delete Checkpoints
       logger.info(`[MetadataService] ├─ STEP 2: Deleting Checkpoints WHERE cloneId=${cloneId}`);
-      const deleteCheckpoints = `DELETE FROM [dbo].[Checkpoints] WHERE [cloneId] = @cloneId`;
-      const cpResult = await sqlClient.query(deleteCheckpoints, { cloneId });
-      const cpDeleted = cpResult.rowsAffected?.[0] || 0;
+      let cpDeleted = 0;
+      try {
+        const deleteCheckpoints = `DELETE FROM [dbo].[Checkpoints] WHERE [cloneId] = @cloneId`;
+        const cpResult = await sqlClient.query(deleteCheckpoints, { cloneId });
+        cpDeleted = cpResult.rowsAffected?.[0] || 0;
+      } catch (error: any) {
+        const message = String(error?.message || '');
+        if (!/Invalid column name|Invalid object name/i.test(message)) {
+          throw error;
+        }
+
+        const deleteCheckpointsFallback = `DELETE FROM [dbo].[checkpoints] WHERE [clone_id] = @cloneId`;
+        const cpFallbackResult = await sqlClient.query(deleteCheckpointsFallback, { cloneId });
+        cpDeleted = cpFallbackResult.rowsAffected?.[0] || 0;
+      }
       logger.info(`[MetadataService] │  └─ Deleted ${cpDeleted} rows from Checkpoints`);
 
       // Step 3: Delete Clone
       logger.info(`[MetadataService] ├─ STEP 3: Deleting Clones WHERE id=${cloneId}`);
-      const deleteCloneQuery = `DELETE FROM [dbo].[Clones] WHERE [id] = @cloneId`;
-      const deleteResult = await sqlClient.query(deleteCloneQuery, { cloneId });
-      const cloneDeleted = deleteResult.rowsAffected?.[0] || 0;
+      let cloneDeleted = 0;
+      try {
+        const deleteCloneQuery = `DELETE FROM [dbo].[Clones] WHERE [id] = @cloneId`;
+        const deleteResult = await sqlClient.query(deleteCloneQuery, { cloneId });
+        cloneDeleted = deleteResult.rowsAffected?.[0] || 0;
+      } catch (error: any) {
+        const message = String(error?.message || '');
+        if (!/Invalid column name|Invalid object name/i.test(message)) {
+          throw error;
+        }
+
+        const deleteCloneFallback = `DELETE FROM [dbo].[clones] WHERE [id] = @cloneId`;
+        const cloneFallbackResult = await sqlClient.query(deleteCloneFallback, { cloneId });
+        cloneDeleted = cloneFallbackResult.rowsAffected?.[0] || 0;
+      }
       logger.info(`[MetadataService] │  └─ Deleted ${cloneDeleted} rows from Clones`);
 
       if (cloneDeleted === 0) {
@@ -792,8 +828,56 @@ export class MetadataService {
     }
 
     try {
-      // Query checkpoint metadata
-      return null;
+      let recordset: any[] = [];
+
+      try {
+        const result = await this.getSqlClient().query<any>(
+          `SELECT TOP (1)
+              [id], [cloneId], [checkpointName], [phase], [description], [isFavorite],
+              [createdAt], [restoredAt], [vhdxPath], [stateHash]
+           FROM [dbo].[Checkpoints]
+           WHERE [id] = @checkpointId AND [cloneId] = @cloneId`,
+          { checkpointId, cloneId }
+        );
+        recordset = result.recordset || [];
+      } catch (error: any) {
+        const message = String(error?.message || '');
+        if (!/Invalid column name|Invalid object name/i.test(message)) {
+          throw error;
+        }
+
+        const fallbackResult = await this.getSqlClient().query<any>(
+          `SELECT TOP (1)
+              [id], [clone_id] AS [cloneId], [checkpoint_name] AS [checkpointName],
+              [phase], [description], [is_favorite] AS [isFavorite],
+              [created_at] AS [createdAt], [restored_at] AS [restoredAt],
+              [vhdx_path] AS [vhdxPath], [state_hash] AS [stateHash]
+           FROM [dbo].[checkpoints]
+           WHERE [id] = @checkpointId AND [clone_id] = @cloneId`,
+          { checkpointId, cloneId }
+        );
+        recordset = fallbackResult.recordset || [];
+      }
+
+      const row = recordset[0];
+      if (!row) {
+        return null;
+      }
+
+      return {
+        id: row.id,
+        cloneId: row.cloneId,
+        checkpointName: row.checkpointName || row.id,
+        phase: row.phase || 'manual',
+        description: row.description || undefined,
+        status: 'Ready',
+        isPinned: Boolean(row.isPinned ?? row.isFavorite),
+        isFavorite: Boolean(row.isFavorite),
+        createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+        restoredAt: row.restoredAt ? new Date(row.restoredAt) : undefined,
+        vhdxPath: row.vhdxPath || undefined,
+        stateHash: row.stateHash || undefined,
+      };
     } catch (error) {
       logger.error(`[MetadataService] Failed to retrieve checkpoint metadata: ${error}`);
       throw error;
@@ -843,16 +927,91 @@ export class MetadataService {
       }
 
       // Delete checkpoint with ownership validation
-      const deleteQuery = `
-        DELETE FROM checkpoints
-        WHERE id = @checkpointId AND clone_id = @cloneId
-      `;
-      await this.getSqlClient().query(deleteQuery, { checkpointId, cloneId });
+      let deleted = 0;
+      try {
+        const deleteQuery = `
+          DELETE FROM [dbo].[Checkpoints]
+          WHERE [id] = @checkpointId AND [cloneId] = @cloneId
+        `;
+        const deleteResult = await this.getSqlClient().query(deleteQuery, { checkpointId, cloneId });
+        deleted = deleteResult.rowsAffected?.[0] || 0;
+      } catch (error: any) {
+        const message = String(error?.message || '');
+        if (!/Invalid column name|Invalid object name/i.test(message)) {
+          throw error;
+        }
+
+        const deleteFallback = `
+          DELETE FROM [dbo].[checkpoints]
+          WHERE [id] = @checkpointId AND [clone_id] = @cloneId
+        `;
+        const deleteFallbackResult = await this.getSqlClient().query(deleteFallback, {
+          checkpointId,
+          cloneId,
+        });
+        deleted = deleteFallbackResult.rowsAffected?.[0] || 0;
+      }
+
+      if (deleted === 0) {
+        logger.warn(`[MetadataService] Checkpoint not deleted (already removed?): ${checkpointId}`);
+        return;
+      }
 
       logger.info(`[MetadataService] Checkpoint deleted: ${checkpointId}`);
     } catch (error) {
       logger.error(`[MetadataService] Failed to delete checkpoint: ${error}`);
       throw error;
+    }
+  }
+
+  /**
+   * Phase 3: Save checkpoint database name for cleanup tracking
+   * Called after checkpoint creation to store the database name
+   * Non-fatal: logs warning but doesn't throw if persistence fails
+   */
+  async saveCheckpointDatabaseName(
+    checkpointId: string,
+    databaseName: string
+  ): Promise<void> {
+    logger.debug(
+      `[MetadataService] Saving checkpoint database name: ${checkpointId} -> ${databaseName}`
+    );
+
+    if (!this.getSqlClient()) {
+      logger.warn(
+        '[MetadataService] SQL client not available, cannot save checkpoint database name'
+      );
+      return;
+    }
+
+    try {
+      const query = `
+        UPDATE [dbo].[Checkpoints]
+        SET [checkpointDatabaseName] = @databaseName
+        WHERE [id] = @checkpointId
+      `;
+
+      const result = await this.getSqlClient().query(query, {
+        checkpointId,
+        databaseName
+      });
+
+      const rowsAffected = result.rowsAffected?.[0] || 0;
+      if (rowsAffected === 0) {
+        logger.warn(
+          `[MetadataService] Checkpoint not found when saving database name: ${checkpointId}`
+        );
+        return;
+      }
+
+      logger.info(
+        `[MetadataService] Saved checkpoint database name: ${checkpointId} = ${databaseName}`
+      );
+    } catch (error) {
+      logger.warn(
+        `[MetadataService] Failed to save checkpoint database name (non-fatal): ${error}`
+      );
+      // Non-fatal: don't throw, cleanup will use fallback methods
     }
   }
 

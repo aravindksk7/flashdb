@@ -8,6 +8,7 @@
 import { Router, Request, Response } from 'express';
 import { getRemoteHostService } from '../services/remoteHostService';
 import { getAuditMetricsService } from '../services/auditMetricsService';
+import { getSqlClient } from '../services/sqlClient';
 import logger from '../logger';
 import { invalidateCache } from '../middleware/caching';
 import { withLock, getLockInfo } from '../middleware/lockMiddleware';
@@ -21,12 +22,197 @@ const auditService = getAuditMetricsService();
 const hostRegistry = new Map<string, HostMetadata>();
 const validationCache = new Map<string, { result: any; timestamp: number }>();
 const VALIDATION_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let hostStoreInitPromise: Promise<boolean> | null = null;
+
+function parseJson<T>(value: any, fallback: T): T {
+  if (!value) return fallback;
+  if (typeof value !== 'string') return value;
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function mapHostRow(row: any): HostMetadata {
+  return {
+    id: row.id,
+    name: row.name,
+    fqdn: row.fqdn,
+    accessMethod: row.accessMethod,
+    sqlInstances: parseJson<string[]>(row.sqlInstances, []),
+    pathMappings: parseJson<Record<string, string>>(row.pathMappings, {}),
+    credentialReference: row.credentialReference || undefined,
+    lastValidatedAt: row.lastValidatedAt ? new Date(row.lastValidatedAt) : undefined,
+    validationState: row.validationState || 'Pending'
+  };
+}
+
+async function ensureHostStore(): Promise<boolean> {
+  if (!hostStoreInitPromise) {
+    hostStoreInitPromise = (async () => {
+      try {
+        const sqlClient = getSqlClient();
+        await sqlClient.execute(`
+          IF OBJECT_ID(N'[dbo].[flashdb_hosts]', N'U') IS NULL
+          BEGIN
+            CREATE TABLE [dbo].[flashdb_hosts] (
+              [id] NVARCHAR(100) NOT NULL PRIMARY KEY,
+              [name] NVARCHAR(255) NOT NULL,
+              [fqdn] NVARCHAR(512) NOT NULL,
+              [access_method] NVARCHAR(20) NOT NULL,
+              [sql_instances] NVARCHAR(MAX) NOT NULL CONSTRAINT [DF_flashdb_hosts_sql_instances] DEFAULT N'[]',
+              [path_mappings] NVARCHAR(MAX) NOT NULL CONSTRAINT [DF_flashdb_hosts_path_mappings] DEFAULT N'{}',
+              [credential_reference] NVARCHAR(512) NULL,
+              [last_validated_at] DATETIME2 NULL,
+              [validation_state] NVARCHAR(20) NOT NULL CONSTRAINT [DF_flashdb_hosts_validation_state] DEFAULT N'Pending',
+              [created_at] DATETIME2 NOT NULL CONSTRAINT [DF_flashdb_hosts_created_at] DEFAULT SYSUTCDATETIME(),
+              [updated_at] DATETIME2 NOT NULL CONSTRAINT [DF_flashdb_hosts_updated_at] DEFAULT SYSUTCDATETIME()
+            );
+
+            CREATE INDEX [IX_flashdb_hosts_fqdn] ON [dbo].[flashdb_hosts] ([fqdn]);
+            CREATE INDEX [IX_flashdb_hosts_validation_state] ON [dbo].[flashdb_hosts] ([validation_state]);
+          END
+        `);
+        return true;
+      } catch (error: any) {
+        logger.debug(`[Hosts] SQL host store unavailable; using in-memory registry: ${error.message}`);
+        return false;
+      }
+    })();
+  }
+
+  const initialized = await hostStoreInitPromise;
+  if (!initialized) {
+    hostStoreInitPromise = null;
+  }
+  return initialized;
+}
+
+async function listStoredHosts(): Promise<HostMetadata[]> {
+  if (!(await ensureHostStore())) {
+    return Array.from(hostRegistry.values());
+  }
+
+  try {
+    const sqlClient = getSqlClient();
+    const result = await sqlClient.query<any>(`
+      SELECT
+        [id],
+        [name],
+        [fqdn],
+        [access_method] AS [accessMethod],
+        [sql_instances] AS [sqlInstances],
+        [path_mappings] AS [pathMappings],
+        [credential_reference] AS [credentialReference],
+        [last_validated_at] AS [lastValidatedAt],
+        [validation_state] AS [validationState]
+      FROM [dbo].[flashdb_hosts]
+      ORDER BY [name], [fqdn]
+    `);
+    const hosts = (result.recordset || []).map(mapHostRow);
+    hosts.forEach(host => hostRegistry.set(host.id, host));
+    return hosts;
+  } catch (error: any) {
+    logger.warn(`[Hosts] Failed to read SQL host store; using in-memory registry: ${error.message}`);
+    return Array.from(hostRegistry.values());
+  }
+}
+
+async function getStoredHost(id: string): Promise<HostMetadata | null> {
+  if (await ensureHostStore()) {
+    try {
+      const sqlClient = getSqlClient();
+      const result = await sqlClient.query<any>(`
+        SELECT TOP 1
+          [id],
+          [name],
+          [fqdn],
+          [access_method] AS [accessMethod],
+          [sql_instances] AS [sqlInstances],
+          [path_mappings] AS [pathMappings],
+          [credential_reference] AS [credentialReference],
+          [last_validated_at] AS [lastValidatedAt],
+          [validation_state] AS [validationState]
+        FROM [dbo].[flashdb_hosts]
+        WHERE [id] = @id
+      `, { id });
+      const row = result.recordset?.[0];
+      if (row) {
+        const host = mapHostRow(row);
+        hostRegistry.set(host.id, host);
+        return host;
+      }
+    } catch (error: any) {
+      logger.warn(`[Hosts] Failed to read host ${id} from SQL store: ${error.message}`);
+    }
+  }
+
+  return hostRegistry.get(id) || null;
+}
+
+async function saveStoredHost(host: HostMetadata): Promise<void> {
+  hostRegistry.set(host.id, host);
+
+  if (!(await ensureHostStore())) return;
+
+  try {
+    const sqlClient = getSqlClient();
+    await sqlClient.execute(`
+      MERGE [dbo].[flashdb_hosts] WITH (HOLDLOCK) AS target
+      USING (SELECT @id AS [id]) AS source
+      ON target.[id] = source.[id]
+      WHEN MATCHED THEN UPDATE SET
+        [name] = @name,
+        [fqdn] = @fqdn,
+        [access_method] = @accessMethod,
+        [sql_instances] = @sqlInstances,
+        [path_mappings] = @pathMappings,
+        [credential_reference] = @credentialReference,
+        [last_validated_at] = @lastValidatedAt,
+        [validation_state] = @validationState,
+        [updated_at] = SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN INSERT
+        ([id], [name], [fqdn], [access_method], [sql_instances], [path_mappings],
+         [credential_reference], [last_validated_at], [validation_state])
+        VALUES
+        (@id, @name, @fqdn, @accessMethod, @sqlInstances, @pathMappings,
+         @credentialReference, @lastValidatedAt, @validationState);
+    `, {
+      id: host.id,
+      name: host.name,
+      fqdn: host.fqdn,
+      accessMethod: host.accessMethod,
+      sqlInstances: JSON.stringify(host.sqlInstances || []),
+      pathMappings: JSON.stringify(host.pathMappings || {}),
+      credentialReference: host.credentialReference || null,
+      lastValidatedAt: host.lastValidatedAt || null,
+      validationState: host.validationState || 'Pending'
+    });
+  } catch (error: any) {
+    logger.warn(`[Hosts] Failed to persist host ${host.id}; in-memory registry still updated: ${error.message}`);
+  }
+}
+
+async function deleteStoredHost(id: string): Promise<void> {
+  hostRegistry.delete(id);
+
+  if (!(await ensureHostStore())) return;
+
+  try {
+    const sqlClient = getSqlClient();
+    await sqlClient.execute('DELETE FROM [dbo].[flashdb_hosts] WHERE [id] = @id', { id });
+  } catch (error: any) {
+    logger.warn(`[Hosts] Failed to delete host ${id} from SQL store: ${error.message}`);
+  }
+}
 
 // GET /api/hosts - List all registered hosts
 router.get('/', async (_req: Request, res: Response) => {
   try {
     logger.info('[Hosts] Retrieving all registered hosts');
-    const hosts = Array.from(hostRegistry.values());
+    const hosts = await listStoredHosts();
 
     return res.json({
       success: true,
@@ -48,7 +234,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     logger.info(`[Hosts] Retrieving host: ${id}`);
 
-    const host = hostRegistry.get(id);
+    const host = await getStoredHost(id);
     if (!host) {
       return res.status(404).json({
         success: false,
@@ -102,15 +288,17 @@ router.post('/', async (req: Request, res: Response) => {
       validationState: 'Pending'
     };
 
-    hostRegistry.set(hostId, host);
+    await saveStoredHost(host);
     invalidateCache(['/hosts']);
 
     // Audit log
-    auditService.recordEvent('HostRegistered', {
-      hostId,
-      name,
-      fqdn,
-      accessMethod
+    await auditService.recordOperation({
+      id: hostId,
+      type: 'host-registered',
+      entityId: hostId,
+      status: 'completed',
+      timestamp: new Date(),
+      metrics: { name, fqdn, accessMethod }
     });
 
     return res.status(201).json({
@@ -135,7 +323,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     logger.info(`[Hosts] Updating host: ${id}`);
 
-    const host = hostRegistry.get(id);
+    const host = await getStoredHost(id);
     if (!host) {
       return res.status(404).json({
         success: false,
@@ -155,20 +343,24 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (name) host.name = name;
     if (fqdn) host.fqdn = fqdn;
     if (accessMethod) host.accessMethod = accessMethod;
-    if (pathMappings) host.pathMappings = pathMappings;
+    if (pathMappings !== undefined) host.pathMappings = pathMappings;
     if (credentialReference !== undefined) host.credentialReference = credentialReference;
 
     // Clear validation cache on update
     validationCache.delete(id);
     host.validationState = 'Pending';
 
-    hostRegistry.set(id, host);
+    await saveStoredHost(host);
     invalidateCache(['/hosts']);
 
     // Audit log
-    auditService.recordEvent('HostUpdated', {
-      hostId: id,
-      changes: { name, fqdn, accessMethod }
+    await auditService.recordOperation({
+      id: `update-${id}`,
+      type: 'host-updated',
+      entityId: id,
+      status: 'completed',
+      timestamp: new Date(),
+      metrics: { changes: { name, fqdn, accessMethod } }
     });
 
     return res.json({
@@ -191,7 +383,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     logger.info(`[Hosts] Deleting host: ${id}`);
 
-    const host = hostRegistry.get(id);
+    const host = await getStoredHost(id);
     if (!host) {
       return res.status(404).json({
         success: false,
@@ -199,15 +391,18 @@ router.delete('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    hostRegistry.delete(id);
+    await deleteStoredHost(id);
     validationCache.delete(id);
     invalidateCache(['/hosts']);
 
     // Audit log
-    auditService.recordEvent('HostDeleted', {
-      hostId: id,
-      name: host.name,
-      fqdn: host.fqdn
+    await auditService.recordOperation({
+      id: `delete-${id}`,
+      type: 'host-deleted',
+      entityId: id,
+      status: 'completed',
+      timestamp: new Date(),
+      metrics: { name: host.name, fqdn: host.fqdn }
     });
 
     return res.json({
@@ -229,7 +424,7 @@ router.post('/:id/validate', async (req: Request, res: Response) => {
     const { id } = req.params;
     logger.info(`[Hosts] Validating host: ${id}`);
 
-    const host = hostRegistry.get(id);
+    const host = await getStoredHost(id);
     if (!host) {
       return res.status(404).json({
         success: false,
@@ -255,7 +450,7 @@ router.post('/:id/validate', async (req: Request, res: Response) => {
         // Update host with validation state
         host.lastValidatedAt = new Date();
         host.validationState = result.isValid ? 'Valid' : 'Invalid';
-        hostRegistry.set(id, host);
+        await saveStoredHost(host);
 
         // Cache result
         validationCache.set(id, {
@@ -269,11 +464,18 @@ router.post('/:id/validate', async (req: Request, res: Response) => {
       res.set('Lock-Wait-Time-Ms', lockContext.waitTimeMs.toString());
 
       // Audit log
-      auditService.recordEvent('HostValidated', {
-        hostId: id,
-        isValid: validationResult.isValid,
-        capabilities: validationResult.capabilities,
-        findingsCount: validationResult.findings.length
+      await auditService.recordOperation({
+        id: `validate-${id}`,
+        type: 'host-validated',
+        entityId: id,
+        status: 'completed',
+        result: validationResult.isValid ? 'success' : 'failed',
+        timestamp: new Date(),
+        metrics: {
+          isValid: validationResult.isValid,
+          capabilities: validationResult.capabilities,
+          findingsCount: validationResult.findings.length
+        }
       });
 
       return res.json({
@@ -328,10 +530,14 @@ router.post('/test', async (req: Request, res: Response) => {
     const testResult = await hostService.validateHost('test-temp', tempHost);
 
     // Audit log
-    auditService.recordEvent('HostConnectionTested', {
-      fqdn,
-      accessMethod,
-      success: testResult.isValid
+    await auditService.recordOperation({
+      id: `test-${Date.now()}`,
+      type: 'host-connection-tested',
+      entityId: fqdn,
+      status: 'completed',
+      result: testResult.isValid ? 'success' : 'failed',
+      timestamp: new Date(),
+      metrics: { fqdn, accessMethod, success: testResult.isValid }
     });
 
     return res.json({
@@ -354,7 +560,7 @@ router.get('/:id/status', async (req: Request, res: Response) => {
     const { id } = req.params;
     logger.info(`[Hosts] Getting validation status for host: ${id}`);
 
-    const host = hostRegistry.get(id);
+    const host = await getStoredHost(id);
     if (!host) {
       return res.status(404).json({
         success: false,
