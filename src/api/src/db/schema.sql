@@ -117,7 +117,7 @@ CREATE TABLE [dbo].[CheckpointOperations] (
     [completedAt] DATETIME2(7),
     [errorMessage] NVARCHAR(MAX),
     [rollbackPath] NVARCHAR(MAX),
-    FOREIGN KEY ([cloneId]) REFERENCES [dbo].[Clones] ([id]) ON DELETE CASCADE,
+    FOREIGN KEY ([cloneId]) REFERENCES [dbo].[Clones] ([id]),
     FOREIGN KEY ([checkpointId]) REFERENCES [dbo].[Checkpoints] ([id]) ON DELETE CASCADE
 );
 

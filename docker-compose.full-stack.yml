@@ -49,7 +49,7 @@ services:
         fi
 
         echo "SQL Init: Running init-testdb.sql..."
-        if ! $SQLCMD -b -C -S sql-server -U sa -P 'FlashDB@Password123' -i /init-testdb.sql; then
+        if ! $$SQLCMD -b -C -S sql-server -U sa -P 'FlashDB@Password123' -i /init-testdb.sql; then
           echo "SQL Init: ERROR - init-testdb.sql failed" >&2
           exit 1
         fi
@@ -58,7 +58,7 @@ services:
         sleep 2
 
         echo "SQL Init: Running schema.sql..."
-        if ! $SQLCMD -b -C -S sql-server -U sa -P 'FlashDB@Password123' -d TestDB -i /api-schema.sql; then
+        if ! $$SQLCMD -b -C -S sql-server -U sa -P 'FlashDB@Password123' -d TestDB -i /api-schema.sql; then
           echo "SQL Init: ERROR - schema.sql failed" >&2
           exit 1
         fi
