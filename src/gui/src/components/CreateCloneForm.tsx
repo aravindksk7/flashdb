@@ -14,9 +14,10 @@ interface GoldenImage {
 
 interface CreateCloneFormProps {
   onSuccess: () => void;
+  goldenImages?: GoldenImage[];
 }
 
-export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) => {
+export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess, goldenImages: providedGoldenImages }) => {
   const [formData, setFormData] = useState({
     goldenImageId: '',
     cloneName: '',
@@ -32,10 +33,18 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
   const [loadingImages, setLoadingImages] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const usingProvidedGoldenImages = providedGoldenImages !== undefined;
 
   useEffect(() => {
+    if (usingProvidedGoldenImages) {
+      setLoadingImages(false);
+      return;
+    }
+
     fetchGoldenImages();
-  }, []);
+  }, [usingProvidedGoldenImages]);
+
+  const visibleGoldenImages = providedGoldenImages ?? goldenImages;
 
   const fetchGoldenImages = async () => {
     setLoadingImages(true);
@@ -148,16 +157,16 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
                   value={formData.goldenImageId}
                   onChange={handleChange}
                   required
-                  disabled={goldenImages.length === 0}
+                  disabled={visibleGoldenImages.length === 0}
                 >
-                  <option value="">{goldenImages.length === 0 ? '-- No images available --' : '-- Choose a golden image --'}</option>
-                  {goldenImages.map(img => (
+                  <option value="">{visibleGoldenImages.length === 0 ? '-- No images available --' : '-- Choose a golden image --'}</option>
+                  {visibleGoldenImages.map(img => (
                     <option key={img.id} value={img.id}>
                       {img.name} (v{img.version}{img.method ? `, ${img.method}` : ''})
                     </option>
                   ))}
                 </select>
-                {goldenImages.length === 0 && !error && (
+                {visibleGoldenImages.length === 0 && !error && (
                   <small style={{ color: '#999' }}>No golden images available. Create one first.</small>
                 )}
               </>
@@ -243,8 +252,8 @@ export const CreateCloneForm: React.FC<CreateCloneFormProps> = ({ onSuccess }) =
 
         <button
           type="submit"
-          disabled={loading || goldenImages.length === 0}
-          style={{...styles.button, opacity: loading || goldenImages.length === 0 ? 0.5 : 1}}
+          disabled={loading || visibleGoldenImages.length === 0}
+          style={{...styles.button, opacity: loading || visibleGoldenImages.length === 0 ? 0.5 : 1}}
         >
           {loading ? 'Creating...' : <><ConsoleIcon name="create" className="console-icon" /> Create Clone</>}
         </button>

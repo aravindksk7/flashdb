@@ -4,6 +4,7 @@ export interface LockContext {
     ownerId: string;
     acquiredAt: Date;
     waitTimeMs: number;
+    backend?: 'pg' | 'local';
 }
 /**
  * Acquire a lock or fail immediately with 409 Conflict
@@ -13,15 +14,25 @@ export interface LockContext {
  */
 export declare function acquireOrFail(resourceId: string, ttlSeconds?: number): Promise<LockContext | null>;
 /**
- * Acquire a lock with retries
- * Waits up to maxAttempts * retryDelayMs milliseconds
+ * Calculate exponential backoff delay with jitter
+ * Formula: min(BASE × 2^(attempt-1), MAX) + random(0, JITTER)
+ * Prevents thundering herd and gives other processes time to release locks
+ * @param attemptNumber - Current attempt number (1-indexed)
+ * @param baseDelayMs - Base delay in milliseconds
+ * @param maxDelayMs - Maximum delay cap in milliseconds
+ * @param jitterMs - Maximum random jitter to add
+ * @returns Delay in milliseconds
+ */
+export declare function calculateExponentialBackoff(attemptNumber: number, baseDelayMs?: number, maxDelayMs?: number, jitterMs?: number): number;
+/**
+ * Acquire a lock with retries using exponential backoff
+ * Waits with exponentially increasing delays between retries
  * @param resourceId - Unique identifier for the resource to lock
  * @param ttlSeconds - Time-to-live for the lock in seconds
  * @param maxAttempts - Maximum number of retry attempts
- * @param retryDelayMs - Delay between retries in milliseconds
  * @returns LockContext if acquired, null if timeout
  */
-export declare function acquireWithRetry(resourceId: string, ttlSeconds?: number, maxAttempts?: number, retryDelayMs?: number): Promise<LockContext | null>;
+export declare function acquireWithRetry(resourceId: string, ttlSeconds?: number, maxAttempts?: number): Promise<LockContext | null>;
 /**
  * Release a lock
  * @param lockContext - Lock context from acquisition
@@ -70,7 +81,7 @@ export declare function withLock<T>(resourceId: string, operation: () => Promise
  * @returns Result of the operation
  * @throws Error if lock cannot be acquired after retries
  */
-export declare function withLockRetry<T>(resourceId: string, operation: () => Promise<T>, ttlSeconds?: number, maxAttempts?: number, retryDelayMs?: number): Promise<{
+export declare function withLockRetry<T>(resourceId: string, operation: () => Promise<T>, ttlSeconds?: number, maxAttempts?: number): Promise<{
     result: T;
     lockContext: LockContext;
 }>;

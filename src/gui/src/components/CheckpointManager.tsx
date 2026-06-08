@@ -21,6 +21,8 @@ interface Checkpoint {
   isFavorite: boolean;
   labels: string[];
   lastRestoredAt?: string;
+  diskPath?: string;
+  backingDiskValid?: boolean;
 }
 
 interface CheckpointManagerProps {
@@ -59,7 +61,9 @@ const normalizeCheckpoint = (value: any): Checkpoint | null => {
     createdAt: firstValue<string>(value, ['createdAt', 'CreatedAt']) || '',
     isFavorite: Boolean(firstValue<boolean>(value, ['isFavorite', 'IsFavorite'])),
     labels,
-    lastRestoredAt: firstValue<string>(value, ['lastRestoredAt', 'LastRestoredAt'])
+    lastRestoredAt: firstValue<string>(value, ['lastRestoredAt', 'LastRestoredAt']),
+    diskPath: firstValue<string>(value, ['diskPath', 'DiskPath']),
+    backingDiskValid: firstValue<boolean>(value, ['backingDiskValid', 'BackingDiskValid'])
   };
 };
 
@@ -75,6 +79,9 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [forceDelete, setForceDelete] = useState(false);
+  const [backingValidationPending, setBackingValidationPending] = useState<string | null>(null);
 
   const loadCheckpoints = useCallback(async () => {
     setLoading(true);
@@ -84,7 +91,7 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
       const response = await axios.get(`${API_BASE}/clones/${clone.id}/checkpoints`, {
         params: { _t: Date.now() }
       });
-      const data = Array.isArray(response.data.data) ? response.data.data : [];
+      const data: unknown[] = Array.isArray(response.data.data) ? response.data.data : [];
       const normalized = data
         .map(normalizeCheckpoint)
         .filter((item): item is Checkpoint => item !== null);
@@ -142,10 +149,40 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
     }
   };
 
+  const validateBackingDisk = async (checkpoint: Checkpoint): Promise<boolean> => {
+    try {
+      setBackingValidationPending(checkpoint.id);
+      if (!checkpoint.diskPath) {
+        return true; // No disk path means valid
+      }
+
+      // Check if backing disk is accessible (GET request with no body)
+      const response = await axios.get(
+        `${API_BASE}/clones/${clone.id}/checkpoints/${checkpoint.id}/validate-backing`,
+        { params: { diskPath: checkpoint.diskPath } }
+      );
+
+      return response.data?.data?.isValid === true || response.data?.success === true;
+    } catch (err: any) {
+      console.warn('Backing disk validation failed:', err.message);
+      return false;
+    } finally {
+      setBackingValidationPending(null);
+    }
+  };
+
   const restoreCheckpoint = async (checkpoint: Checkpoint) => {
     if (!window.confirm(`Restore clone "${clone.name}" to "${checkpoint.name}"?`)) return;
 
     try {
+      // Validate backing disk before restore
+      if (!checkpoint.backingDiskValid) {
+        const isValid = await validateBackingDisk(checkpoint);
+        if (!isValid) {
+          setError('Warning: Backing disk may not be accessible. Restore may fail.');
+        }
+      }
+
       setMessage('Restore queued. Waiting for completion...');
       const response = await axios.post(`${API_BASE}/clones/${clone.id}/checkpoints/${checkpoint.id}/restore`, {
         reattachAfter: true
@@ -162,19 +199,28 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
   };
 
   const deleteCheckpoint = async (checkpoint: Checkpoint) => {
-    if (!window.confirm(`Delete restore point "${checkpoint.name}"?`)) return;
+    // Show delete confirmation modal instead of simple confirm
+    setDeleteConfirmId(checkpoint.id);
+    setForceDelete(false);
+  };
 
+  const confirmDelete = async (checkpoint: Checkpoint) => {
     try {
       setMessage('Delete queued. Waiting for completion...');
-      const response = await axios.delete(`${API_BASE}/clones/${clone.id}/checkpoints/${checkpoint.id}`);
+      const response = await axios.delete(`${API_BASE}/clones/${clone.id}/checkpoints/${checkpoint.id}`, {
+        params: { force: forceDelete }
+      });
       const taskId = response.data?.data?.taskId;
       if (response.status === 202 && taskId) {
         await waitForTaskCompletion(taskId);
       }
       await refreshAll();
       showMessage('Restore point deleted.');
+      setDeleteConfirmId(null);
+      setForceDelete(false);
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to delete restore point');
+      setDeleteConfirmId(null);
     }
   };
 
@@ -184,6 +230,68 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
 
       {error && <div style={styles.error}>{error}</div>}
       {message && <div style={styles.success}>{message}</div>}
+
+      {deleteConfirmId && (
+        <div style={styles.modalOverlay} onClick={() => setDeleteConfirmId(null)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Delete Restore Point?</h3>
+            <p style={styles.modalText}>
+              Are you sure you want to delete <strong>{checkpoints.find(c => c.id === deleteConfirmId)?.name}</strong>?
+            </p>
+            {checkpoints.find(c => c.id === deleteConfirmId)?.isFavorite && (
+              <div style={styles.warningBox}>
+                <span style={styles.warningIcon}>⚠</span>
+                <div>
+                  <p style={styles.warningTitle}>This restore point is pinned</p>
+                  <p style={styles.warningText}>Pinned restore points are protected. Enable the Force Delete checkbox to proceed.</p>
+                </div>
+              </div>
+            )}
+            {checkpoints.find(c => c.id === deleteConfirmId)?.isFavorite && (
+              <label style={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={forceDelete}
+                  onChange={(e) => setForceDelete(e.target.checked)}
+                  style={styles.checkbox}
+                />
+                <span>Force delete pinned restore point</span>
+              </label>
+            )}
+            {checkpoints.find(c => c.id === deleteConfirmId)?.diskPath && (
+              <p style={styles.modalMeta}>
+                <strong>Disk:</strong> {checkpoints.find(c => c.id === deleteConfirmId)?.diskPath}
+              </p>
+            )}
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                style={styles.secondaryButton}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const checkpoint = checkpoints.find(c => c.id === deleteConfirmId);
+                  if (checkpoint) confirmDelete(checkpoint);
+                }}
+                disabled={
+                  checkpoints.find(c => c.id === deleteConfirmId)?.isFavorite && !forceDelete
+                }
+                style={{
+                  ...styles.dangerButton,
+                  opacity: checkpoints.find(c => c.id === deleteConfirmId)?.isFavorite && !forceDelete ? 0.5 : 1,
+                  cursor: checkpoints.find(c => c.id === deleteConfirmId)?.isFavorite && !forceDelete ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={styles.headerRow}>
         <div>
@@ -214,8 +322,9 @@ export const CheckpointManager: React.FC<CheckpointManagerProps> = ({ clone, onC
               <div style={styles.itemMain}>
                 <div style={styles.itemTitleRow}>
                   <h4 style={styles.itemTitle}>
-                    {checkpoint.isFavorite ? 'Pinned - ' : ''}{checkpoint.name}
+                    {checkpoint.name}
                   </h4>
+                  {checkpoint.isFavorite && <span style={styles.pinBadge}>📌 Pinned</span>}
                   <span style={styles.phase}>{checkpoint.phase}</span>
                 </div>
                 <p style={styles.meta}>Created: {formatDate(checkpoint.createdAt)}</p>
@@ -384,4 +493,91 @@ const styles = {
     backgroundColor: 'rgba(8, 12, 18, 0.55)',
     color: 'var(--text-soft)',
   },
-};
+  pinBadge: {
+    fontSize: '12px',
+    padding: '4px 10px',
+    borderRadius: '999px',
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    color: '#fbbf24',
+    fontWeight: 500,
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modal: {
+    backgroundColor: 'rgba(15, 23, 34, 0.96)',
+    border: '1px solid rgba(148, 163, 184, 0.16)',
+    borderRadius: '16px',
+    padding: '24px',
+    maxWidth: '420px',
+    width: '90%',
+  },
+  modalTitle: {
+    margin: '0 0 12px 0',
+    fontSize: '18px',
+    fontWeight: 600,
+    color: 'var(--text)',
+  },
+  modalText: {
+    margin: '0 0 16px 0',
+    fontSize: '14px',
+    color: 'var(--text-soft)',
+    lineHeight: 1.5,
+  },
+  warningBox: {
+    display: 'flex',
+    gap: '12px',
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    border: '1px solid rgba(251, 191, 36, 0.2)',
+    borderRadius: '12px',
+    padding: '12px',
+    marginBottom: '16px',
+  },
+  warningIcon: {
+    fontSize: '16px',
+    minWidth: '20px',
+  },
+  warningTitle: {
+    margin: '0 0 4px 0',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#fbbf24',
+  },
+  warningText: {
+    margin: 0,
+    fontSize: '12px',
+    color: 'var(--text-soft)',
+    lineHeight: 1.4,
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '16px',
+    fontSize: '13px',
+    cursor: 'pointer',
+    color: 'var(--text)',
+  },
+  checkbox: {
+    cursor: 'pointer',
+  },
+  modalMeta: {
+    margin: '0 0 16px 0',
+    fontSize: '12px',
+    color: 'var(--text-soft)',
+    wordBreak: 'break-all',
+  },
+  modalActions: {
+    display: 'flex',
+    gap: '8px',
+  },
+} satisfies Record<string, React.CSSProperties>;

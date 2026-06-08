@@ -103,7 +103,7 @@ class TaskQueue {
         }
         return null;
     }
-    updateTask(id, status, _result, error) {
+    updateTask(id, status, result, error) {
         const task = this.queue.find(t => t.id === id);
         if (!task) {
             logger_1.default.warn(`Task not found: ${id}`);
@@ -113,6 +113,9 @@ class TaskQueue {
         task.completedAt = new Date().toISOString();
         if (error) {
             task.error = error;
+        }
+        if (result !== undefined) {
+            task.result = result;
         }
         if (task.startedAt && status === 'completed') {
             const processingTime = new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime();

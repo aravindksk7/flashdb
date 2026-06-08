@@ -1,7 +1,10 @@
 import { getTaskQueue, Task } from './taskQueue';
 import { getPooledPowerShellService } from './pooledPowershellService';
+import { getMetadataService } from './metadataService';
 import { getPgQueueManager } from './pgQueueManager';
 import { getCheckpointOperationRepository, getCheckpointRepository } from './repository';
+import { getCloneValidationService } from './cloneValidationService';
+import { getAuditMetricsService } from './auditMetricsService';
 import logger from '../logger';
 import { invalidateCache } from '../middleware/caching';
 
@@ -108,6 +111,8 @@ class TaskWorker {
     const taskQueue = getTaskQueue();
     const psService = getPooledPowerShellService();
     const operationRepo = getCheckpointOperationRepository();
+    const validationService = getCloneValidationService();
+    const auditService = getAuditMetricsService();
     let operationId: string | null = null;
 
     try {
@@ -161,10 +166,20 @@ class TaskWorker {
           break;
 
         case 'delete-clone':
-          result = await psService.executeCommandRaw('Remove-FlashdbClone', {
-            CloneId: task.payload.cloneId,
-            DeleteVhdx: task.payload.deleteVhdx || false
-          });
+          // Use MetadataService for delete (cascades to checkpoints)
+          logger.info(`[TaskWorker] Deleting clone via MetadataService: ${task.payload.cloneId}`);
+          try {
+            const metadataService = getMetadataService();
+            await metadataService.deleteClone(task.payload.cloneId);
+            result = {
+              success: true,
+              message: `Clone ${task.payload.cloneId} and all dependent checkpoints deleted`
+            };
+            logger.info(`[TaskWorker] Clone deleted successfully: ${task.payload.cloneId}`);
+          } catch (error: any) {
+            logger.error(`[TaskWorker] Failed to delete clone: ${error.message}`);
+            throw error;
+          }
           break;
 
         case 'create-checkpoint':
@@ -197,24 +212,83 @@ class TaskWorker {
           break;
 
         case 'delete-checkpoint':
-          // Handle cascade delete if requested
-          if (task.payload.cascadeDelete) {
-            logger.info(`Cascade delete requested for checkpoint ${task.payload.checkpointId}. Child checkpoints would be queued here (Step 3).`);
+          // Use MetadataService for delete with pinned protection
+          logger.info(`[TaskWorker] Deleting checkpoint via MetadataService: ${task.payload.checkpointId}`);
+          try {
+            const metadataService = getMetadataService();
+            await metadataService.deleteCheckpoint(
+              task.payload.cloneId,
+              task.payload.checkpointId
+            );
+            result = {
+              success: true,
+              checkpointId: task.payload.checkpointId,
+              cloneId: task.payload.cloneId,
+              message: 'Checkpoint deleted successfully'
+            };
+            logger.info(`[TaskWorker] Checkpoint deleted: ${task.payload.checkpointId}`);
+          } catch (error: any) {
+            // Check if error is due to pinned checkpoint
+            if (/pinned/i.test(error.message)) {
+              logger.warn(`[TaskWorker] Checkpoint is pinned: ${task.payload.checkpointId}`);
+              throw new Error(`Cannot delete pinned checkpoint. Unpin first.`);
+            }
+            logger.error(`[TaskWorker] Failed to delete checkpoint: ${error.message}`);
+            throw error;
           }
+          break;
 
-          // Delete from PowerShell/filesystem
-          await psService.executeCommandRaw('Remove-FlashdbCheckpoint', {
-            CloneId: task.payload.cloneId,
-            CheckpointId: task.payload.checkpointId,
-            Force: true
-          });
+        case 'validate-clone': {
+          const cloneId = task.payload.cloneId;
+          const validationId = task.payload.validationId || `validation-${cloneId}-${Date.now()}`;
+          const startedAt = Date.now();
+          const validation = await validationService.validateClone(cloneId);
+
+          await auditService.recordValidationComplete(
+            cloneId,
+            validationId,
+            validation.findings,
+            validation.isHealthy
+          );
 
           result = {
-            success: true,
-            checkpointId: task.payload.checkpointId,
-            message: 'Checkpoint deleted successfully'
+            cloneId,
+            validationId,
+            status: validation.isHealthy ? 'Healthy' : 'Unhealthy',
+            findings: validation.findings,
+            validatedAt: validation.validatedAt.toISOString(),
+            duration: {
+              elapsedMs: Date.now() - startedAt
+            }
           };
           break;
+        }
+
+        case 'repair-clone': {
+          const cloneId = task.payload.cloneId;
+          const repairId = task.payload.repairId || `repair-${cloneId}-${Date.now()}`;
+          const startedAt = Date.now();
+          const attempt = await validationService.executeRepair(cloneId, false);
+          const success = attempt.result === 'Success' || attempt.result === 'Skipped';
+
+          await auditService.recordRepairComplete(
+            cloneId,
+            repairId,
+            success,
+            attempt.attemptedActions
+          );
+
+          result = {
+            cloneId,
+            repairId,
+            status: success ? 'Completed' : 'Failed',
+            success,
+            appliedActions: attempt.attemptedActions.map(action => action.message || action.action),
+            durationSeconds: Math.round((Date.now() - startedAt) / 1000),
+            errors: success ? [] : [attempt.resultMessage]
+          };
+          break;
+        }
 
         default:
           throw new Error(`Unknown task type: ${task.type}`);
@@ -226,9 +300,11 @@ class TaskWorker {
       if (
         task.type === 'create-checkpoint' ||
         task.type === 'restore-checkpoint' ||
-        task.type === 'delete-checkpoint'
+        task.type === 'delete-checkpoint' ||
+        task.type === 'validate-clone' ||
+        task.type === 'repair-clone'
       ) {
-        invalidateCache(['/checkpoints', '/metrics']);
+        invalidateCache(task.type.includes('checkpoint') ? ['/checkpoints', '/metrics'] : ['/clones', '/metrics']);
       }
 
       // Update operation record if applicable

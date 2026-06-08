@@ -4,6 +4,7 @@ import { ConsoleIcon } from './ConsoleIcon';
 
 const API_BASE = '/api';
 const DEFAULT_SOURCE_CONNECTION = 'Server=sql-server;Database=TestDB;User Id=sa;Password=FlashDB@Password123;TrustServerCertificate=Yes';
+const DEFAULT_DESTINATION_CONNECTION = 'Server=sql-server;Database=master;User Id=sa;Password=FlashDB@Password123;TrustServerCertificate=Yes';
 
 interface CreateGoldenImageFormProps {
   onSuccess: () => void;
@@ -46,6 +47,7 @@ export const CreateGoldenImageForm: React.FC<CreateGoldenImageFormProps> = ({ on
     outputPath: '/app/data/golden-images',
     backupFile: '',
     sourceConnection: DEFAULT_SOURCE_CONNECTION,
+    destinationConnection: DEFAULT_DESTINATION_CONNECTION,
   });
   const [loading, setLoading] = useState(false);
   const [schemaLoading, setSchemaLoading] = useState(false);
@@ -123,6 +125,7 @@ export const CreateGoldenImageForm: React.FC<CreateGoldenImageFormProps> = ({ on
       outputPath: '/app/data/golden-images',
       backupFile: '',
       sourceConnection: DEFAULT_SOURCE_CONNECTION,
+      destinationConnection: DEFAULT_DESTINATION_CONNECTION,
     });
     resetSchema();
   };
@@ -199,9 +202,9 @@ export const CreateGoldenImageForm: React.FC<CreateGoldenImageFormProps> = ({ on
       if (response.data.success) {
         setSuccess(true);
         resetForm();
+        onSuccess();
         window.setTimeout(() => {
           setSuccess(false);
-          onSuccess();
         }, 2000);
       }
     } catch (err: any) {
@@ -359,6 +362,17 @@ export const CreateGoldenImageForm: React.FC<CreateGoldenImageFormProps> = ({ on
             placeholder={DEFAULT_SOURCE_CONNECTION}
             rows={3}
             required={formData.method !== 'BackupRestore'}
+          />
+        </div>
+
+        <div className="field-group">
+          <label>Destination Connection</label>
+          <textarea
+            name="destinationConnection"
+            value={formData.destinationConnection}
+            onChange={handleChange}
+            placeholder={DEFAULT_DESTINATION_CONNECTION}
+            rows={3}
           />
         </div>
 

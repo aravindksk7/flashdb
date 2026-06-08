@@ -1,4 +1,4 @@
-export type TaskType = 'create-clone' | 'delete-clone' | 'create-checkpoint' | 'restore-checkpoint';
+export type TaskType = 'create-clone' | 'delete-clone' | 'create-checkpoint' | 'restore-checkpoint' | 'delete-checkpoint' | 'validate-clone' | 'repair-clone' | 'validate-all-clones';
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
 export interface Task {
     id: string;
@@ -9,6 +9,7 @@ export interface Task {
     startedAt: string | null;
     completedAt: string | null;
     error: string | null;
+    result?: any;
     retryCount: number;
 }
 export interface QueueMetrics {
@@ -34,7 +35,7 @@ declare class TaskQueue {
     private saveQueue;
     enqueue(type: TaskType, payload: Record<string, any>): Task;
     dequeue(): Task | null;
-    updateTask(id: string, status: TaskStatus, _result?: any, error?: string): void;
+    updateTask(id: string, status: TaskStatus, result?: any, error?: string): void;
     getMetrics(): QueueMetrics;
     getTask(id: string): Task | null;
     getAllTasks(): {

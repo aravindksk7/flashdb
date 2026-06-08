@@ -196,6 +196,8 @@ export const requestValidationMiddleware = (
     const connectionStringFields = new Set([
       'sourceConnection',
       'sourceConnectionString',
+      'destinationConnection',
+      'destinationConnectionString',
       'targetConnection',
       'targetConnectionString',
       'connectionString'

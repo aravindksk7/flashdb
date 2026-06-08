@@ -1,8 +1,73 @@
 import { Router, Request, Response } from 'express';
 import { getTaskQueue } from '../services/taskQueue';
+import { getSqlClient } from '../services/sqlClient';
 import logger from '../logger';
 
 const router = Router();
+
+const parseJsonField = (value: any): any => {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
+const getTaskFromPersistentStore = async (taskId: string): Promise<any | null> => {
+  try {
+    const sqlClient = getSqlClient();
+    const result = await sqlClient.query<any>(
+      `SELECT TOP 1
+          [id],
+          [type],
+          [status],
+          [payload],
+          [retry_count] AS retryCount,
+          [created_at] AS createdAt,
+          [started_at] AS startedAt,
+          [completed_at] AS completedAt,
+          [error],
+          [result]
+       FROM [dbo].[flashdb_queue]
+       WHERE [id] = @taskId
+       UNION ALL
+       SELECT TOP 1
+          [id],
+          [type],
+          [status],
+          [payload],
+          [retry_count] AS retryCount,
+          [created_at] AS createdAt,
+          [started_at] AS startedAt,
+          [completed_at] AS completedAt,
+          [error],
+          [result]
+       FROM [dbo].[flashdb_queue_archive]
+       WHERE [id] = @taskId`,
+      { taskId }
+    );
+
+    const row = result.recordset?.[0];
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      type: row.type,
+      status: row.status,
+      payload: parseJsonField(row.payload),
+      createdAt: row.createdAt,
+      startedAt: row.startedAt,
+      completedAt: row.completedAt,
+      error: row.error ?? null,
+      retryCount: row.retryCount ?? 0,
+      result: parseJsonField(row.result)
+    };
+  } catch (error: any) {
+    logger.debug(`Persistent task lookup skipped for ${taskId}: ${error.message}`);
+    return null;
+  }
+};
 
 /**
  * GET /api/queue/metrics
@@ -64,13 +129,17 @@ router.get('/status', (_req: Request, res: Response) => {
  * GET /api/queue/tasks/:taskId
  * Retrieve a specific task by ID
  */
-router.get('/tasks/:taskId', (req: Request, res: Response) => {
+router.get('/tasks/:taskId', async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
     const taskQueue = getTaskQueue();
     const task = taskQueue.getTask(taskId);
+    const persistentTask = await getTaskFromPersistentStore(taskId);
+    const terminalPersistentTask = persistentTask && ['completed', 'failed'].includes(persistentTask.status)
+      ? persistentTask
+      : null;
 
-    if (!task) {
+    if (!task && !persistentTask) {
       return res.status(404).json({
         success: false,
         message: `Task not found: ${taskId}`
@@ -79,7 +148,7 @@ router.get('/tasks/:taskId', (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      data: task,
+      data: terminalPersistentTask || task || persistentTask,
       message: 'Task retrieved successfully'
     });
   } catch (error: any) {

@@ -1,0 +1,279 @@
+================================================================================
+PHASE 5: CLONE VALIDATION & REPAIR - API ARCHITECTURE DESIGN COMPLETE
+================================================================================
+
+PROJECT: FlashDB Clone Validation & Repair Wiring (Phase 5)
+STATUS: Architecture Design Complete
+DATE: June 8, 2026
+DELIVERABLE: Complete API Architecture Specification
+
+================================================================================
+DESIGN DOCUMENTS (4 files, ~50KB total)
+================================================================================
+
+1. PHASE5_API_ARCHITECTURE.md (32KB) - Main Design Document
+   The comprehensive architecture specification covering:
+   - All 8 API endpoints (validation, repair, bulk)
+   - Request/response shapes with TypeScript interfaces
+   - Lock management strategy with 3-level hierarchy
+   - Audit integration with operation types and metrics
+   - Error handling with 7 standardized error codes
+   - Task queue integration (hybrid sync/async model)
+   - File modifications (6 core files across backend/frontend)
+   - Database schema suggestions
+   - Complete request/response flow examples
+   - Testing strategy with unit/integration test examples
+   - Deployment checklist and success criteria
+
+2. PHASE5_IMPLEMENTATION_SUMMARY.md (6KB) - Quick Reference
+   Executive summary highlighting:
+   - Key design decisions
+   - 8 endpoints total (validation, repair, bulk)
+   - Hybrid execution model (sync for < 5 sec, async for longer ops)
+   - Lock management approach
+   - Audit trail strategy
+   - Files to modify
+   - Next steps for developer
+
+3. PHASE5_DEVELOPER_CHECKLIST.md (16KB) - Implementation Guide
+   Step-by-step implementation checklist covering:
+   - Phase 5A: Backend endpoints (clones.ts) - 18 items
+   - Phase 5B: Audit service enhancements - 8 items
+   - Phase 5C: Task queue extension - 9 items
+   - Phase 5D: Frontend API services - 8 items
+   - Phase 5E: Frontend components - 12 items
+   - Phase 5F: Unit/integration testing - 6 items
+   - Phase 5G: Database schema (optional) - 6 items
+   - Phase 5H: Type safety - 10 items
+   - Phase 5I: Documentation - 5 items
+   - Phase 5J: Integration & verification - 10 items
+   - Phase 5K: Git commits - 10 commits
+   - Estimated timeline: 12-15 hours total
+
+4. PHASE5_VALIDATION_REPAIR_WIRING_STATUS.md (10KB) - Technical Status
+   Previous implementation status document
+
+================================================================================
+API ENDPOINTS DESIGNED (8 total)
+================================================================================
+
+VALIDATION ENDPOINTS:
+  POST   /api/clones/:cloneId/validate
+  GET    /api/clones/:cloneId/validation-status
+  GET    /api/clones/:cloneId/validation-history
+
+REPAIR ENDPOINTS:
+  POST   /api/clones/:cloneId/repair
+  GET    /api/clones/:cloneId/repair-status
+  POST   /api/clones/:cloneId/repair/cancel
+
+BULK ENDPOINTS (Optional):
+  POST   /api/clones/validate-all
+  GET    /api/clones/validation-batch/:batchId
+
+================================================================================
+KEY DESIGN DECISIONS
+================================================================================
+
+1. HYBRID EXECUTION MODEL
+   - Synchronous (direct): Quick validation, dry-run planning (< 5 sec)
+   - Asynchronous (queued): Full validation, repair execution (5-300 sec)
+   - Query param: queue=true|false controls execution mode
+
+2. LOCK MANAGEMENT (3-Level Hierarchy)
+   - clone:${cloneId} - General clone lock (prevents concurrent modifications)
+   - clone-validation:${cloneId} - Prevents concurrent validations
+   - clone-repair:${cloneId} - Prevents concurrent repairs
+   - Conflicts return 409 with actionable lock info
+
+3. COMPREHENSIVE AUDIT TRAIL
+   Operations tracked:
+   - validation-start, validation-complete, validation-error
+   - repair-plan, repair-execute, repair-complete, repair-cancel
+
+   Metrics captured:
+   - Finding counts (error, warning, info)
+   - Action counts and success rates
+   - Duration, timestamps, operator ID
+   - Trigger type (manual, scheduled, automatic)
+
+4. ERROR HANDLING (7 Standardized Codes)
+   - E001_CLONE_NOT_FOUND (404)
+   - E002_VALIDATION_IN_PROGRESS (409)
+   - E003_REPAIR_IN_PROGRESS (409)
+   - E004_INVALID_REPAIR_STATE (422)
+   - E005_VALIDATION_REQUIRED (422)
+   - E006_CLONE_LOCKED (409)
+   - E007_SERVICE_ERROR (500)
+   All errors include actionable details and suggestions
+
+5. TYPE-SAFE CONTRACTS
+   Full TypeScript interfaces for:
+   - Request/response shapes
+   - Validation findings with severity levels
+   - Repair plans with actions and risk levels
+   - Audit records with operation-specific metrics
+   - Error responses with standardized codes
+
+================================================================================
+FILES TO MODIFY (6 core files)
+================================================================================
+
+BACKEND (3 files):
+  1. src/api/src/routes/clones.ts
+     - Add 6-8 new endpoints
+     - Integrate with existing lock middleware
+     - Wire up task queue
+     - Link to audit service
+     Effort: 2-3 hours
+
+  2. src/api/src/services/auditMetricsService.ts
+     - Add validation-specific recording methods
+     - Add repair-specific recording methods
+     - Add query methods for filtering
+     Effort: 1 hour
+
+  3. src/api/src/services/taskQueue.ts
+     - Extend TaskType enum (3 new types)
+     - Add task processors for new types
+     - Add progress tracking
+     Effort: 1 hour
+
+FRONTEND (3 files):
+  4. src/gui/src/services/api.ts (NEW)
+     - CloneValidationApi class
+     - CloneRepairApi class
+     - TaskPollingApi class
+     Effort: 1 hour
+
+  5. src/gui/src/components/CloneValidationModal.tsx (NEW)
+     - Display validation results
+     - Show findings with severity indicators
+     - Trigger repair action
+     Effort: 2 hours
+
+  6. src/gui/src/components/CloneRepairModal.tsx (NEW)
+     - Display repair plan
+     - Track execution progress
+     - Show results
+     Effort: 2-3 hours
+
+OPTIONAL:
+  7. Database schema for persistent audit (Phase 8 prerequisite)
+     - audit_operations table
+     - validation_results table
+     - repair_executions table
+     Effort: 1 hour
+
+================================================================================
+IMPLEMENTATION TIMELINE
+================================================================================
+
+Phase 5A (Endpoints):        2-3 hours
+Phase 5B (Audit Service):    1 hour
+Phase 5C (Task Queue):       1 hour
+Phase 5D (Frontend API):     1 hour
+Phase 5E (Components):       2-3 hours
+Phase 5F (Testing):          2 hours
+Phase 5G (Database):         1 hour (optional)
+Phase 5H (Type Safety):      30 minutes
+Phase 5I (Documentation):    1 hour
+Phase 5J (Integration):      1-2 hours
+
+TOTAL: 12-15 hours for complete Phase 5 implementation
+
+================================================================================
+ARCHITECTURE HIGHLIGHTS
+================================================================================
+
+✓ Separation of Concerns
+  Service logic (cloneValidationService) → API routes → GUI components
+
+✓ Async-Capable
+  Direct execution for quick operations, task queue for long-running tasks
+
+✓ Concurrent-Safe
+  3-level lock hierarchy prevents race conditions
+
+✓ Observable
+  Comprehensive audit trail with operation-specific metrics
+
+✓ Resilient
+  Error handling with actionable suggestions for all failure modes
+
+✓ Type-Safe
+  Full TypeScript contracts throughout frontend and backend
+
+✓ Scalable
+  Bulk operation support for validating multiple clones
+
+✓ User-Friendly
+  Progress tracking, actionable error messages, visual indicators
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+1. Validation endpoint works synchronously and asynchronously
+2. Repair endpoint creates accurate plans and executes them
+3. Lock management prevents concurrent operations
+4. Audit trail records all operations with metrics
+5. GUI displays validation results and repair actions
+6. Polling correctly tracks async task progress
+7. Error handling provides actionable messages
+8. Type safety throughout backend and frontend
+9. All tests pass with > 80% coverage
+10. Performance: validation < 5 sec (sync), < 30 sec (async)
+
+================================================================================
+NEXT STEPS FOR PHASE5-DEVELOPER
+================================================================================
+
+1. READ PHASE5_API_ARCHITECTURE.md (main design - 400+ lines)
+   - Understand all endpoints
+   - Review request/response shapes
+   - Study lock management and error handling
+
+2. REFERENCE PHASE5_DEVELOPER_CHECKLIST.md (step-by-step guide)
+   - Follow Phase 5A-5K sections
+   - Check off items as implemented
+   - Validate against success criteria
+
+3. IMPLEMENT IN ORDER:
+   Phase 5A → 5B → 5C → 5D → 5E → 5F → 5J → 5K
+
+4. VERIFY:
+   - All endpoints working (manual testing)
+   - Lock management prevents conflicts
+   - Audit trail complete
+   - GUI displays results
+   - Tests pass
+   - No regressions
+
+================================================================================
+ARCHITECTURE FOUNDATION
+================================================================================
+
+Built on existing infrastructure:
+  ✓ CloneValidationService (fully implemented)
+  ✓ AuditMetricsService (exists, needs enhancement)
+  ✓ TaskQueue (exists, needs extension)
+  ✓ Lock middleware (used by other endpoints)
+  ✓ Express app (production-ready)
+  ✓ React GUI (with proper state management)
+
+No breaking changes required to existing code.
+
+================================================================================
+CONTACT & COORDINATION
+================================================================================
+
+This architecture design is ready for handoff to phase5-developer agent.
+All details, examples, and checklists are documented in the 4 design files.
+
+Architecture: Architect (SPARC Phase - Complete)
+Implementation: phase5-developer (Next phase)
+Testing: phase5-tester (After implementation)
+Review: phase5-reviewer (Before merge)
+
+================================================================================

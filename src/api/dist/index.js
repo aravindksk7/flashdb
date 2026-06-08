@@ -14,7 +14,9 @@ const checkpoints_1 = __importDefault(require("./routes/checkpoints"));
 const search_1 = __importDefault(require("./routes/search"));
 const batch_1 = __importDefault(require("./routes/batch"));
 const metrics_1 = __importDefault(require("./routes/metrics"));
+const hosts_1 = __importDefault(require("./routes/hosts"));
 const logging_1 = require("./middleware/logging");
+const security_1 = require("./middleware/security");
 const healthcheck_1 = require("./middleware/healthcheck");
 const caching_1 = require("./middleware/caching");
 const lockMiddleware_1 = require("./middleware/lockMiddleware");
@@ -30,6 +32,15 @@ const pgQueueManager_1 = require("./services/pgQueueManager");
 const queue_1 = __importDefault(require("./routes/queue"));
 const instanceConfig_1 = require("./config/instanceConfig");
 const admin_1 = __importDefault(require("./routes/admin"));
+const auth_1 = __importDefault(require("./routes/auth"));
+const rbac_1 = __importDefault(require("./routes/rbac"));
+const operations_1 = __importDefault(require("./routes/operations"));
+const health_1 = __importDefault(require("./routes/health"));
+const compliance_1 = __importDefault(require("./routes/compliance"));
+const releaseGates_1 = __importDefault(require("./routes/releaseGates"));
+const features_1 = __importDefault(require("./routes/features"));
+const authMiddleware_1 = require("./middleware/authMiddleware");
+const rbacBootstrap_1 = require("./services/rbacBootstrap");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3001;
@@ -82,12 +93,42 @@ const initializeSql = async () => {
             logger_1.default.warn(`Queue manager initialization warning: ${error.message}. Continuing with file-only persistence.`);
             // Queue persistence is optional - continue with file fallback
         }
+        // Bootstrap RBAC with default users (Phase 5b.5)
+        try {
+            await (0, rbacBootstrap_1.bootstrapRbac)();
+            logger_1.default.info('RBAC bootstrap completed');
+        }
+        catch (error) {
+            logger_1.default.warn(`RBAC bootstrap warning: ${error.message}. Continuing without default users.`);
+        }
+        // Clean abandoned operations from crashes (Phase 1 - Recovery)
+        try {
+            await cleanupAbandonedOperations();
+            logger_1.default.info('Cleaned abandoned checkpoint operations');
+        }
+        catch (error) {
+            logger_1.default.warn(`Failed to cleanup abandoned operations: ${error.message}`);
+        }
     }
     catch (error) {
         logger_1.default.error(`SQL initialization failed: ${error.message}`);
         // Continue with PowerShell fallback for backward compatibility
     }
 };
+/**
+ * Clean abandoned operations from API crashes
+ * Finds and marks checkpoint operations that are >1 hour old and still in-progress
+ */
+async function cleanupAbandonedOperations() {
+    try {
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        await sqlClient.execute('EXEC [dbo].[sp_CleanupOrphanedCheckpointOperations] @HoursBack=1, @CleanupMode=1');
+    }
+    catch (error) {
+        logger_1.default.warn(`Failed to cleanup abandoned operations: ${error.message}`);
+        // Non-fatal - continue startup
+    }
+}
 // Initialize connection pool on startup
 const connectionPool = (0, connectionPool_1.initializeConnectionPool)();
 logger_1.default.info('Connection pool initialized on startup');
@@ -103,6 +144,11 @@ app.use((0, cors_1.default)({
     origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://localhost:5173'],
     credentials: true
 }));
+// Security middleware (Phase 5c)
+app.use(security_1.httpsEnforcementMiddleware);
+app.use(security_1.securityHeadersMiddleware);
+app.use(security_1.rateLimitMiddleware);
+app.use(security_1.requestValidationMiddleware);
 // Logging middleware
 app.use(logging_1.structuredLoggingMiddleware);
 app.use(logging_1.bodyLoggingMiddleware);
@@ -113,6 +159,8 @@ app.use((0, morgan_1.default)('combined', { stream: { write: msg => logger_1.def
 app.use(caching_1.cacheMiddleware);
 // Lock middleware (attach lock helpers to request)
 app.use(lockMiddleware_1.lockMiddleware);
+// User context attachment (optional auth)
+app.use(authMiddleware_1.attachUserContext);
 // Health check endpoints
 app.get('/live', healthcheck_1.livelinessProbe);
 app.get('/ready', healthcheck_1.readinessProbe);
@@ -130,14 +178,22 @@ app.get('/', (_req, res) => {
     });
 });
 // API Routes
+app.use('/api/auth', auth_1.default);
+app.use('/api/rbac', rbac_1.default);
 app.use('/api/golden-images', goldenImages_1.default);
 app.use('/api/clones', clones_1.default);
 app.use('/api/clones/:cloneId/checkpoints', checkpoints_1.default);
+app.use('/api/operations', operations_1.default);
 app.use('/api/search', search_1.default);
 app.use('/api/batches', batch_1.default);
 app.use('/api/metrics', metrics_1.default);
 app.use('/api/queue', queue_1.default);
 app.use('/api/admin', admin_1.default);
+app.use('/api/health', health_1.default);
+app.use('/api/hosts', hosts_1.default);
+app.use('/api/contracts', compliance_1.default);
+app.use('/api/release-gates', releaseGates_1.default);
+app.use('/api/features', features_1.default);
 // Swagger/OpenAPI endpoint (can be expanded later)
 app.get('/api/docs', (_req, res) => {
     res.json({
@@ -152,9 +208,41 @@ app.get('/api/docs', (_req, res) => {
                 ready: 'GET /ready (readiness probe)',
                 health: 'GET /health (deep health check)'
             },
+            auth: {
+                login: 'POST /api/auth/login',
+                logout: 'POST /api/auth/logout',
+                me: 'GET /api/auth/me',
+                permissions: 'GET /api/auth/permissions',
+                refresh: 'POST /api/auth/refresh',
+                validate: 'POST /api/auth/validate'
+            },
+            rbac: {
+                users: {
+                    create: 'POST /api/rbac/users (admin only)',
+                    list: 'GET /api/rbac/users (admin only)',
+                    get: 'GET /api/rbac/users/{userId}',
+                    update: 'PUT /api/rbac/users/{userId}',
+                    delete: 'DELETE /api/rbac/users/{userId} (admin only)'
+                },
+                roles: {
+                    create: 'POST /api/rbac/roles (admin only)',
+                    list: 'GET /api/rbac/roles',
+                    get: 'GET /api/rbac/roles/{roleId}'
+                },
+                assignments: {
+                    assign: 'POST /api/rbac/assign-role (admin only)',
+                    revoke: 'POST /api/rbac/revoke-role (admin only)'
+                },
+                permissions: 'GET /api/rbac/permissions'
+            },
             goldenImages: '/api/golden-images',
             clones: '/api/clones',
             checkpoints: '/api/clones/{cloneId}/checkpoints',
+            operations: {
+                list: 'GET /api/operations?cloneId={cloneId}&operationType={type}&status={status}',
+                get: 'GET /api/operations/{operationId}',
+                latestForCheckpoint: 'GET /api/operations/checkpoint/{checkpointId}/latest'
+            },
             search: {
                 operations: '/api/search/operations',
                 clones: '/api/search/clones',
@@ -245,12 +333,85 @@ app.get('/api/metrics/state', async (_req, res) => {
         });
     }
 });
-// Prometheus metrics endpoint (placeholder)
+const escapePrometheusLabelValue = (value) => String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/"/g, '\\"');
+const toPrometheusLabels = (labels) => {
+    const entries = Object.entries(labels)
+        .map(([key, value]) => `${key}="${escapePrometheusLabelValue(value)}"`);
+    return entries.length > 0 ? `{${entries.join(',')}}` : '';
+};
+// Prometheus metrics endpoint
 app.get('/metrics', (_req, res) => {
-    // This would be populated by prometheus client library
-    // For now, return basic metrics
-    res.setHeader('Content-Type', 'text/plain');
-    res.send('# HELP flashdb_api_up API is up\n# TYPE flashdb_api_up gauge\nflashdb_api_up 1\n');
+    const performanceMetrics = (0, logging_1.getPerformanceMetrics)();
+    const cacheMetrics = (0, caching_1.getCacheMetrics)();
+    const poolMetrics = (0, connectionPool_1.getConnectionPool)().getMetrics();
+    const queueMetrics = (0, taskQueue_1.getTaskQueue)().getMetrics();
+    const lines = [];
+    lines.push('# HELP flashdb_api_up API is up');
+    lines.push('# TYPE flashdb_api_up gauge');
+    lines.push('flashdb_api_up 1');
+    lines.push('# HELP flashdb_api_request_total Total requests grouped by operation');
+    lines.push('# TYPE flashdb_api_request_total counter');
+    for (const [operation, metric] of Object.entries(performanceMetrics)) {
+        const labels = toPrometheusLabels({ operation });
+        lines.push(`flashdb_api_request_total${labels} ${metric.totalRequests}`);
+        lines.push(`flashdb_api_request_errors_total${labels} ${metric.errorCount}`);
+        lines.push(`flashdb_api_request_duration_average_ms${labels} ${metric.averageDuration}`);
+        lines.push(`flashdb_api_request_duration_max_ms${labels} ${metric.maxDuration}`);
+        lines.push(`flashdb_api_request_duration_min_ms${labels} ${metric.minDuration}`);
+    }
+    lines.push('# HELP flashdb_cache_hits_total Cache hits');
+    lines.push('# TYPE flashdb_cache_hits_total counter');
+    lines.push(`flashdb_cache_hits_total ${cacheMetrics.hits}`);
+    lines.push('# HELP flashdb_cache_misses_total Cache misses');
+    lines.push('# TYPE flashdb_cache_misses_total counter');
+    lines.push(`flashdb_cache_misses_total ${cacheMetrics.misses}`);
+    lines.push('# HELP flashdb_cache_sets_total Cache sets');
+    lines.push('# TYPE flashdb_cache_sets_total counter');
+    lines.push(`flashdb_cache_sets_total ${cacheMetrics.sets}`);
+    lines.push('# HELP flashdb_cache_invalidations_total Cache invalidations');
+    lines.push('# TYPE flashdb_cache_invalidations_total counter');
+    lines.push(`flashdb_cache_invalidations_total ${cacheMetrics.invalidations}`);
+    lines.push('# HELP flashdb_cache_memory_bytes Estimated cache memory usage in bytes');
+    lines.push('# TYPE flashdb_cache_memory_bytes gauge');
+    lines.push(`flashdb_cache_memory_bytes ${cacheMetrics.memoryUsage}`);
+    lines.push('# HELP flashdb_connection_pool_size Current connection pool size');
+    lines.push('# TYPE flashdb_connection_pool_size gauge');
+    lines.push(`flashdb_connection_pool_size ${poolMetrics.size}`);
+    lines.push('# HELP flashdb_connection_pool_available Available connections in the pool');
+    lines.push('# TYPE flashdb_connection_pool_available gauge');
+    lines.push(`flashdb_connection_pool_available ${poolMetrics.available}`);
+    lines.push('# HELP flashdb_connection_pool_active Active connections in the pool');
+    lines.push('# TYPE flashdb_connection_pool_active gauge');
+    lines.push(`flashdb_connection_pool_active ${poolMetrics.activeConnections}`);
+    lines.push('# HELP flashdb_connection_pool_pending Pending acquisitions for the pool');
+    lines.push('# TYPE flashdb_connection_pool_pending gauge');
+    lines.push(`flashdb_connection_pool_pending ${poolMetrics.pending}`);
+    lines.push('# HELP flashdb_connection_pool_errors_total Connection pool errors');
+    lines.push('# TYPE flashdb_connection_pool_errors_total counter');
+    lines.push(`flashdb_connection_pool_errors_total ${poolMetrics.errorCount}`);
+    lines.push('# HELP flashdb_connection_pool_wait_time_ms Average wait time for pool acquisition');
+    lines.push('# TYPE flashdb_connection_pool_wait_time_ms gauge');
+    lines.push(`flashdb_connection_pool_wait_time_ms ${poolMetrics.averageWaitTime}`);
+    lines.push('# HELP flashdb_task_queue_depth Current task queue depth');
+    lines.push('# TYPE flashdb_task_queue_depth gauge');
+    lines.push(`flashdb_task_queue_depth ${queueMetrics.queueDepth}`);
+    lines.push('# HELP flashdb_task_queue_pending Pending tasks');
+    lines.push('# TYPE flashdb_task_queue_pending gauge');
+    lines.push(`flashdb_task_queue_pending ${queueMetrics.pendingTasks}`);
+    lines.push('# HELP flashdb_task_queue_processing Processing tasks');
+    lines.push('# TYPE flashdb_task_queue_processing gauge');
+    lines.push(`flashdb_task_queue_processing ${queueMetrics.processingTasks}`);
+    lines.push('# HELP flashdb_task_queue_completed_total Completed tasks');
+    lines.push('# TYPE flashdb_task_queue_completed_total counter');
+    lines.push(`flashdb_task_queue_completed_total ${queueMetrics.completedTasks}`);
+    lines.push('# HELP flashdb_task_queue_failed_total Failed tasks');
+    lines.push('# TYPE flashdb_task_queue_failed_total counter');
+    lines.push(`flashdb_task_queue_failed_total ${queueMetrics.failedTasks}`);
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.send(`${lines.join('\n')}\n`);
 });
 // Error logging middleware
 app.use(logging_1.errorLoggingMiddleware);
@@ -370,6 +531,13 @@ const server = app.listen(port, async () => {
         logger_1.default.info('  Multi-Instance: Not initialized (optional)');
     }
     logger_1.default.info('');
+    logger_1.default.info('Authentication & Authorization (Phase 5b.5):');
+    logger_1.default.info('  JWT Authentication: Enabled');
+    logger_1.default.info(`  JWT Expiry: ${process.env.JWT_EXPIRY_HOURS || 24}h`);
+    logger_1.default.info('  RBAC System: Enabled (PostgreSQL-backed)');
+    logger_1.default.info('  Default Roles: admin, operator, viewer, system');
+    logger_1.default.info('  Features: User management, role assignment, permission control');
+    logger_1.default.info('');
     logger_1.default.info('Connection Pool Status:');
     logger_1.default.info(`  Pool Size: ${connectionPool.getMetrics().size}/${connectionPool.getMetrics().size}`);
     logger_1.default.info(`  Available: ${connectionPool.getMetrics().available}`);
@@ -423,7 +591,12 @@ process.on('SIGTERM', async () => {
         }
         await (0, connectionPool_1.shutdownConnectionPool)();
         logger_1.default.info('Connection pool shut down');
-        process.exit(0);
+        // Close logger transports (Phase 5c)
+        logger_1.default.info('Closing logger transports');
+        logger_1.default.on('finish', () => {
+            process.exit(0);
+        });
+        logger_1.default.end();
     });
 });
 process.on('SIGINT', async () => {
@@ -461,7 +634,12 @@ process.on('SIGINT', async () => {
         }
         await (0, connectionPool_1.shutdownConnectionPool)();
         logger_1.default.info('Connection pool shut down');
-        process.exit(0);
+        // Close logger transports (Phase 5c)
+        logger_1.default.info('Closing logger transports');
+        logger_1.default.on('finish', () => {
+            process.exit(0);
+        });
+        logger_1.default.end();
     });
 });
 exports.default = app;

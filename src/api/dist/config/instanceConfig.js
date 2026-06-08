@@ -216,6 +216,19 @@ class InstanceConfig {
      */
     async getClusterStatus() {
         const instances = await this.getActiveInstances();
+        if (instances.length === 0) {
+            const fallbackInstance = {
+                ...this.getInstanceInfo(),
+                status: 'active'
+            };
+            logger_1.default.warn('No active cluster registrations found; using current instance fallback for cluster status');
+            return {
+                totalInstances: 1,
+                activeInstances: 1,
+                unhealthyInstances: 0,
+                instances: [fallbackInstance]
+            };
+        }
         return {
             totalInstances: instances.length,
             activeInstances: instances.filter(i => i.status === 'active').length,

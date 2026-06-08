@@ -79,6 +79,27 @@ export declare class CloneRepository {
     getByStatus(status: string): Promise<CloneData[]>;
 }
 /**
+ * Checkpoint Operation data model
+ */
+export interface CheckpointOperationData {
+    id: string;
+    checkpointId: string;
+    cloneId: string;
+    operationType: 'create' | 'restore' | 'delete';
+    status: 'pending' | 'in-progress' | 'completed' | 'failed' | 'rolled-back';
+    vhdxPath: string;
+    backupVhdxPath?: string;
+    databaseCheckpointLsn?: string;
+    preVhdxStateHash?: string;
+    postVhdxStateHash?: string;
+    validationStatus?: 'pending' | 'passed' | 'failed';
+    validationError?: string;
+    startedAt: Date;
+    completedAt?: Date;
+    errorMessage?: string;
+    rollbackPath?: string;
+}
+/**
  * Checkpoint Repository - CRUD operations for checkpoints
  */
 export declare class CheckpointRepository {
@@ -87,6 +108,18 @@ export declare class CheckpointRepository {
      * Create a new checkpoint record
      */
     create(checkpoint: Omit<CheckpointData, 'id' | 'createdAt'>): Promise<CheckpointData>;
+    /**
+     * Query child checkpoint count
+     */
+    queryChildCheckpointCount(checkpointId: string): Promise<number>;
+    /**
+     * Query child checkpoints (recursive CTE for full hierarchy)
+     */
+    queryChildCheckpoints(checkpointId: string): Promise<any[]>;
+    /**
+     * Mark checkpoints as orphaned (recursive)
+     */
+    markCheckpointsAsOrphaned(checkpointId: string): Promise<number>;
     /**
      * Get checkpoint by ID
      */
@@ -99,6 +132,10 @@ export declare class CheckpointRepository {
      * Update checkpoint
      */
     update(id: string, updates: Partial<CheckpointData>): Promise<void>;
+    /**
+     * Update checkpoint restored timestamp
+     */
+    markAsRestored(id: string, restoredAt?: Date): Promise<void>;
     /**
      * Delete checkpoint
      */
@@ -135,6 +172,36 @@ export declare class MetricsRepository {
     getTimelineData(hoursBack?: number): Promise<any>;
 }
 /**
+ * Checkpoint Operation Repository - Track all checkpoint operations for audit
+ */
+export declare class CheckpointOperationRepository {
+    private sqlClient;
+    /**
+     * Create a new checkpoint operation record
+     */
+    create(checkpointId: string, cloneId: string, operationType: 'create' | 'restore' | 'delete', vhdxPath: string): Promise<CheckpointOperationData>;
+    /**
+     * Update checkpoint operation status
+     */
+    update(operationId: string, status: string, completedAt?: Date, errorMessage?: string, postVhdxStateHash?: string, validationStatus?: string): Promise<boolean>;
+    /**
+     * Get operation by ID
+     */
+    getOperation(operationId: string): Promise<CheckpointOperationData | null>;
+    /**
+     * Get latest operation for checkpoint
+     */
+    getLatestOperation(checkpointId: string): Promise<CheckpointOperationData | null>;
+    /**
+     * List operations for clone
+     */
+    listOperations(cloneId: string, operationType?: string, status?: string, limit?: number): Promise<CheckpointOperationData[]>;
+    /**
+     * Get failed operations from last N minutes
+     */
+    getFailedOperations(sinceMinutesAgo?: number): Promise<CheckpointOperationData[]>;
+}
+/**
  * Search Repository - Full-text search operations
  */
 export declare class SearchRepository {
@@ -160,6 +227,10 @@ export declare function getCloneRepository(): CloneRepository;
  * Get checkpoint repository instance
  */
 export declare function getCheckpointRepository(): CheckpointRepository;
+/**
+ * Get checkpoint operation repository instance
+ */
+export declare function getCheckpointOperationRepository(): CheckpointOperationRepository;
 /**
  * Get metrics repository instance
  */

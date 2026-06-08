@@ -39,7 +39,6 @@ export const CheckpointDependencyTree: React.FC<CheckpointDependencyTreeProps> =
 
         if (response.data.success && Array.isArray(response.data.data)) {
           const checkpoints = response.data.data;
-          const current = checkpoints.find((cp: any) => cp.id === checkpointId || cp.checkpointId === checkpointId);
 
           // Find parent (if this is a differencing checkpoint)
           const idx = checkpoints.findIndex((cp: any) => cp.id === checkpointId || cp.checkpointId === checkpointId);
@@ -206,7 +205,7 @@ export const CheckpointDependencyTree: React.FC<CheckpointDependencyTreeProps> =
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {childCheckpoints.map((cp, idx) => (
+                {childCheckpoints.map((cp) => (
                   <div
                     key={cp.id}
                     style={{

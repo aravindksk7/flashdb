@@ -101,16 +101,20 @@ export const OperationHistory = React.forwardRef<OperationHistoryRef, OperationH
     switch (type) {
       case 'create-clone':
       case 'create':
-        return '+';
+        return '➕';
       case 'restore':
-        return 'R';
+        return '↺';
       case 'delete-clone':
       case 'delete':
-        return 'X';
+        return '🗑';
       case 'validation':
         return '✓';
       case 'repair':
-        return '⚙';
+        return '🔧';
+      case 'checkpoint':
+        return '💾';
+      case 'backup':
+        return '📦';
       default:
         return '•';
     }
@@ -123,15 +127,19 @@ export const OperationHistory = React.forwardRef<OperationHistoryRef, OperationH
       case 'delete-clone':
         return 'Clone Deleted';
       case 'create':
-        return 'Created';
+        return 'Checkpoint Created';
       case 'restore':
-        return 'Restored';
+        return 'Checkpoint Restored';
       case 'delete':
-        return 'Deleted';
+        return 'Checkpoint Deleted';
       case 'validation':
-        return 'Validation';
+        return 'Health Validation';
       case 'repair':
-        return 'Repair';
+        return 'Repair Executed';
+      case 'checkpoint':
+        return 'Checkpoint Operation';
+      case 'backup':
+        return 'Backup Created';
       default:
         return type || 'Unknown';
     }

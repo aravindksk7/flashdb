@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.acquireOrFail = acquireOrFail;
+exports.calculateExponentialBackoff = calculateExponentialBackoff;
 exports.acquireWithRetry = acquireWithRetry;
 exports.releaseLock = releaseLock;
 exports.withLock = withLock;
@@ -18,8 +19,39 @@ const uuid_1 = require("uuid");
  * Lock middleware helpers for protecting critical operations
  * Provides utilities for lock-aware request handling
  */
-const LOCK_RETRY_ATTEMPTS = parseInt(process.env.LOCK_RETRY_ATTEMPTS || '3', 10);
-const LOCK_RETRY_DELAY_MS = parseInt(process.env.LOCK_RETRY_DELAY_MS || '100', 10);
+const LOCK_RETRY_ATTEMPTS = parseInt(process.env.LOCK_RETRY_ATTEMPTS || '5', 10);
+const LOCK_BASE_DELAY_MS = parseInt(process.env.LOCK_BASE_DELAY_MS || '100', 10);
+const LOCK_MAX_DELAY_MS = parseInt(process.env.LOCK_MAX_DELAY_MS || '5000', 10);
+const LOCK_JITTER_MS = parseInt(process.env.LOCK_JITTER_MS || '1000', 10);
+const localLocks = new Map();
+function acquireLocalLock(resourceId, ownerId, ttlSeconds, startTime) {
+    const now = Date.now();
+    const existing = localLocks.get(resourceId);
+    if (existing && existing.expiresAt > now && existing.ownerId !== ownerId) {
+        return null;
+    }
+    const acquiredAt = new Date();
+    localLocks.set(resourceId, {
+        ownerId,
+        acquiredAt,
+        expiresAt: now + ttlSeconds * 1000
+    });
+    return {
+        resourceId,
+        ownerId,
+        acquiredAt,
+        waitTimeMs: Date.now() - startTime,
+        backend: 'local'
+    };
+}
+function releaseLocalLock(lockContext) {
+    const existing = localLocks.get(lockContext.resourceId);
+    if (!existing || existing.ownerId !== lockContext.ownerId) {
+        return false;
+    }
+    localLocks.delete(lockContext.resourceId);
+    return true;
+}
 /**
  * Acquire a lock or fail immediately with 409 Conflict
  * @param resourceId - Unique identifier for the resource to lock
@@ -27,10 +59,10 @@ const LOCK_RETRY_DELAY_MS = parseInt(process.env.LOCK_RETRY_DELAY_MS || '100', 1
  * @returns LockContext if acquired, null if locked by another process
  */
 async function acquireOrFail(resourceId, ttlSeconds = 30) {
+    const ownerId = (0, uuid_1.v4)();
+    const startTime = Date.now();
     try {
         const lockManager = (0, pgLockManager_1.getPgLockManager)();
-        const ownerId = (0, uuid_1.v4)();
-        const startTime = Date.now();
         const acquired = await lockManager.acquireLock(resourceId, ownerId, ttlSeconds);
         if (!acquired) {
             logger_1.default.debug(`Lock acquisition failed (immediate): ${resourceId}`);
@@ -41,28 +73,45 @@ async function acquireOrFail(resourceId, ttlSeconds = 30) {
             resourceId,
             ownerId,
             acquiredAt: new Date(),
-            waitTimeMs
+            waitTimeMs,
+            backend: 'pg'
         };
     }
     catch (error) {
-        logger_1.default.error(`Error acquiring lock ${resourceId}: ${error.message}`);
-        throw error;
+        logger_1.default.warn(`Distributed lock unavailable for ${resourceId}; using local lock fallback: ${error.message}`);
+        return acquireLocalLock(resourceId, ownerId, ttlSeconds, startTime);
     }
 }
 /**
- * Acquire a lock with retries
- * Waits up to maxAttempts * retryDelayMs milliseconds
+ * Calculate exponential backoff delay with jitter
+ * Formula: min(BASE × 2^(attempt-1), MAX) + random(0, JITTER)
+ * Prevents thundering herd and gives other processes time to release locks
+ * @param attemptNumber - Current attempt number (1-indexed)
+ * @param baseDelayMs - Base delay in milliseconds
+ * @param maxDelayMs - Maximum delay cap in milliseconds
+ * @param jitterMs - Maximum random jitter to add
+ * @returns Delay in milliseconds
+ */
+function calculateExponentialBackoff(attemptNumber, baseDelayMs = LOCK_BASE_DELAY_MS, maxDelayMs = LOCK_MAX_DELAY_MS, jitterMs = LOCK_JITTER_MS) {
+    // Exponential growth: 100ms, 200ms, 400ms, 800ms, 1600ms (capped at 5000ms)
+    const exponentialDelay = Math.min(baseDelayMs * Math.pow(2, attemptNumber - 1), maxDelayMs);
+    // Add random jitter (0 to jitterMs) to prevent thundering herd
+    const jitter = Math.random() * jitterMs;
+    return exponentialDelay + jitter;
+}
+/**
+ * Acquire a lock with retries using exponential backoff
+ * Waits with exponentially increasing delays between retries
  * @param resourceId - Unique identifier for the resource to lock
  * @param ttlSeconds - Time-to-live for the lock in seconds
  * @param maxAttempts - Maximum number of retry attempts
- * @param retryDelayMs - Delay between retries in milliseconds
  * @returns LockContext if acquired, null if timeout
  */
-async function acquireWithRetry(resourceId, ttlSeconds = 30, maxAttempts = LOCK_RETRY_ATTEMPTS, retryDelayMs = LOCK_RETRY_DELAY_MS) {
+async function acquireWithRetry(resourceId, ttlSeconds = 30, maxAttempts = LOCK_RETRY_ATTEMPTS) {
+    const ownerId = (0, uuid_1.v4)();
+    const startTime = Date.now();
     try {
         const lockManager = (0, pgLockManager_1.getPgLockManager)();
-        const ownerId = (0, uuid_1.v4)();
-        const startTime = Date.now();
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             const acquired = await lockManager.acquireLock(resourceId, ownerId, ttlSeconds);
             if (acquired) {
@@ -72,19 +121,22 @@ async function acquireWithRetry(resourceId, ttlSeconds = 30, maxAttempts = LOCK_
                     resourceId,
                     ownerId,
                     acquiredAt: new Date(),
-                    waitTimeMs
+                    waitTimeMs,
+                    backend: 'pg'
                 };
             }
             if (attempt < maxAttempts) {
-                await delay(retryDelayMs);
+                const backoffDelay = calculateExponentialBackoff(attempt);
+                logger_1.default.debug(`Lock contention on ${resourceId} (attempt ${attempt}/${maxAttempts}), waiting ${Math.round(backoffDelay)}ms`);
+                await delay(backoffDelay);
             }
         }
         logger_1.default.debug(`Lock acquisition timeout: ${resourceId} (${maxAttempts} attempts)`);
         return null;
     }
     catch (error) {
-        logger_1.default.error(`Error acquiring lock with retry ${resourceId}: ${error.message}`);
-        throw error;
+        logger_1.default.warn(`Distributed lock unavailable for ${resourceId}; using local lock fallback: ${error.message}`);
+        return acquireLocalLock(resourceId, ownerId, ttlSeconds, startTime);
     }
 }
 /**
@@ -92,6 +144,9 @@ async function acquireWithRetry(resourceId, ttlSeconds = 30, maxAttempts = LOCK_
  * @param lockContext - Lock context from acquisition
  */
 async function releaseLock(lockContext) {
+    if (lockContext.backend === 'local') {
+        return releaseLocalLock(lockContext);
+    }
     try {
         const lockManager = (0, pgLockManager_1.getPgLockManager)();
         const released = await lockManager.releaseLock(lockContext.resourceId, lockContext.ownerId);
@@ -162,8 +217,8 @@ async function withLock(resourceId, operation, ttlSeconds = 30) {
  * @returns Result of the operation
  * @throws Error if lock cannot be acquired after retries
  */
-async function withLockRetry(resourceId, operation, ttlSeconds = 30, maxAttempts = LOCK_RETRY_ATTEMPTS, retryDelayMs = LOCK_RETRY_DELAY_MS) {
-    const lockContext = await acquireWithRetry(resourceId, ttlSeconds, maxAttempts, retryDelayMs);
+async function withLockRetry(resourceId, operation, ttlSeconds = 30, maxAttempts = LOCK_RETRY_ATTEMPTS) {
+    const lockContext = await acquireWithRetry(resourceId, ttlSeconds, maxAttempts);
     if (!lockContext) {
         throw new Error(`LOCK_TIMEOUT: Cannot acquire lock for ${resourceId} after ${maxAttempts} attempts`);
     }
@@ -188,9 +243,9 @@ function lockMiddleware(req, _res, next) {
     // Attach lock helpers to request
     req.lock = {
         acquireOrFail: (resourceId, ttlSeconds) => acquireOrFail(resourceId, ttlSeconds),
-        acquireWithRetry: (resourceId, ttlSeconds, maxAttempts, retryDelayMs) => acquireWithRetry(resourceId, ttlSeconds, maxAttempts, retryDelayMs),
+        acquireWithRetry: (resourceId, ttlSeconds, maxAttempts) => acquireWithRetry(resourceId, ttlSeconds, maxAttempts),
         withLock: (resourceId, operation, ttlSeconds) => withLock(resourceId, operation, ttlSeconds),
-        withLockRetry: (resourceId, operation, ttlSeconds, maxAttempts, retryDelayMs) => withLockRetry(resourceId, operation, ttlSeconds, maxAttempts, retryDelayMs),
+        withLockRetry: (resourceId, operation, ttlSeconds, maxAttempts) => withLockRetry(resourceId, operation, ttlSeconds, maxAttempts),
         release: (lockContext) => releaseLock(lockContext)
     };
     next();

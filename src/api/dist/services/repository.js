@@ -3,9 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SearchRepository = exports.MetricsRepository = exports.CheckpointRepository = exports.CloneRepository = void 0;
+exports.SearchRepository = exports.CheckpointOperationRepository = exports.MetricsRepository = exports.CheckpointRepository = exports.CloneRepository = void 0;
 exports.getCloneRepository = getCloneRepository;
 exports.getCheckpointRepository = getCheckpointRepository;
+exports.getCheckpointOperationRepository = getCheckpointOperationRepository;
 exports.getMetricsRepository = getMetricsRepository;
 exports.getSearchRepository = getSearchRepository;
 const sqlClient_1 = require("./sqlClient");
@@ -207,6 +208,95 @@ class CheckpointRepository {
         }
     }
     /**
+     * Query child checkpoint count
+     */
+    async queryChildCheckpointCount(checkpointId) {
+        const sql = `
+      SELECT COUNT(*) as count
+      FROM Checkpoints
+      WHERE parentCheckpointId = @checkpointId
+        AND isOrphaned = 0
+    `;
+        try {
+            const result = await this.sqlClient.query(sql, { checkpointId });
+            return result.recordset[0]?.count || 0;
+        }
+        catch (error) {
+            logger_1.default.error(`Error querying child checkpoints for ${checkpointId}: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+     * Query child checkpoints (recursive CTE for full hierarchy)
+     */
+    async queryChildCheckpoints(checkpointId) {
+        const sql = `
+      WITH RECURSIVE CheckpointHierarchy AS (
+        SELECT
+          id, checkpointName, parentCheckpointId, size, createdAt, 0 as depth
+        FROM Checkpoints
+        WHERE parentCheckpointId = @checkpointId AND isOrphaned = 0
+
+        UNION ALL
+
+        SELECT
+          c.id, c.checkpointName, c.parentCheckpointId, c.size, c.createdAt,
+          ch.depth + 1
+        FROM Checkpoints c
+        INNER JOIN CheckpointHierarchy ch ON c.parentCheckpointId = ch.id
+        WHERE c.isOrphaned = 0
+      )
+      SELECT
+        id, checkpointName, parentCheckpointId, size, createdAt, depth,
+        (
+          SELECT COUNT(*)
+          FROM Checkpoints
+          WHERE parentCheckpointId = CheckpointHierarchy.id
+            AND isOrphaned = 0
+        ) as childCount
+      FROM CheckpointHierarchy
+      ORDER BY depth, createdAt DESC
+    `;
+        try {
+            const result = await this.sqlClient.query(sql, { checkpointId });
+            return result.recordset;
+        }
+        catch (error) {
+            logger_1.default.error(`Error querying child checkpoints for ${checkpointId}: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+     * Mark checkpoints as orphaned (recursive)
+     */
+    async markCheckpointsAsOrphaned(checkpointId) {
+        const sql = `
+      WITH RECURSIVE CheckpointHierarchy AS (
+        SELECT id FROM Checkpoints WHERE parentCheckpointId = @checkpointId
+        UNION ALL
+        SELECT c.id FROM Checkpoints c
+        INNER JOIN CheckpointHierarchy ch ON c.parentCheckpointId = ch.id
+      )
+      UPDATE Checkpoints
+      SET isOrphaned = 1,
+          description = CONCAT(
+            COALESCE(description, ''),
+            ' [ORPHANED: parent deleted]'
+          )
+      WHERE id IN (SELECT id FROM CheckpointHierarchy);
+
+      SELECT @@ROWCOUNT as affected;
+    `;
+        try {
+            const result = await this.sqlClient.query(sql, { checkpointId });
+            return result.recordset[0]?.affected || 0;
+        }
+        catch (error) {
+            logger_1.default.error(`Error marking checkpoints as orphaned: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
      * Get checkpoint by ID
      */
     async getById(id) {
@@ -259,6 +349,24 @@ class CheckpointRepository {
         }
         catch (error) {
             logger_1.default.error(`Error updating checkpoint: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+     * Update checkpoint restored timestamp
+     */
+    async markAsRestored(id, restoredAt) {
+        const timestamp = restoredAt || new Date();
+        const sql = 'UPDATE Checkpoints SET restoredAt = @restoredAt WHERE id = @id';
+        try {
+            await this.sqlClient.execute(sql, {
+                id,
+                restoredAt: timestamp
+            });
+            logger_1.default.info(`Checkpoint marked as restored: ${id} at ${timestamp.toISOString()}`);
+        }
+        catch (error) {
+            logger_1.default.error(`Error marking checkpoint as restored: ${error.message}`);
             throw error;
         }
     }
@@ -450,6 +558,192 @@ class MetricsRepository {
 }
 exports.MetricsRepository = MetricsRepository;
 /**
+ * Checkpoint Operation Repository - Track all checkpoint operations for audit
+ */
+class CheckpointOperationRepository {
+    constructor() {
+        this.sqlClient = (0, sqlClient_1.getSqlClient)();
+    }
+    /**
+     * Create a new checkpoint operation record
+     */
+    async create(checkpointId, cloneId, operationType, vhdxPath) {
+        const id = require('uuid').v4();
+        const startedAt = new Date();
+        const sql = `
+      INSERT INTO CheckpointOperations (
+        id, checkpointId, cloneId, operationType, status,
+        vhdxPath, startedAt
+      ) VALUES (
+        @id, @checkpointId, @cloneId, @operationType, 'pending',
+        @vhdxPath, @startedAt
+      )
+    `;
+        try {
+            await this.sqlClient.execute(sql, {
+                id,
+                checkpointId,
+                cloneId,
+                operationType,
+                vhdxPath,
+                startedAt
+            });
+            logger_1.default.info(`Created checkpoint operation: ${id} (${operationType})`);
+            return {
+                id,
+                checkpointId,
+                cloneId,
+                operationType,
+                status: 'pending',
+                vhdxPath,
+                startedAt
+            };
+        }
+        catch (error) {
+            logger_1.default.error(`Error creating checkpoint operation: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+     * Update checkpoint operation status
+     */
+    async update(operationId, status, completedAt, errorMessage, postVhdxStateHash, validationStatus) {
+        const sql = `
+      UPDATE CheckpointOperations
+      SET status = @status,
+          completedAt = @completedAt,
+          errorMessage = @errorMessage,
+          postVhdxStateHash = @postVhdxStateHash,
+          validationStatus = @validationStatus
+      WHERE id = @operationId
+    `;
+        try {
+            await this.sqlClient.execute(sql, {
+                operationId,
+                status,
+                completedAt,
+                errorMessage,
+                postVhdxStateHash,
+                validationStatus
+            });
+            logger_1.default.info(`Updated checkpoint operation: ${operationId} → ${status}`);
+            return true;
+        }
+        catch (error) {
+            logger_1.default.error(`Error updating checkpoint operation: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+     * Get operation by ID
+     */
+    async getOperation(operationId) {
+        const sql = 'SELECT * FROM CheckpointOperations WHERE id = @operationId';
+        try {
+            const result = await this.sqlClient.query(sql, { operationId });
+            const row = result.recordset[0];
+            if (!row)
+                return null;
+            return {
+                ...row,
+                startedAt: new Date(row.startedAt),
+                completedAt: row.completedAt ? new Date(row.completedAt) : undefined
+            };
+        }
+        catch (error) {
+            logger_1.default.error(`Error getting checkpoint operation: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+     * Get latest operation for checkpoint
+     */
+    async getLatestOperation(checkpointId) {
+        const sql = `
+      SELECT TOP 1 *
+      FROM CheckpointOperations
+      WHERE checkpointId = @checkpointId
+      ORDER BY startedAt DESC
+    `;
+        try {
+            const result = await this.sqlClient.query(sql, { checkpointId });
+            const row = result.recordset[0];
+            if (!row)
+                return null;
+            return {
+                ...row,
+                startedAt: new Date(row.startedAt),
+                completedAt: row.completedAt ? new Date(row.completedAt) : undefined
+            };
+        }
+        catch (error) {
+            logger_1.default.error(`Error getting latest checkpoint operation: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+     * List operations for clone
+     */
+    async listOperations(cloneId, operationType, status, limit = 100) {
+        let sql = `
+      SELECT TOP (@limit) *
+      FROM CheckpointOperations
+      WHERE 1 = 1
+    `;
+        const params = { limit };
+        if (cloneId) {
+            sql += ` AND cloneId = @cloneId`;
+            params.cloneId = cloneId;
+        }
+        if (operationType) {
+            sql += ` AND operationType = @operationType`;
+            params.operationType = operationType;
+        }
+        if (status) {
+            sql += ` AND status = @status`;
+            params.status = status;
+        }
+        sql += ` ORDER BY startedAt DESC`;
+        try {
+            const result = await this.sqlClient.query(sql, params);
+            return result.recordset.map(row => ({
+                ...row,
+                startedAt: new Date(row.startedAt),
+                completedAt: row.completedAt ? new Date(row.completedAt) : undefined
+            }));
+        }
+        catch (error) {
+            logger_1.default.error(`Error listing checkpoint operations: ${error.message}`);
+            throw error;
+        }
+    }
+    /**
+     * Get failed operations from last N minutes
+     */
+    async getFailedOperations(sinceMinutesAgo = 60) {
+        const sql = `
+      SELECT *
+      FROM CheckpointOperations
+      WHERE status = 'failed'
+        AND startedAt > DATEADD(MINUTE, -@minutes, GETUTCDATE())
+      ORDER BY startedAt DESC
+    `;
+        try {
+            const result = await this.sqlClient.query(sql, { minutes: sinceMinutesAgo });
+            return result.recordset.map(row => ({
+                ...row,
+                startedAt: new Date(row.startedAt),
+                completedAt: row.completedAt ? new Date(row.completedAt) : undefined
+            }));
+        }
+        catch (error) {
+            logger_1.default.error(`Error getting failed checkpoint operations: ${error.message}`);
+            throw error;
+        }
+    }
+}
+exports.CheckpointOperationRepository = CheckpointOperationRepository;
+/**
  * Search Repository - Full-text search operations
  */
 class SearchRepository {
@@ -545,6 +839,7 @@ exports.SearchRepository = SearchRepository;
 // Singleton instances
 let cloneRepoInstance;
 let checkpointRepoInstance;
+let checkpointOperationRepoInstance;
 let metricsRepoInstance;
 let searchRepoInstance;
 /**
@@ -564,6 +859,15 @@ function getCheckpointRepository() {
         checkpointRepoInstance = new CheckpointRepository();
     }
     return checkpointRepoInstance;
+}
+/**
+ * Get checkpoint operation repository instance
+ */
+function getCheckpointOperationRepository() {
+    if (!checkpointOperationRepoInstance) {
+        checkpointOperationRepoInstance = new CheckpointOperationRepository();
+    }
+    return checkpointOperationRepoInstance;
 }
 /**
  * Get metrics repository instance

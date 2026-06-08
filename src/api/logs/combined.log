@@ -3205,3 +3205,103 @@
 {"level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-06 20:50:46"}
 {"level":"error","message":"Failed to initialize PgLockManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-06 20:50:46"}
 {"level":"info","message":"PgLockManager shut down successfully","service":"flashdb-api","timestamp":"2026-06-06 20:50:46"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Failed to connect to localhost:1433 - Could not connect (sequence)","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:32"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:33"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:34"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:35"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:36"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 1/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"warn","message":"Query execution failed (attempt 2/3): Connection is closed.. Retrying...","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"error","message":"Query execution failed after 3 attempts: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"error","message":"Failed to initialize PgStateManager: SQL query failed: Connection is closed.","service":"flashdb-api","timestamp":"2026-06-07 16:47:37"}
+{"environment":"test","level":"error","message":"Failed to initialize SQL client: Login failed for user 'sa'.","service":"flashdb-api","timestamp":"2026-06-07 23:12:26"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation on clone-456","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation on clone-456","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation on clone-456","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording validation start: clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation-start on clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording validation complete: clone-123 - Healthy: false","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation-complete on clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording repair start: clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: repair-execute on clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording repair complete: clone-123 - Success: false","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: repair-complete on clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation-start on clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation-complete on clone-456","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation-start on clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation-complete on clone-456","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation-start on clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation-complete on clone-123","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: repair-complete on clone-456","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}
+{"environment":"test","level":"info","message":"[AuditMetrics] Recording operation: validation on clone-456","service":"flashdb-api","timestamp":"2026-06-08 11:25:13"}

@@ -399,7 +399,8 @@ function Get-FlashdbCloneSourceConnection {
 
     $goldenImageId = Get-FlashdbPropertyValue -Target $Clone -Name 'GoldenImageId'
     if ($goldenImageId -and $script:GoldenImages.ContainsKey($goldenImageId)) {
-        return Get-FlashdbPropertyValue -Target $script:GoldenImages[$goldenImageId] -Name 'SourceConnection'
+        $image = $script:GoldenImages[$goldenImageId]
+        return Get-FlashdbPropertyValue -Target $image -Name 'DestinationConnection' -Default (Get-FlashdbPropertyValue -Target $image -Name 'SourceConnection')
     }
 
     return $null
@@ -442,6 +443,14 @@ FROM $databaseId.sys.tables t
 JOIN $databaseId.sys.schemas s ON t.schema_id = s.schema_id
 LEFT JOIN $databaseId.sys.partitions p ON t.object_id = p.object_id
 WHERE t.is_ms_shipped = 0
+  AND t.name NOT LIKE 'flashdb[_]%'
+  AND t.name NOT IN (
+      'GoldenImages',
+      'Clones',
+      'Checkpoints',
+      'CheckpointOperations',
+      'OperationMetrics'
+  )
 GROUP BY s.name, t.name
 ORDER BY s.name, t.name;
 "@
@@ -464,6 +473,14 @@ JOIN $databaseId.sys.schemas s ON t.schema_id = s.schema_id
 JOIN $databaseId.sys.columns c ON t.object_id = c.object_id
 JOIN $databaseId.sys.types ty ON c.user_type_id = ty.user_type_id
 WHERE t.is_ms_shipped = 0
+  AND t.name NOT LIKE 'flashdb[_]%'
+  AND t.name NOT IN (
+      'GoldenImages',
+      'Clones',
+      'Checkpoints',
+      'CheckpointOperations',
+      'OperationMetrics'
+  )
 ORDER BY s.name, t.name, c.column_id;
 "@
 
@@ -515,10 +532,67 @@ ORDER BY s.name, t.name, c.column_id;
     }
 }
 
-function Copy-FlashdbSqlDatabaseTables {
+function ConvertTo-FlashdbSqlColumnDefinition {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ConnectionString,
+        [object]$Column
+    )
+
+    $columnId = ConvertTo-FlashdbSqlIdentifier -Name ([string]$Column.ColumnName)
+    $typeName = [string]$Column.TypeName
+    $maxLength = [int]$Column.MaxLength
+    $precision = [int]$Column.Precision
+    $scale = [int]$Column.Scale
+    $isNullable = [bool]$Column.IsNullable
+    $isIdentity = [bool]$Column.IsIdentity
+    $collation = [string]$Column.CollationName
+
+    $typeSql = switch ($typeName.ToLowerInvariant()) {
+        { $_ -in @('varchar', 'char', 'varbinary', 'binary') } {
+            $length = if ($maxLength -eq -1) { 'max' } else { [string]$maxLength }
+            "$typeName($length)"
+            break
+        }
+        { $_ -in @('nvarchar', 'nchar') } {
+            $length = if ($maxLength -eq -1) { 'max' } else { [string]([math]::Max(1, $maxLength / 2)) }
+            "$typeName($length)"
+            break
+        }
+        { $_ -in @('decimal', 'numeric') } {
+            "$typeName($precision,$scale)"
+            break
+        }
+        { $_ -in @('datetime2', 'datetimeoffset', 'time') } {
+            "$typeName($scale)"
+            break
+        }
+        default {
+            $typeName
+        }
+    }
+
+    if ($collation -and $typeName.ToLowerInvariant() -in @('varchar', 'char', 'nvarchar', 'nchar', 'text', 'ntext')) {
+        $typeSql = "$typeSql COLLATE $collation"
+    }
+
+    $identitySql = ''
+    if ($isIdentity) {
+        $seed = if ($null -ne $Column.IdentitySeed -and $Column.IdentitySeed -ne [DBNull]::Value) { [int64]$Column.IdentitySeed } else { 1 }
+        $increment = if ($null -ne $Column.IdentityIncrement -and $Column.IdentityIncrement -ne [DBNull]::Value) { [int64]$Column.IdentityIncrement } else { 1 }
+        $identitySql = " IDENTITY($seed,$increment)"
+    }
+
+    $nullSql = if ($isNullable -and -not $isIdentity) { 'NULL' } else { 'NOT NULL' }
+    return "$columnId $typeSql$identitySql $nullSql"
+}
+
+function Copy-FlashdbSqlDatabaseTablesCrossConnection {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceConnectionString,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationConnectionString,
 
         [Parameter(Mandatory = $true)]
         [string]$SourceDatabase,
@@ -528,6 +602,192 @@ function Copy-FlashdbSqlDatabaseTables {
 
         [string[]]$SelectedTables
     )
+
+    $sourceBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $SourceConnectionString -DatabaseName $SourceDatabase
+    $sourceConnection = New-FlashdbSqlConnection -Builder $sourceBuilder
+    $destinationMasterBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $DestinationConnectionString -DatabaseName 'master'
+    $destinationMasterConnection = New-FlashdbSqlConnection -Builder $destinationMasterBuilder
+    $destinationConnection = $null
+    $targetCreated = $false
+
+    try {
+        $targetLiteral = $TargetDatabase.Replace("'", "''")
+        $targetId = ConvertTo-FlashdbSqlIdentifier -Name $TargetDatabase
+        $targetExists = [int](Invoke-FlashdbSqlScalar -Connection $destinationMasterConnection -Sql "SELECT COUNT(*) FROM sys.databases WHERE name = N'$targetLiteral';")
+        if ($targetExists -gt 0) {
+            throw "Target database already exists: $TargetDatabase"
+        }
+
+        Invoke-FlashdbSqlNonQuery -Connection $destinationMasterConnection -Sql "CREATE DATABASE $targetId;"
+        $targetCreated = $true
+
+        $destinationBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $DestinationConnectionString -DatabaseName $TargetDatabase
+        $destinationConnection = New-FlashdbSqlConnection -Builder $destinationBuilder
+
+        $tables = Invoke-FlashdbSqlQuery -Connection $sourceConnection -Sql @"
+SELECT s.name AS SchemaName, t.name AS TableName
+FROM sys.tables t
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE t.is_ms_shipped = 0
+ORDER BY s.name, t.name;
+"@
+
+        $selectedMap = ConvertTo-FlashdbSelectedTableMap -SelectedTables $SelectedTables
+        $hasSelection = $selectedMap.Count -gt 0
+        $matchedSelection = @{}
+        $tableCount = 0
+        [int64]$rowCount = 0
+        $copiedTables = New-Object System.Collections.ArrayList
+
+        foreach ($table in $tables.Rows) {
+            $schemaName = [string]$table.SchemaName
+            $tableName = [string]$table.TableName
+            $tableKey = ConvertTo-FlashdbTableKey -SchemaName $schemaName -TableName $tableName
+
+            if ($hasSelection -and -not $selectedMap.ContainsKey($tableKey)) {
+                continue
+            }
+
+            if ($hasSelection) {
+                $matchedSelection[$tableKey] = $true
+            }
+
+            $schemaId = ConvertTo-FlashdbSqlIdentifier -Name $schemaName
+            $tableId = ConvertTo-FlashdbSqlIdentifier -Name $tableName
+            $schemaLiteral = $schemaName.Replace("'", "''")
+            $tableLiteral = $tableName.Replace("'", "''")
+
+            if ($schemaName -ne 'dbo') {
+                Invoke-FlashdbSqlNonQuery -Connection $destinationConnection -Sql @"
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'$schemaLiteral')
+BEGIN
+    EXEC('CREATE SCHEMA $schemaId');
+END
+"@
+            }
+
+            $columns = Invoke-FlashdbSqlQuery -Connection $sourceConnection -Sql @"
+SELECT
+    c.column_id AS ColumnId,
+    c.name AS ColumnName,
+    TYPE_NAME(c.user_type_id) AS TypeName,
+    c.max_length AS MaxLength,
+    c.precision AS Precision,
+    c.scale AS Scale,
+    c.is_nullable AS IsNullable,
+    c.is_identity AS IsIdentity,
+    ic.seed_value AS IdentitySeed,
+    ic.increment_value AS IdentityIncrement,
+    c.collation_name AS CollationName
+FROM sys.columns c
+JOIN sys.tables t ON c.object_id = t.object_id
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+LEFT JOIN sys.identity_columns ic ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+WHERE s.name = N'$schemaLiteral'
+  AND t.name = N'$tableLiteral'
+  AND c.is_computed = 0
+ORDER BY c.column_id;
+"@
+
+            if ($columns.Rows.Count -eq 0) {
+                continue
+            }
+
+            $columnDefinitions = @($columns.Rows | ForEach-Object { ConvertTo-FlashdbSqlColumnDefinition -Column $_ })
+            Invoke-FlashdbSqlNonQuery -Connection $destinationConnection -Sql "CREATE TABLE $schemaId.$tableId ($($columnDefinitions -join ', '));"
+
+            $columnNames = @($columns.Rows | ForEach-Object { [string]$_.ColumnName })
+            $columnList = ($columnNames | ForEach-Object { ConvertTo-FlashdbSqlIdentifier -Name $_ }) -join ', '
+            $reader = $null
+            $bulkCopy = $null
+            try {
+                $command = $sourceConnection.CreateCommand()
+                $command.CommandTimeout = 0
+                $command.CommandText = "SELECT $columnList FROM $schemaId.$tableId;"
+                $reader = $command.ExecuteReader()
+                $bulkCopy = [System.Data.SqlClient.SqlBulkCopy]::new(
+                    $destinationConnection,
+                    [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity,
+                    $null
+                )
+                $bulkCopy.DestinationTableName = "$schemaId.$tableId"
+                $bulkCopy.BulkCopyTimeout = 0
+                foreach ($columnName in $columnNames) {
+                    [void]$bulkCopy.ColumnMappings.Add($columnName, $columnName)
+                }
+                $bulkCopy.WriteToServer($reader)
+            } finally {
+                if ($reader) {
+                    $reader.Close()
+                }
+                if ($bulkCopy) {
+                    $bulkCopy.Close()
+                }
+            }
+
+            $tableRows = Invoke-FlashdbSqlScalar -Connection $destinationConnection -Sql "SELECT COUNT_BIG(*) FROM $schemaId.$tableId;"
+            $rowCount += [int64]$tableRows
+            $tableCount++
+            [void]$copiedTables.Add("$schemaName.$tableName")
+        }
+
+        if ($hasSelection) {
+            $missingTables = @($selectedMap.Keys | Where-Object { -not $matchedSelection.ContainsKey($_) } | ForEach-Object { $selectedMap[$_] })
+            if ($missingTables.Count -gt 0) {
+                throw "Selected table(s) not found in $SourceDatabase`: $($missingTables -join ', ')"
+            }
+        }
+
+        return [PSCustomObject]@{
+            DatabaseName = $TargetDatabase
+            SourceDatabase = $SourceDatabase
+            TableCount = $tableCount
+            RowCount = $rowCount
+            Tables = @($copiedTables)
+        }
+    } catch {
+        if ($targetCreated) {
+            try {
+                Remove-FlashdbSqlDatabase -ConnectionString $DestinationConnectionString -DatabaseName $TargetDatabase
+            } catch {
+                Write-Warning "Failed to clean up partial SQL copy $TargetDatabase`: $_"
+            }
+        }
+
+        throw
+    } finally {
+        if ($destinationConnection) {
+            $destinationConnection.Dispose()
+        }
+        $destinationMasterConnection.Dispose()
+        $sourceConnection.Dispose()
+    }
+}
+
+function Copy-FlashdbSqlDatabaseTables {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString,
+
+        [string]$DestinationConnectionString,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SourceDatabase,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetDatabase,
+
+        [string[]]$SelectedTables
+    )
+
+    if ($DestinationConnectionString -and $DestinationConnectionString -ne $ConnectionString) {
+        return Copy-FlashdbSqlDatabaseTablesCrossConnection `
+            -SourceConnectionString $ConnectionString `
+            -DestinationConnectionString $DestinationConnectionString `
+            -SourceDatabase $SourceDatabase `
+            -TargetDatabase $TargetDatabase `
+            -SelectedTables $SelectedTables
+    }
 
     $serverBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $ConnectionString -DatabaseName 'master'
     $connection = New-FlashdbSqlConnection -Builder $serverBuilder
@@ -642,6 +902,7 @@ function New-FlashdbGoldenImage {
         [string]$OutputPath,
         [string]$BackupFile,
         [string]$SourceConnection,
+        [string]$DestinationConnection,
         [string]$DatabaseType = 'sql-server',
         [string]$DatabaseName,
         [string]$SourceDatabase,
@@ -672,6 +933,8 @@ function New-FlashdbGoldenImage {
         throw "$Method requires a source connection"
     }
 
+    $effectiveDestinationConnection = if ($DestinationConnection) { $DestinationConnection } else { $SourceConnection }
+
     $sqlCopy = $null
     if ($DatabaseType -eq 'sql-server' -and $Method -eq 'TableByTableCopy') {
         $sourceBuilder = New-FlashdbSqlConnectionBuilder -ConnectionString $SourceConnection
@@ -684,6 +947,7 @@ function New-FlashdbGoldenImage {
         $targetDatabase = "FlashDB_Golden_$(Get-Date -Format yyyyMMddHHmmss)_$(Get-Random -Minimum 1000 -Maximum 9999)"
         $sqlCopy = Copy-FlashdbSqlDatabaseTables `
             -ConnectionString $SourceConnection `
+            -DestinationConnectionString $effectiveDestinationConnection `
             -SourceDatabase $copySourceDatabase `
             -TargetDatabase $targetDatabase `
             -SelectedTables $SelectedTables
@@ -695,7 +959,7 @@ function New-FlashdbGoldenImage {
     $sizeBytes = 0
     if ($sqlCopy) {
         try {
-            $sizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $SourceConnection -DatabaseName $sqlCopy.DatabaseName
+            $sizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $effectiveDestinationConnection -DatabaseName $sqlCopy.DatabaseName
         } catch {
             Write-Verbose "Failed to query golden image database size: $_"
             $sizeBytes = 0
@@ -710,6 +974,7 @@ function New-FlashdbGoldenImage {
         OutputPath = $OutputPath
         BackupFile = $BackupFile
         SourceConnection = $SourceConnection
+        DestinationConnection = $effectiveDestinationConnection
         DatabaseType = $DatabaseType
         DatabaseName = $DatabaseName
         SourceDatabase = $SourceDatabase
@@ -763,6 +1028,7 @@ function Update-FlashdbGoldenImage {
         [string]$OutputPath,
         [string]$BackupFile,
         [string]$SourceConnection,
+        [string]$DestinationConnection,
         [string]$DatabaseType,
         [string]$DatabaseName,
         [string]$SourceDatabase,
@@ -783,6 +1049,7 @@ function Update-FlashdbGoldenImage {
         OutputPath = $OutputPath
         BackupFile = $BackupFile
         SourceConnection = $SourceConnection
+        DestinationConnection = $DestinationConnection
         DatabaseType = $DatabaseType
         DatabaseName = $DatabaseName
         SourceDatabase = $SourceDatabase
@@ -814,12 +1081,42 @@ function Remove-FlashdbGoldenImage {
         throw "Golden image not found: $GoldenImageId"
     }
 
+    $image = $script:GoldenImages[$GoldenImageId]
+    $databaseType = Get-FlashdbPropertyValue -Target $image -Name 'DatabaseType' -Default 'sql-server'
+    $sourceConnection = Get-FlashdbPropertyValue -Target $image -Name 'DestinationConnection' -Default (Get-FlashdbPropertyValue -Target $image -Name 'SourceConnection')
+    $goldenDatabaseName = Get-FlashdbPropertyValue -Target $image -Name 'GoldenDatabaseName'
+    $outputPath = Get-FlashdbPropertyValue -Target $image -Name 'OutputPath'
+    $deletedDatabase = $false
+    $deletedFile = $false
+
+    if ($databaseType -eq 'sql-server' -and $sourceConnection -and $goldenDatabaseName) {
+        Remove-FlashdbSqlDatabase -ConnectionString $sourceConnection -DatabaseName $goldenDatabaseName
+        $deletedDatabase = $true
+    }
+
+    if ($outputPath -and (Test-Path -Path $outputPath -PathType Leaf)) {
+        try {
+            Remove-Item -Path $outputPath -Force -ErrorAction Stop
+            $deletedFile = $true
+        } catch {
+            if (-not $Force) {
+                throw "Failed to delete golden image file '$outputPath': $_"
+            }
+
+            Write-Warning "Failed to delete golden image file '$outputPath': $_"
+        }
+    }
+
     $script:GoldenImages.Remove($GoldenImageId)
     Save-FlashdbProviderState
 
     return [PSCustomObject]@{
         Success = $true
         Message = "Golden image $GoldenImageId deleted"
+        GoldenImageId = $GoldenImageId
+        GoldenDatabaseName = $goldenDatabaseName
+        DeletedDatabase = $deletedDatabase
+        DeletedFile = $deletedFile
     }
 }
 
@@ -836,7 +1133,7 @@ function Update-FlashdbGoldenImageSize {
     $sizeBytes = 0
     $databaseType = Get-FlashdbPropertyValue -Target $image -Name 'DatabaseType' -Default 'sql-server'
     $goldenDatabaseName = Get-FlashdbPropertyValue -Target $image -Name 'GoldenDatabaseName'
-    $sourceConnection = Get-FlashdbPropertyValue -Target $image -Name 'SourceConnection'
+    $sourceConnection = Get-FlashdbPropertyValue -Target $image -Name 'DestinationConnection' -Default (Get-FlashdbPropertyValue -Target $image -Name 'SourceConnection')
 
     if ($databaseType -eq 'sql-server' -and $goldenDatabaseName -and $sourceConnection) {
         try {
@@ -953,10 +1250,15 @@ function New-FlashdbClone {
 
     $image = if ($GoldenImageId) { $script:GoldenImages[$GoldenImageId] } else { $null }
     $sqlCopy = $null
+    $imageConnection = if ($image) {
+        Get-FlashdbPropertyValue -Target $image -Name 'DestinationConnection' -Default (Get-FlashdbPropertyValue -Target $image -Name 'SourceConnection')
+    } else {
+        $null
+    }
     if ($image -and $image.DatabaseType -eq 'sql-server' -and $image.GoldenDatabaseName) {
         $targetDatabase = if ($DatabaseName) { $DatabaseName } else { "${CloneName}_Clone" }
         $sqlCopy = Copy-FlashdbSqlDatabaseTables `
-            -ConnectionString $image.SourceConnection `
+            -ConnectionString $imageConnection `
             -SourceDatabase $image.GoldenDatabaseName `
             -TargetDatabase $targetDatabase
     }
@@ -964,9 +1266,9 @@ function New-FlashdbClone {
     $cloneId = "clone-$(Get-Date -Format yyyyMMddHHmmss)-$(Get-Random -Minimum 1000 -Maximum 9999)"
     $finalDatabaseName = if ($sqlCopy) { $sqlCopy.DatabaseName } elseif ($DatabaseName) { $DatabaseName } else { "${CloneName}_Clone" }
     $cloneSizeBytes = 0
-    if ($sqlCopy -and $image.SourceConnection) {
+    if ($sqlCopy -and $imageConnection) {
         try {
-            $cloneSizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $image.SourceConnection -DatabaseName $finalDatabaseName
+            $cloneSizeBytes = Get-FlashdbSqlDatabaseSizeBytes -ConnectionString $imageConnection -DatabaseName $finalDatabaseName
         } catch {
             Write-Verbose "Failed to query clone database size: $_"
             $cloneSizeBytes = 0
@@ -983,6 +1285,7 @@ function New-FlashdbClone {
         DatabaseName = $finalDatabaseName
         CompressionEnabled = $CompressionEnabled
         SourceGoldenDatabaseName = if ($sqlCopy) { $sqlCopy.SourceDatabase } else { $null }
+        SourceConnection = $imageConnection
         Actualized = [bool]$sqlCopy
         TableCount = if ($sqlCopy) { $sqlCopy.TableCount } else { 0 }
         RowCount = if ($sqlCopy) { $sqlCopy.RowCount } else { 0 }

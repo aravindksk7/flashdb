@@ -279,20 +279,164 @@ router.get('/timeline', async (req, res) => {
 router.get('/all', async (_req, res) => {
     try {
         logger_1.default.info('Retrieving all metrics');
-        const [overview, clones, storage, operations, timeline] = await Promise.all([
-            psService.executeCommand('Get-FlashdbMetrics', {}),
-            psService.executeCommand('Get-CloneCreationStats', {}),
-            psService.executeCommand('Get-StorageStats', {}),
-            psService.executeCommand('Get-OperationStats', {}),
-            psService.executeCommand('Get-TimelineData', {
-                HoursBack: 24,
-                GroupBy: 'hour'
-            })
+        const toArray = (value) => {
+            if (value == null)
+                return [];
+            const items = Array.isArray(value) ? value : [value];
+            return items.filter(item => {
+                if (item == null)
+                    return false;
+                return typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length > 0;
+            });
+        };
+        const safeCommand = async (command, params) => {
+            try {
+                return await psService.executeCommand(command, params);
+            }
+            catch (error) {
+                logger_1.default.warn(`Metrics command ${command} failed; using defaults: ${error.message}`);
+                return [];
+            }
+        };
+        const [goldenImagesResult, clonesResult] = await Promise.all([
+            safeCommand('Get-FlashdbGoldenImage', {}),
+            safeCommand('Get-FlashdbClone', {})
         ]);
-        const overviewData = overview?.overview || {};
-        const operationsLast24h = typeof overviewData.operationsLast24h === 'number'
-            ? overviewData.operationsLast24h
-            : 0;
+        const goldenImages = toArray(goldenImagesResult);
+        const cloneItems = toArray(clonesResult);
+        const toNumber = (value, fallback = 0) => {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        };
+        const bytesToGB = (bytes) => toNumber(bytes) / 1024 / 1024 / 1024;
+        const taskQueue = (0, taskQueue_1.getTaskQueue)();
+        const queueSnapshot = taskQueue.getAllTasks();
+        const queueTasks = [
+            ...queueSnapshot.queue,
+            ...queueSnapshot.completed,
+            ...queueSnapshot.failed
+        ].filter(task => /checkpoint$/.test(task.type));
+        const completedTasks = queueTasks.filter(task => task.status === 'completed').length;
+        const failedTasks = queueTasks.filter(task => task.status === 'failed').length;
+        const successfulTaskRate = queueTasks.length > 0 ? (completedTasks / queueTasks.length) * 100 : 100;
+        const goldenImageById = new Map();
+        goldenImages.forEach(image => {
+            const id = image.Id || image.id;
+            if (id)
+                goldenImageById.set(String(id), image);
+        });
+        const failedClones = cloneItems.filter(clone => /failed/i.test(clone.Status || clone.status || '')).length;
+        const successfulClones = Math.max(0, cloneItems.length - failedClones);
+        const activeClones = cloneItems.filter(clone => /ready|attached/i.test(clone.Status || clone.status || '')).length;
+        const cloneStorageBreakdown = cloneItems.map(clone => {
+            const goldenImage = goldenImageById.get(String(clone.GoldenImageId || clone.goldenImageId || ''));
+            const cloneSizeBytes = clone.SizeBytes || clone.sizeBytes || clone.Size || clone.size || clone.VhdxSizeBytes || clone.vhdxSizeBytes;
+            const parentSizeBytes = clone.ParentSizeBytes || clone.parentSizeBytes || clone.ParentSize || clone.parentSize || goldenImage?.SizeBytes || goldenImage?.sizeBytes || goldenImage?.Size || goldenImage?.size;
+            const vhdxSizeGB = bytesToGB(cloneSizeBytes || parentSizeBytes);
+            const parentSizeGB = bytesToGB(parentSizeBytes || cloneSizeBytes);
+            const savingsGB = Math.max(0, parentSizeGB - vhdxSizeGB);
+            return {
+                cloneId: clone.Id || clone.id,
+                cloneName: clone.Name || clone.name,
+                databaseName: clone.DatabaseName || clone.databaseName,
+                tableCount: toNumber(clone.TableCount || clone.tableCount),
+                rows: toNumber(clone.RowCount || clone.rowCount),
+                vhdxSizeGB,
+                parentSizeGB,
+                savingsGB
+            };
+        });
+        const totalUsedGB = cloneStorageBreakdown.reduce((sum, clone) => sum + clone.vhdxSizeGB, 0);
+        const totalParentSizeGB = cloneStorageBreakdown.reduce((sum, clone) => sum + clone.parentSizeGB, 0);
+        const totalSavingsGB = cloneStorageBreakdown.reduce((sum, clone) => sum + clone.savingsGB, 0);
+        const compressionRatioPercent = totalParentSizeGB > 0 ? (totalSavingsGB / totalParentSizeGB) * 100 : 0;
+        const last24hCutoff = Date.now() - 24 * 60 * 60 * 1000;
+        const operationsLast24h = queueTasks
+            .filter(task => {
+            const createdAt = task.startedAt || task.createdAt;
+            return createdAt && new Date(createdAt).getTime() >= last24hCutoff;
+        }).length;
+        const operationTypeCounts = queueTasks.reduce((acc, task) => {
+            const type = task.type.replace('-checkpoint', '');
+            if (!acc[type]) {
+                acc[type] = { total: 0, successful: 0 };
+            }
+            acc[type].total++;
+            if (task.status === 'completed') {
+                acc[type].successful++;
+            }
+            return acc;
+        }, {});
+        const operationsByType = Object.entries(operationTypeCounts)
+            .map(([type, counts]) => ({
+            type,
+            count: counts.total,
+            successRatePercent: counts.total > 0 ? (counts.successful / counts.total) * 100 : 100
+        }))
+            .sort((a, b) => b.count - a.count);
+        const operationBuckets = new Map();
+        for (let i = 23; i >= 0; i--) {
+            const bucket = new Date(Date.now() - i * 60 * 60 * 1000);
+            bucket.setMinutes(0, 0, 0);
+            operationBuckets.set(bucket.toISOString(), 0);
+        }
+        queueTasks.forEach(task => {
+            const timestamp = task.startedAt || task.createdAt;
+            if (!timestamp)
+                return;
+            const taskTime = new Date(timestamp);
+            if (Number.isNaN(taskTime.getTime()) || taskTime.getTime() < last24hCutoff)
+                return;
+            taskTime.setMinutes(0, 0, 0);
+            const key = taskTime.toISOString();
+            operationBuckets.set(key, (operationBuckets.get(key) || 0) + 1);
+        });
+        const overviewData = {
+            totalClonesCreated: cloneItems.length,
+            totalStorageSavedGB: totalSavingsGB,
+            avgCloneCreationTimeSeconds: 0,
+            operationSuccessRatePercent: successfulTaskRate,
+            operationsLast24h,
+            activeClonesCount: activeClones
+        };
+        const clones = {
+            totalClones: cloneItems.length,
+            successfulClones,
+            failedClones,
+            averageCreationTimeSeconds: 0,
+            minCreationTimeSeconds: 0,
+            maxCreationTimeSeconds: 0,
+            successRatePercent: cloneItems.length === 0 ? 100 : (successfulClones / cloneItems.length) * 100,
+            creationTimesByGoldenImage: []
+        };
+        const storage = {
+            totalUsedGB,
+            totalSavingsGB,
+            compressionRatioPercent,
+            totalParentSizeGB,
+            avgCloneSizeGB: cloneStorageBreakdown.length > 0 ? totalUsedGB / cloneStorageBreakdown.length : 0,
+            cloneStorageBreakdown
+        };
+        const operations = {
+            totalOperations: queueTasks.length,
+            successfulOperations: completedTasks,
+            failedOperations: failedTasks,
+            successRatePercent: successfulTaskRate,
+            operationsByType
+        };
+        const timeline = {
+            cloneCreations: cloneItems.map(clone => ({
+                timestamp: clone.CreatedAt || clone.createdAt,
+                clones: 1,
+                cloneName: clone.Name || clone.name
+            })),
+            operations: Array.from(operationBuckets.entries()).map(([timestamp, operations]) => ({
+                timestamp,
+                operations
+            })),
+            timelineStart: new Date(last24hCutoff).toISOString(),
+            timelineEnd: new Date().toISOString()
+        };
         return res.json({
             success: true,
             data: {
@@ -403,10 +547,20 @@ router.get('/queue', async (_req, res) => {
         logger_1.default.info('Retrieving task queue metrics');
         const taskQueue = (0, taskQueue_1.getTaskQueue)();
         const metrics = taskQueue.getMetrics();
+        const pending = metrics.pending ?? metrics.pendingTasks ?? metrics.queueDepth ?? 0;
+        const processing = metrics.processing ?? metrics.processingTasks ?? 0;
+        const completed = metrics.completed ?? metrics.completedTasks ?? metrics.totalTasksProcessed ?? 0;
+        const failed = metrics.failed ?? metrics.failedTasks ?? 0;
         return res.json({
             success: true,
             data: {
                 ...metrics,
+                pending,
+                processing,
+                completed,
+                failed,
+                totalEnqueued: metrics.totalEnqueued ?? pending + processing + completed + failed,
+                maxRetries: metrics.maxRetries ?? 0,
                 timestamp: new Date().toISOString()
             },
             message: 'Task queue metrics retrieved successfully'

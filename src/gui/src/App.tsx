@@ -12,6 +12,10 @@ import { ClusterStatus } from './components/ClusterStatus';
 import DeploymentGuide from './components/DeploymentGuide';
 import { ConsoleIcon } from './components/ConsoleIcon';
 import { CloneCard } from './components/CloneCard';
+import { ContractComplianceDashboard } from './components/ContractComplianceDashboard';
+import { ReleaseGateDashboard } from './components/ReleaseGateDashboard';
+import { FeatureFlagDashboard } from './components/FeatureFlagDashboard';
+import { HostManagement } from './components/HostManagement';
 
 interface Clone {
   id: string;
@@ -50,13 +54,14 @@ interface GoldenImage {
   rowCount?: number;
 }
 
-type AppTab = 'dashboard' | 'management' | 'audit' | 'deployment';
+type AppTab = 'dashboard' | 'management' | 'audit' | 'deployment' | 'infrastructure';
 
 const getInitialTab = (): AppTab => {
   const tab = new URLSearchParams(window.location.search).get('tab');
   if (tab === 'management') return 'management';
   if (tab === 'audit') return 'audit';
   if (tab === 'deployment') return 'deployment';
+  if (tab === 'infrastructure') return 'infrastructure';
   return 'dashboard';
 };
 
@@ -373,6 +378,13 @@ function App() {
         >
           <ConsoleIcon name="status" className="console-icon" />
           Deployment
+        </button>
+        <button
+          className={`tab ${activeTab === 'infrastructure' ? 'active' : ''}`}
+          onClick={() => selectTab('infrastructure')}
+        >
+          <ConsoleIcon name="schema" className="console-icon" />
+          Infrastructure
         </button>
       </nav>
 
@@ -717,6 +729,30 @@ function App() {
       {activeTab === 'deployment' && (
         <div className="container">
           <DeploymentGuide />
+        </div>
+      )}
+
+      {activeTab === 'infrastructure' && (
+        <div className="container">
+          <HostManagement onHostsUpdated={loadData} />
+          <div style={{ marginTop: '2rem' }}>
+            <div className="section">
+              <div className="panel-header">
+                <div>
+                  <div className="panel-kicker">System Operations</div>
+                  <h2>Compliance & Release Management</h2>
+                  <p className="workflow-help">Monitor contract compliance, release gates, and feature flag rollouts.</p>
+                </div>
+              </div>
+            </div>
+            <ContractComplianceDashboard />
+            <div style={{ marginTop: '2rem' }}>
+              <ReleaseGateDashboard />
+            </div>
+            <div style={{ marginTop: '2rem' }}>
+              <FeatureFlagDashboard />
+            </div>
+          </div>
         </div>
       )}
 

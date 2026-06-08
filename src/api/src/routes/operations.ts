@@ -30,7 +30,13 @@ const operationTaskTypes = new Set([
   'delete-checkpoint',
   'validate-clone',
   'repair-clone',
-  'validate-all-clones'
+  'validate-all-clones',
+  'validation-start',
+  'validation-complete',
+  'repair-start',
+  'repair-execute',
+  'repair-complete',
+  'repair-plan'
 ]);
 
 function toIsoString(value: any): string | undefined {
@@ -48,7 +54,13 @@ function normalizeOperationType(value: any): string {
     'delete-checkpoint': 'delete',
     'validate-clone': 'validation',
     'validate-all-clones': 'validation',
-    'repair-clone': 'repair'
+    'repair-clone': 'repair',
+    'validation-start': 'validation',
+    'validation-complete': 'validation',
+    'repair-start': 'repair',
+    'repair-execute': 'repair',
+    'repair-complete': 'repair',
+    'repair-plan': 'repair'
   };
 
   if (mappedTypes[operationType]) {
@@ -81,8 +93,8 @@ function normalizeHealthStatus(value: any): 'healthy' | 'unhealthy' | undefined 
 }
 
 function getTaskLabel(type: string, payload: Record<string, any>): string {
-  if (type === 'validation') return 'Clone validation';
-  if (type === 'repair') return 'Clone repair';
+  if (type === 'validation') return `Clone validation (${payload.cloneId || 'Unknown'})`;
+  if (type === 'repair') return `Clone repair (${payload.cloneId || 'Unknown'})`;
   if (type === 'create-clone') return payload.name || payload.cloneName || 'Clone creation';
   if (type === 'delete-clone') return payload.name || payload.cloneName || 'Clone deletion';
   if (type === 'create') return payload.checkpointName || payload.name || 'New restore point';
@@ -220,7 +232,13 @@ async function getPersistentQueueOperations(limit: number): Promise<TimelineOper
           'delete-checkpoint',
           'validate-clone',
           'repair-clone',
-          'validate-all-clones'
+          'validate-all-clones',
+          'validation-start',
+          'validation-complete',
+          'repair-start',
+          'repair-execute',
+          'repair-complete',
+          'repair-plan'
        )
        ORDER BY COALESCE([completedAt], [startedAt], [createdAt]) DESC`,
       { limit }
@@ -269,18 +287,21 @@ async function getPersistedAuditOperations(cloneId?: string, limit: number = 250
 
     const result = await sqlClient.query<any>(query, params);
 
-    return (result.recordset || []).map(row => ({
-      id: row.id,
-      cloneId: row.targetId || '',
-      checkpointId: '',
-      checkpointName: 'Audit Operation',
-      type: row.operationType || 'unknown',
-      status: row.status || 'unknown',
-      timestamp: toIsoString(row.startedAt) || new Date().toISOString(),
-      completedAt: toIsoString(row.completedAt) || null,
-      message: row.errorMessage || null,
-      source: 'audit' as const
-    } as TimelineOperation));
+    return (result.recordset || []).map(row => {
+      const normalizedType = normalizeOperationType(row.operationType);
+      return {
+        id: row.id,
+        cloneId: row.targetId || '',
+        checkpointId: '',
+        checkpointName: getTaskLabel(normalizedType, { cloneId: row.targetId }),
+        type: normalizedType,
+        status: row.status || 'unknown',
+        timestamp: toIsoString(row.startedAt) || new Date().toISOString(),
+        completedAt: toIsoString(row.completedAt) || null,
+        message: row.errorMessage || null,
+        source: 'audit' as const
+      } as TimelineOperation;
+    });
   } catch (error: any) {
     logger.debug(`Persisted audit operations unavailable: ${error.message}`);
     return [];

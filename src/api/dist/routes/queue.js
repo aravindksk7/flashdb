@@ -5,8 +5,70 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const taskQueue_1 = require("../services/taskQueue");
+const sqlClient_1 = require("../services/sqlClient");
 const logger_1 = __importDefault(require("../logger"));
 const router = (0, express_1.Router)();
+const parseJsonField = (value) => {
+    if (typeof value !== 'string')
+        return value;
+    try {
+        return JSON.parse(value);
+    }
+    catch {
+        return value;
+    }
+};
+const getTaskFromPersistentStore = async (taskId) => {
+    try {
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        const result = await sqlClient.query(`SELECT TOP 1
+          [id],
+          [type],
+          [status],
+          [payload],
+          [retry_count] AS retryCount,
+          [created_at] AS createdAt,
+          [started_at] AS startedAt,
+          [completed_at] AS completedAt,
+          [error],
+          [result]
+       FROM [dbo].[flashdb_queue]
+       WHERE [id] = @taskId
+       UNION ALL
+       SELECT TOP 1
+          [id],
+          [type],
+          [status],
+          [payload],
+          [retry_count] AS retryCount,
+          [created_at] AS createdAt,
+          [started_at] AS startedAt,
+          [completed_at] AS completedAt,
+          [error],
+          [result]
+       FROM [dbo].[flashdb_queue_archive]
+       WHERE [id] = @taskId`, { taskId });
+        const row = result.recordset?.[0];
+        if (!row)
+            return null;
+        return {
+            id: row.id,
+            type: row.type,
+            status: row.status,
+            payload: parseJsonField(row.payload),
+            createdAt: row.createdAt,
+            startedAt: row.startedAt,
+            completedAt: row.completedAt,
+            error: row.error ?? null,
+            retryCount: row.retryCount ?? 0,
+            result: parseJsonField(row.result)
+        };
+    }
+    catch (error) {
+        logger_1.default.debug(`Persistent task lookup skipped for ${taskId}: ${error.message}`);
+        return null;
+    }
+};
 /**
  * GET /api/queue/metrics
  * Retrieve queue metrics (depth, processing stats, error count)
@@ -65,12 +127,16 @@ router.get('/status', (_req, res) => {
  * GET /api/queue/tasks/:taskId
  * Retrieve a specific task by ID
  */
-router.get('/tasks/:taskId', (req, res) => {
+router.get('/tasks/:taskId', async (req, res) => {
     try {
         const { taskId } = req.params;
         const taskQueue = (0, taskQueue_1.getTaskQueue)();
         const task = taskQueue.getTask(taskId);
-        if (!task) {
+        const persistentTask = await getTaskFromPersistentStore(taskId);
+        const terminalPersistentTask = persistentTask && ['completed', 'failed'].includes(persistentTask.status)
+            ? persistentTask
+            : null;
+        if (!task && !persistentTask) {
             return res.status(404).json({
                 success: false,
                 message: `Task not found: ${taskId}`
@@ -78,7 +144,7 @@ router.get('/tasks/:taskId', (req, res) => {
         }
         return res.json({
             success: true,
-            data: task,
+            data: terminalPersistentTask || task || persistentTask,
             message: 'Task retrieved successfully'
         });
     }

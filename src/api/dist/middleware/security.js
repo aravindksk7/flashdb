@@ -151,10 +151,24 @@ const requestValidationMiddleware = (req, res, next) => {
             }
         }
         // Check for excessively large request bodies (handled by express.json middleware with limit)
-        // Check for SQL injection patterns in query parameters
+        // Check for SQL injection patterns in query parameters and normal text fields.
+        // Connection strings legitimately contain semicolons, quotes, and password
+        // segments, so route-level validation owns those fields.
         const params = { ...req.query, ...req.body };
         const suspiciousPatterns = /('|"|;|--|\/\*|\*\/|xp_|sp_)/gi;
+        const connectionStringFields = new Set([
+            'sourceConnection',
+            'sourceConnectionString',
+            'destinationConnection',
+            'destinationConnectionString',
+            'targetConnection',
+            'targetConnectionString',
+            'connectionString'
+        ]);
         for (const [key, value] of Object.entries(params)) {
+            if (connectionStringFields.has(key)) {
+                continue;
+            }
             if (typeof value === 'string' && suspiciousPatterns.test(value)) {
                 logger_1.default.warn(`Suspicious pattern detected in ${key}: ${value.substring(0, 50)}`);
                 res.status(400).json({
@@ -195,6 +209,7 @@ exports.sensitiveFields = [
     'api_key',
     'secret',
     'credential',
+    'connection',
     'authorization',
     'sql_password',
     'db_password'

@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import '../styles/Dashboard.css';
 import { ConsoleIcon } from './ConsoleIcon';
+import { CloneHealthMetrics } from './CloneHealthMetrics';
+import { RepairSuccessMetrics } from './RepairSuccessMetrics';
+import { HealthTrendChart } from './HealthTrendChart';
 
 interface MetricsData {
   overview: {
@@ -253,6 +256,15 @@ export const Dashboard: React.FC = () => {
           </div>
           {renderTrend(cloneTrendValues, 'green')}
         </div>
+      </div>
+
+      {/* Health & Audit Enhancements (Phase 8) */}
+      <div className="health-metrics-section">
+        <div className="health-metrics-grid">
+          <CloneHealthMetrics />
+          <RepairSuccessMetrics />
+        </div>
+        <HealthTrendChart />
       </div>
 
       {/* Charts Grid */}

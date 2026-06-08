@@ -9,6 +9,7 @@ import checkpointRoutes from './routes/checkpoints';
 import searchRoutes from './routes/search';
 import batchRoutes from './routes/batch';
 import metricsRoutes from './routes/metrics';
+import hostsRoutes from './routes/hosts';
 import {
   structuredLoggingMiddleware,
   errorLoggingMiddleware,
@@ -47,6 +48,10 @@ import adminRoutes from './routes/admin';
 import authRoutes from './routes/auth';
 import rbacRoutes from './routes/rbac';
 import operationsRoutes from './routes/operations';
+import healthRoutes from './routes/health';
+import complianceRoutes from './routes/compliance';
+import releaseGatesRoutes from './routes/releaseGates';
+import featuresRoutes from './routes/features';
 import { attachUserContext } from './middleware/authMiddleware';
 import { bootstrapRbac } from './services/rbacBootstrap';
 
@@ -215,6 +220,11 @@ app.use('/api/batches', batchRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/health', healthRoutes);
+app.use('/api/hosts', hostsRoutes);
+app.use('/api/contracts', complianceRoutes);
+app.use('/api/release-gates', releaseGatesRoutes);
+app.use('/api/features', featuresRoutes);
 
 // Swagger/OpenAPI endpoint (can be expanded later)
 app.get('/api/docs', (_req: Request, res: Response) => {

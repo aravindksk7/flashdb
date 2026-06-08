@@ -42,6 +42,7 @@ router.post('/', async (req: Request, res: Response) => {
       outputPath,
       backupFile,
       sourceConnection,
+      destinationConnection,
       databaseType,
       databaseName,
       sourceDatabase,
@@ -90,6 +91,7 @@ router.post('/', async (req: Request, res: Response) => {
     };
     if (backupFile) params.BackupFile = backupFile;
     if (sourceConnection) params.SourceConnection = sourceConnection;
+    if (destinationConnection) params.DestinationConnection = destinationConnection;
     if (databaseType) params.DatabaseType = databaseType;
     if (databaseName) params.DatabaseName = databaseName;
     if (sourceDatabase) params.SourceDatabase = sourceDatabase;
@@ -207,6 +209,7 @@ router.put('/:imageId', async (req: Request, res: Response) => {
       'outputPath',
       'backupFile',
       'sourceConnection',
+      'destinationConnection',
       'databaseType',
       'databaseName',
       'sourceDatabase',
@@ -234,6 +237,7 @@ router.put('/:imageId', async (req: Request, res: Response) => {
       outputPath: 'OutputPath',
       backupFile: 'BackupFile',
       sourceConnection: 'SourceConnection',
+      destinationConnection: 'DestinationConnection',
       databaseType: 'DatabaseType',
       databaseName: 'DatabaseName',
       sourceDatabase: 'SourceDatabase',
@@ -276,15 +280,27 @@ router.put('/:imageId', async (req: Request, res: Response) => {
 // DELETE - Delete golden image
 router.delete('/:imageId', async (req: Request, res: Response) => {
   try {
-    await psService.executeCommandRaw('Remove-FlashdbGoldenImage', {
-      GoldenImageId: req.params.imageId
+    const imageId = req.params.imageId;
+
+    logger.info(`Deleting golden image: ${imageId}`);
+    const result = await psService.executeCommand('Remove-FlashdbGoldenImage', {
+      GoldenImageId: imageId,
+      Force: req.query.force === 'true'
     });
-    invalidateCache(['/golden-images', '/metrics']);
-    return res.json({ success: true, message: 'Golden image deleted successfully' });
+    invalidateCache(['/golden-images', '/clones', '/checkpoints', '/metrics']);
+
+    return res.json({
+      success: true,
+      data: result,
+      message: 'Golden image deleted successfully'
+    });
   } catch (error: any) {
     logger.error(`Error deleting golden image: ${error.message}`);
     const statusCode = /not found/i.test(error.message) ? 404 : 400;
-    return res.status(statusCode).json({ success: false, message: error.message });
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 

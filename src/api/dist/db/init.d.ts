@@ -27,6 +27,11 @@ export declare function checkStateManagementTables(): Promise<boolean>;
  */
 export declare function initializeInstanceSchema(): Promise<void>;
 /**
+ * Initialize the RBAC schema
+ * Creates tables for user management, roles, permissions, and access control
+ */
+export declare function initializeRbacSchema(): Promise<void>;
+/**
  * Get database information
  */
 export declare function getDatabaseInfo(): Promise<any>;

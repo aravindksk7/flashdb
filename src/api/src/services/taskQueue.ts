@@ -3,7 +3,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../logger';
 
-export type TaskType = 'create-clone' | 'delete-clone' | 'create-checkpoint' | 'restore-checkpoint' | 'delete-checkpoint';
+export type TaskType = 'create-clone' | 'delete-clone' | 'create-checkpoint' | 'restore-checkpoint' | 'delete-checkpoint' | 'validate-clone' | 'repair-clone' | 'validate-all-clones';
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface Task {
@@ -15,6 +15,7 @@ export interface Task {
   startedAt: string | null;
   completedAt: string | null;
   error: string | null;
+  result?: any;
   retryCount: number;
 }
 
@@ -127,7 +128,7 @@ class TaskQueue {
     return null;
   }
 
-  updateTask(id: string, status: TaskStatus, _result?: any, error?: string): void {
+  updateTask(id: string, status: TaskStatus, result?: any, error?: string): void {
     const task = this.queue.find(t => t.id === id);
     if (!task) {
       logger.warn(`Task not found: ${id}`);
@@ -139,6 +140,10 @@ class TaskQueue {
 
     if (error) {
       task.error = error;
+    }
+
+    if (result !== undefined) {
+      task.result = result;
     }
 
     if (task.startedAt && status === 'completed') {

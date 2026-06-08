@@ -809,10 +809,15 @@ export class CheckpointOperationRepository {
     let sql = `
       SELECT TOP (@limit) *
       FROM CheckpointOperations
-      WHERE cloneId = @cloneId
+      WHERE 1 = 1
     `;
 
-    const params: any = { limit, cloneId };
+    const params: any = { limit };
+
+    if (cloneId) {
+      sql += ` AND cloneId = @cloneId`;
+      params.cloneId = cloneId;
+    }
 
     if (operationType) {
       sql += ` AND operationType = @operationType`;

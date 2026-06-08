@@ -82,13 +82,17 @@ router.get('/cluster-status', async (_req, res) => {
         const config = (0, instanceConfig_1.getInstanceConfig)();
         const status = await config.getClusterStatus();
         const currentInstance = config.getInstanceInfo();
+        const inactiveInstances = Math.max(0, status.totalInstances - status.activeInstances - status.unhealthyInstances);
+        const clusterHealth = status.activeInstances > 0 ? 'healthy' : 'unhealthy';
         return res.json({
             success: true,
             data: {
                 clusterEnabled: config.isClusterMode(),
-                clusterHealth: status.activeInstances > 0 ? 'healthy' : 'unhealthy',
+                clusterHealth,
+                status: clusterHealth,
                 totalInstances: status.totalInstances,
                 activeInstances: status.activeInstances,
+                inactiveInstances,
                 unhealthyInstances: status.unhealthyInstances,
                 currentInstance: {
                     instanceId: currentInstance.instanceId,

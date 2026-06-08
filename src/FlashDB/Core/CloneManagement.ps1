@@ -134,8 +134,17 @@ function New-FlashdbClone {
             Write-Verbose "Creating VHDX differencing disk from golden image"
             $vhdxPath = Join-Path $StoragePath "$cloneId.vhdx"
 
-            # Use actual VHDX API
-            New-VHD -Path $vhdxPath -Differencing -ParentPath $goldenVhdxPath -ErrorAction Stop | Out-Null
+            # Use VHD Operations module if available, otherwise fallback to raw New-VHD
+            try {
+                $vhdCreateResult = Invoke-FlashdbCloneDiskCreate -ParentDiskPath $goldenVhdxPath -CloneDiskPath $vhdxPath -ErrorAction Stop
+                if (-not $vhdCreateResult.Success) {
+                    throw "Failed to create clone disk: $($vhdCreateResult.Diagnostics -join ', ')"
+                }
+                Write-Verbose "Clone disk created successfully: $($vhdCreateResult.Diagnostics -join ', ')"
+            } catch {
+                Write-Warning "VHD Operations wrapper failed, using legacy New-VHD: $_"
+                New-VHD -Path $vhdxPath -Differencing -ParentPath $goldenVhdxPath -ErrorAction Stop | Out-Null
+            }
 
             # Verify creation
             if (-not (Test-Path -Path $vhdxPath)) {
@@ -385,8 +394,18 @@ function Connect-FlashdbClone {
 
             Write-Verbose "Attaching clone VHDX: $vhdxPath"
 
-            # Mount VHDX using actual Windows API
-            Mount-VHD -Path $vhdxPath -ErrorAction Stop | Out-Null
+            # Mount VHDX using VHD Operations module if available
+            try {
+                $vhdMountResult = Invoke-FlashdbCloneDiskMount -DiskPath $vhdxPath -ErrorAction Stop
+                if (-not $vhdMountResult.Success) {
+                    throw "Failed to mount clone disk: $($vhdMountResult.Diagnostics -join ', ')"
+                }
+                Write-Verbose "Clone disk mounted successfully: $($vhdMountResult.Diagnostics -join ', ')"
+            } catch {
+                Write-Warning "VHD Operations wrapper failed, using legacy Mount-VHD: $_"
+                Mount-VHD -Path $vhdxPath -ErrorAction Stop | Out-Null
+                Write-Verbose "VHDX mounted successfully using legacy method"
+            }
 
             # Get mounted disk information
             $vhdDisk = Get-VHD -Path $vhdxPath -ErrorAction Stop
@@ -554,14 +573,21 @@ EXEC sp_detach_db N'$databaseName', 'true';
                 Write-Warning "Database metadata incomplete, skipping SQL Server detach"
             }
 
-            # Dismount VHDX using actual Windows API
+            # Dismount VHDX using VHD Operations module if available
             try {
-                Dismount-VHD -Path $metadata.clone.vhdxPath -ErrorAction Stop | Out-Null
-                Write-Verbose "VHDX dismounted successfully"
+                $vhdDismountResult = Invoke-FlashdbCloneDiskDismount -DiskPath $metadata.clone.vhdxPath -ErrorAction Stop
+                if (-not $vhdDismountResult.Success) {
+                    Write-Warning "VHD dismount failed with result: $($vhdDismountResult.Diagnostics -join ', ')"
+                } else {
+                    Write-Verbose "VHDX dismounted successfully: $($vhdDismountResult.Diagnostics -join ', ')"
+                }
             } catch {
-                Write-Warning "Failed to dismount VHDX: $_"
-                if (-not $Force) {
-                    throw "Failed to dismount VHDX: $_`nUse -Force to bypass"
+                Write-Warning "VHD Operations wrapper failed, using legacy Dismount-VHD: $_"
+                try {
+                    Dismount-VHD -Path $metadata.clone.vhdxPath -ErrorAction Stop | Out-Null
+                    Write-Verbose "VHDX dismounted successfully using legacy method"
+                } catch {
+                    Write-Warning "Failed to dismount VHDX: $_"
                 }
             }
 

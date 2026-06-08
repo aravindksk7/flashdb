@@ -42,6 +42,7 @@ exports.initializeStateSchema = initializeStateSchema;
 exports.checkDatabaseTables = checkDatabaseTables;
 exports.checkStateManagementTables = checkStateManagementTables;
 exports.initializeInstanceSchema = initializeInstanceSchema;
+exports.initializeRbacSchema = initializeRbacSchema;
 exports.getDatabaseInfo = getDatabaseInfo;
 const sqlClient_1 = require("../services/sqlClient");
 const logger_1 = __importDefault(require("../logger"));
@@ -85,6 +86,8 @@ async function initializeDatabaseSchema() {
         await initializeQueueSchema();
         // Initialize instance schema (Phase 5b.4)
         await initializeInstanceSchema();
+        // Initialize RBAC schema (Phase 5b.5)
+        await initializeRbacSchema();
     }
     catch (error) {
         logger_1.default.error(`Error initializing database schema: ${error.message}`);
@@ -242,6 +245,43 @@ async function initializeInstanceSchema() {
     catch (error) {
         logger_1.default.error(`Error initializing instance schema: ${error.message}`);
         // Don't throw - instance management is optional and can degrade gracefully
+    }
+}
+/**
+ * Initialize the RBAC schema
+ * Creates tables for user management, roles, permissions, and access control
+ */
+async function initializeRbacSchema() {
+    try {
+        const sqlClient = (0, sqlClient_1.getSqlClient)();
+        // Read RBAC schema file
+        const rbacSchemaPath = path.join(__dirname, 'rbacSchema.sql');
+        if (!fs.existsSync(rbacSchemaPath)) {
+            logger_1.default.warn(`RBAC schema file not found: ${rbacSchemaPath}. RBAC tables may need manual creation.`);
+            return;
+        }
+        const rbacSchemaSQL = fs.readFileSync(rbacSchemaPath, 'utf-8');
+        // Split by GO statements and execute each batch
+        const batches = rbacSchemaSQL.split(/\nGO\n/i);
+        for (const batch of batches) {
+            const trimmedBatch = batch.trim();
+            if (trimmedBatch.length > 0) {
+                try {
+                    await sqlClient.execute(trimmedBatch);
+                }
+                catch (error) {
+                    // Ignore errors about objects that already exist
+                    if (!error.message.includes('already exists')) {
+                        logger_1.default.warn(`RBAC schema execution warning: ${error.message}`);
+                    }
+                }
+            }
+        }
+        logger_1.default.info('RBAC schema initialized successfully');
+    }
+    catch (error) {
+        logger_1.default.error(`Error initializing RBAC schema: ${error.message}`);
+        // Don't throw - RBAC is optional and can degrade gracefully
     }
 }
 /**
