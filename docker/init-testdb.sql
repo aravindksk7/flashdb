@@ -264,20 +264,13 @@ LEFT JOIN dbo.Orders o ON c.CustomerID = o.CustomerID
 GROUP BY c.CustomerID, c.CustomerName;
 GO
 
--- Print confirmation
+-- Print confirmation (while in TestDB context)
 DECLARE @TotalCustomers INT = (SELECT COUNT(*) FROM dbo.Customers);
 DECLARE @TotalOrders INT = (SELECT COUNT(*) FROM dbo.Orders);
 DECLARE @TotalOrderItems INT = (SELECT COUNT(*) FROM dbo.OrderItems);
 DECLARE @TotalProducts INT = (SELECT COUNT(*) FROM dbo.Products);
 DECLARE @QueueTables INT = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN ('flashdb_queue', 'flashdb_queue_archive') AND TABLE_SCHEMA = 'dbo');
 DECLARE @InstanceTable INT = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'flashdb_instances' AND TABLE_SCHEMA = 'dbo');
-
--- Verify database was created and is accessible
-IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'TestDB')
-BEGIN
-    PRINT 'ERROR: TestDB was not created successfully!';
-    RAISERROR('TestDB creation failed', 16, 1);
-END
 
 PRINT 'Test database created successfully!';
 PRINT 'Tables: Customers, Orders, OrderItems, Products, State Management, Task Queue, Multi-Instance Cluster';
