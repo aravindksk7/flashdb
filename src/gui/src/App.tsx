@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
 import { CreateGoldenImageForm } from './components/CreateGoldenImageForm';
 import { CreateCloneForm } from './components/CreateCloneForm';
 import { CheckpointManager } from './components/CheckpointManager';
-import { OperationHistory } from './components/OperationHistory';
+import { OperationHistory, type OperationHistoryRef } from './components/OperationHistory';
 import Dashboard from './components/Dashboard';
 import { PoolMetrics } from './components/PoolMetrics';
 import { QueueMetrics } from './components/QueueMetrics';
 import { ClusterStatus } from './components/ClusterStatus';
 import DeploymentGuide from './components/DeploymentGuide';
 import { ConsoleIcon } from './components/ConsoleIcon';
+import { CloneCard } from './components/CloneCard';
 
 interface Clone {
   id: string;
@@ -41,6 +42,7 @@ interface GoldenImage {
   outputPath?: string;
   backupFile?: string;
   sourceConnection?: string;
+  destinationConnection?: string;
   status?: string;
   selectedTables?: string[];
   copiedTables?: string[];
@@ -119,6 +121,7 @@ const normalizeGoldenImage = (value: any): GoldenImage | null => {
     outputPath: firstValue<string>(value, ['outputPath', 'OutputPath']),
     backupFile: firstValue<string>(value, ['backupFile', 'BackupFile']),
     sourceConnection: firstValue<string>(value, ['sourceConnection', 'SourceConnection']),
+    destinationConnection: firstValue<string>(value, ['destinationConnection', 'DestinationConnection']),
     status: firstValue<string>(value, ['status', 'Status']),
     selectedTables: asArray(firstValue<any>(value, ['selectedTables', 'SelectedTables'])).map(String),
     copiedTables: asArray(firstValue<any>(value, ['copiedTables', 'CopiedTables'])).map(String),
@@ -183,6 +186,7 @@ function App() {
   const [editingGoldenImageId, setEditingGoldenImageId] = useState<string | null>(null);
   const [editingGoldenImage, setEditingGoldenImage] = useState<Partial<GoldenImage>>({});
   const [activeTab, setActiveTab] = useState<AppTab>(getInitialTab);
+  const operationHistoryRef = useRef<OperationHistoryRef>(null);
 
   const API_BASE = '/api';
 
@@ -234,6 +238,7 @@ function App() {
       outputPath: image.outputPath || '/app/data/golden-images',
       backupFile: image.backupFile || '',
       sourceConnection: image.sourceConnection || '',
+      destinationConnection: image.destinationConnection || '',
       status: image.status || 'Ready'
     });
   };
@@ -361,6 +366,13 @@ function App() {
         >
           <ConsoleIcon name="explore" className="console-icon" />
           Audit
+        </button>
+        <button
+          className={`tab ${activeTab === 'deployment' ? 'active' : ''}`}
+          onClick={() => selectTab('deployment')}
+        >
+          <ConsoleIcon name="status" className="console-icon" />
+          Deployment
         </button>
       </nav>
 
@@ -546,6 +558,14 @@ function App() {
                             rows={3}
                           />
                         </div>
+                        <div className="form-group">
+                          <label>Destination Connection</label>
+                          <textarea
+                            value={editingGoldenImage.destinationConnection || ''}
+                            onChange={(event) => updateEditingGoldenImage('destinationConnection', event.target.value)}
+                            rows={3}
+                          />
+                        </div>
                         <div className="card-actions">
                           <button className="btn-secondary btn-icon" onClick={() => handleUpdateGoldenImage(image.id)}>
                             <ConsoleIcon name="edit" className="console-icon" />
@@ -613,7 +633,15 @@ function App() {
               </div>
             </div>
 
-            <CreateCloneForm onSuccess={loadData} />
+            <CreateCloneForm
+              onSuccess={loadData}
+              goldenImages={goldenImages.map((image) => ({
+                id: image.id,
+                name: image.name,
+                version: image.version,
+                method: image.method
+              }))}
+            />
 
             <h3>Active Clones</h3>
             {clones.length === 0 ? (
@@ -625,46 +653,22 @@ function App() {
             ) : (
               <div className="grid">
                 {clones.map((clone) => (
-                  <div key={clone.id} className="card clone-card" onClick={() => setSelectedClone(clone)}>
-                    <div className="card-header-row">
-                      <h4>{clone.name}</h4>
-                      <span className={`chip chip-${toneForStatus(clone.status)}`}>{clone.status}</span>
-                    </div>
-                    <div className="chip-row">
-                      <span className="chip chip-cyan">{clone.databaseType}</span>
-                      <span className="chip chip-green">{clone.databaseName}</span>
-                      <span className="chip chip-violet">{clone.instancePath}</span>
-                    </div>
-                    <div className="stat-grid compact">
-                      <div className="stat-mini"><span>Created</span><strong>{formatDate(clone.createdAt)}</strong></div>
-                      <div className="stat-mini"><span>Golden Image</span><strong>{clone.goldenImageId || 'Unknown'}</strong></div>
-                      <div className="stat-mini"><span>Tables</span><strong>{compactNumber(clone.tableCount || 0)}</strong></div>
-                      <div className="stat-mini"><span>Rows</span><strong>{compactNumber(clone.rowCount || 0)}</strong></div>
-                      <div className="stat-mini"><span>Size</span><strong>{formatBytes(clone.sizeBytes)}</strong></div>
-                    </div>
-                    <div className="card-actions">
-                      <button
-                        className="btn-secondary btn-icon"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedClone(clone);
-                        }}
-                      >
-                        <ConsoleIcon name="restore" className="console-icon" />
-                        Restore Points
-                      </button>
-                      <button
-                        className="btn-danger btn-icon"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteClone(clone.id);
-                        }}
-                      >
-                        <ConsoleIcon name="delete" className="console-icon" />
-                        Delete
-                      </button>
-                    </div>
-                  </div>
+                  <CloneCard
+                    key={clone.id}
+                    cloneId={clone.id}
+                    cloneName={clone.name}
+                    databaseName={clone.databaseName}
+                    instancePath={clone.instancePath}
+                    status={clone.status}
+                    createdAt={clone.createdAt}
+                    tableCount={clone.tableCount}
+                    rowCount={clone.rowCount}
+                    sizeBytes={clone.sizeBytes}
+                    onOpenCheckpoints={() => setSelectedClone(clone)}
+                    onDelete={() => handleDeleteClone(clone.id)}
+                    onAction={loadData}
+                    onOperationCompleted={() => operationHistoryRef.current?.refresh()}
+                  />
                 ))}
               </div>
             )}
@@ -705,8 +709,14 @@ function App() {
                 <span className="chip chip-green">All clones</span>
               </div>
             </div>
-            <OperationHistory title="All Operations" />
+            <OperationHistory ref={operationHistoryRef} title="All Operations" />
           </div>
+        </div>
+      )}
+
+      {activeTab === 'deployment' && (
+        <div className="container">
+          <DeploymentGuide />
         </div>
       )}
 

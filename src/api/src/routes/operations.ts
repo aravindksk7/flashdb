@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getCheckpointOperationRepository } from '../services/repository';
 import { getTaskQueue, Task } from '../services/taskQueue';
+import { getSqlClient } from '../services/sqlClient';
 import logger from '../logger';
 
 const router = Router();
@@ -10,15 +11,27 @@ type TimelineOperation = {
   cloneId: string;
   checkpointId: string;
   checkpointName: string;
-  type: 'create' | 'restore' | 'delete' | string;
+  type: 'create' | 'restore' | 'delete' | 'validation' | 'repair' | string;
   status: string;
   timestamp: string;
   completedAt?: string | null;
   message?: string | null;
-  source: 'repository' | 'queue';
+  source: 'repository' | 'queue' | 'audit';
+  findingsCount?: number;
+  validationStatus?: 'healthy' | 'unhealthy';
+  repairStatus?: string;
 };
 
-const checkpointTaskTypes = new Set(['create-checkpoint', 'restore-checkpoint', 'delete-checkpoint']);
+const operationTaskTypes = new Set([
+  'create-clone',
+  'delete-clone',
+  'create-checkpoint',
+  'restore-checkpoint',
+  'delete-checkpoint',
+  'validate-clone',
+  'repair-clone',
+  'validate-all-clones'
+]);
 
 function toIsoString(value: any): string | undefined {
   if (!value) return undefined;
@@ -28,16 +41,73 @@ function toIsoString(value: any): string | undefined {
 }
 
 function normalizeOperationType(value: any): string {
-  const operationType = String(value || '').replace('-checkpoint', '');
-  if (operationType === 'create' || operationType === 'restore' || operationType === 'delete') {
-    return operationType;
+  const operationType = String(value || '');
+  const mappedTypes: Record<string, string> = {
+    'create-checkpoint': 'create',
+    'restore-checkpoint': 'restore',
+    'delete-checkpoint': 'delete',
+    'validate-clone': 'validation',
+    'validate-all-clones': 'validation',
+    'repair-clone': 'repair'
+  };
+
+  if (mappedTypes[operationType]) {
+    return mappedTypes[operationType];
   }
+
   return operationType || 'unknown';
 }
 
 function stripAnsi(value: any): string | null {
   if (!value) return null;
   return String(value).replace(/\u001b\[[0-9;]*m/g, '').trim();
+}
+
+function parseJsonField(value: any): any {
+  if (!value || typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeHealthStatus(value: any): 'healthy' | 'unhealthy' | undefined {
+  if (!value) return undefined;
+  const normalized = String(value).toLowerCase();
+  if (normalized === 'healthy' || normalized === 'success') return 'healthy';
+  if (normalized === 'unhealthy' || normalized === 'failed' || normalized === 'failure') return 'unhealthy';
+  return undefined;
+}
+
+function getTaskLabel(type: string, payload: Record<string, any>): string {
+  if (type === 'validation') return 'Clone validation';
+  if (type === 'repair') return 'Clone repair';
+  if (type === 'create-clone') return payload.name || payload.cloneName || 'Clone creation';
+  if (type === 'delete-clone') return payload.name || payload.cloneName || 'Clone deletion';
+  if (type === 'create') return payload.checkpointName || payload.name || 'New restore point';
+  if (type === 'restore') return payload.checkpointName || payload.name || 'Restore point';
+  if (type === 'delete') return payload.checkpointName || payload.name || 'Restore point';
+  return payload.name || 'Operation';
+}
+
+function getTaskMessage(task: Task, type: string, result: any): string | null {
+  const error = stripAnsi(task.error);
+  if (error) return error;
+
+  if (task.status !== 'completed') return null;
+
+  if (type === 'validation') {
+    const status = result?.status ? `: ${result.status}` : '';
+    return `Validation completed${status}`;
+  }
+
+  if (type === 'repair') {
+    const status = result?.status ? `: ${result.status}` : '';
+    return `Repair completed${status}`;
+  }
+
+  return stripAnsi(result?.message) || 'Operation completed successfully';
 }
 
 function mapRepositoryOperation(op: any): TimelineOperation {
@@ -58,25 +128,36 @@ function mapRepositoryOperation(op: any): TimelineOperation {
 
 function mapQueueTask(task: Task): TimelineOperation {
   const type = normalizeOperationType(task.type);
-  const checkpointId = String(task.payload.checkpointId || '');
-  const checkpointName = String(
-    task.payload.checkpointName ||
-    task.payload.name ||
-    checkpointId ||
-    (type === 'create' ? 'New restore point' : 'Restore point')
-  );
+  const payload = task.payload || {};
+  const result = task.result || {};
+  const checkpointId = String(payload.checkpointId || payload.validationId || payload.repairId || '');
+  const checkpointName = String(payload.checkpointName || getTaskLabel(type, payload));
+  const findingsCount = Array.isArray(result.findings)
+    ? result.findings.length
+    : typeof result.findingsCount === 'number'
+      ? result.findingsCount
+      : undefined;
+  const validationStatus = type === 'validation'
+    ? normalizeHealthStatus(result.status || result.result)
+    : undefined;
+  const repairStatus = type === 'repair'
+    ? String(result.status || (task.status === 'completed' ? 'Completed' : task.status))
+    : undefined;
 
   return {
     id: task.id,
-    cloneId: String(task.payload.cloneId || ''),
+    cloneId: String(payload.cloneId || result.cloneId || ''),
     checkpointId,
     checkpointName,
     type,
     status: task.status,
     timestamp: task.startedAt || task.createdAt,
     completedAt: task.completedAt,
-    message: stripAnsi(task.error) || (task.status === 'completed' ? 'Operation completed successfully' : null),
-    source: 'queue'
+    message: getTaskMessage(task, type, result),
+    source: 'queue',
+    findingsCount,
+    validationStatus,
+    repairStatus
   };
 }
 
@@ -85,8 +166,140 @@ function getQueueOperations(): TimelineOperation[] {
   const { queue, completed, failed } = taskQueue.getAllTasks();
 
   return [...queue, ...completed, ...failed]
-    .filter(task => checkpointTaskTypes.has(task.type))
+    .filter(task => operationTaskTypes.has(task.type))
     .map(mapQueueTask);
+}
+
+async function getPersistentQueueOperations(limit: number): Promise<TimelineOperation[]> {
+  try {
+    const sqlClient = getSqlClient();
+    const result = await sqlClient.query<any>(
+      `SELECT TOP (@limit)
+          [id],
+          [type],
+          [status],
+          [payload],
+          [retryCount],
+          [createdAt],
+          [startedAt],
+          [completedAt],
+          [error],
+          [result]
+       FROM (
+          SELECT
+            [id],
+            [type],
+            [status],
+            [payload],
+            [retry_count] AS [retryCount],
+            [created_at] AS [createdAt],
+            [started_at] AS [startedAt],
+            [completed_at] AS [completedAt],
+            [error],
+            [result]
+          FROM [dbo].[flashdb_queue]
+          UNION ALL
+          SELECT
+            [id],
+            [type],
+            [status],
+            [payload],
+            [retry_count] AS [retryCount],
+            [created_at] AS [createdAt],
+            [started_at] AS [startedAt],
+            [completed_at] AS [completedAt],
+            [error],
+            [result]
+          FROM [dbo].[flashdb_queue_archive]
+       ) AS tasks
+       WHERE [type] IN (
+          'create-clone',
+          'delete-clone',
+          'create-checkpoint',
+          'restore-checkpoint',
+          'delete-checkpoint',
+          'validate-clone',
+          'repair-clone',
+          'validate-all-clones'
+       )
+       ORDER BY COALESCE([completedAt], [startedAt], [createdAt]) DESC`,
+      { limit }
+    );
+
+    return (result.recordset || []).map(row => mapQueueTask({
+      id: row.id,
+      type: row.type,
+      status: row.status,
+      payload: parseJsonField(row.payload) || {},
+      createdAt: toIsoString(row.createdAt) || new Date().toISOString(),
+      startedAt: toIsoString(row.startedAt) || null,
+      completedAt: toIsoString(row.completedAt) || null,
+      error: row.error || null,
+      result: parseJsonField(row.result),
+      retryCount: row.retryCount || 0
+    } as Task));
+  } catch (error: any) {
+    logger.debug(`Persistent queue operations unavailable: ${error.message}`);
+    return [];
+  }
+}
+
+async function getPersistedAuditOperations(cloneId?: string, limit: number = 250): Promise<TimelineOperation[]> {
+  try {
+    const sqlClient = getSqlClient();
+
+    let query = `SELECT TOP (@limit)
+      [id],
+      [operationType],
+      [targetId],
+      [status],
+      [startedAt],
+      [completedAt],
+      [errorMessage]
+     FROM [dbo].[OperationMetrics]`;
+
+    const params: Record<string, any> = { limit };
+
+    if (cloneId) {
+      query += ` WHERE [targetId] = @targetId`;
+      params.targetId = cloneId;
+    }
+
+    query += ` ORDER BY [startedAt] DESC`;
+
+    const result = await sqlClient.query<any>(query, params);
+
+    return (result.recordset || []).map(row => ({
+      id: row.id,
+      cloneId: row.targetId || '',
+      checkpointId: '',
+      checkpointName: 'Audit Operation',
+      type: row.operationType || 'unknown',
+      status: row.status || 'unknown',
+      timestamp: toIsoString(row.startedAt) || new Date().toISOString(),
+      completedAt: toIsoString(row.completedAt) || null,
+      message: row.errorMessage || null,
+      source: 'audit' as const
+    } as TimelineOperation));
+  } catch (error: any) {
+    logger.debug(`Persisted audit operations unavailable: ${error.message}`);
+    return [];
+  }
+}
+
+async function listCheckpointOperationsSafely(
+  operationRepo: any,
+  cloneId: string,
+  operationType: string | undefined,
+  status: string | undefined,
+  limit: number
+): Promise<any[]> {
+  try {
+    return await operationRepo.listOperations(cloneId, operationType, status, limit);
+  } catch (error: any) {
+    logger.warn(`Checkpoint operation history unavailable: ${error.message}`);
+    return [];
+  }
 }
 
 function getQueueOperationsForClone(cloneId: string): TimelineOperation[] {
@@ -132,7 +345,8 @@ router.get('/', async (req: Request, res: Response) => {
 
     if (checkpointId) {
       // Query all operations and filter by checkpoint
-      const allOps = await operationRepo.listOperations(
+      const allOps = await listCheckpointOperationsSafely(
+        operationRepo,
         '',
         operationType as string | undefined,
         status as string | undefined,
@@ -143,7 +357,8 @@ router.get('/', async (req: Request, res: Response) => {
       );
       logger.info(`Retrieved ${operations.length} checkpoint operations for checkpoint ${checkpointId}`);
     } else if (cloneId) {
-      operations = await operationRepo.listOperations(
+      operations = await listCheckpointOperationsSafely(
+        operationRepo,
         cloneId as string,
         operationType as string | undefined,
         status as string | undefined,
@@ -151,19 +366,38 @@ router.get('/', async (req: Request, res: Response) => {
       );
       logger.info(`Retrieved ${operations.length} checkpoint operations for clone ${cloneId}`);
     } else {
-      logger.info('Retrieving all queued checkpoint operations');
+      operations = await listCheckpointOperationsSafely(
+        operationRepo,
+        '',
+        operationType as string | undefined,
+        status as string | undefined,
+        parsedLimit
+      );
+      logger.info(`Retrieved ${operations.length} checkpoint operations across all clones`);
     }
 
-    let data: any[] = operations;
-    const queueOperations = (cloneId ? getQueueOperationsForClone(cloneId as string) : getQueueOperations())
+    const persistentQueueOperations = await getPersistentQueueOperations(parsedLimit);
+    const allQueueOperations = [
+      ...persistentQueueOperations,
+      ...(cloneId ? getQueueOperationsForClone(cloneId as string) : getQueueOperations())
+    ];
+    const queueOperations = allQueueOperations
+      .filter(op => !cloneId || op.cloneId === cloneId)
       .filter(op => !checkpointId || op.checkpointId === checkpointId)
       .filter(op => !operationType || op.type === operationType)
       .filter(op => !status || op.status === status);
 
-    data = dedupeAndSortTimeline(
+    // Also retrieve persisted audit operations from OperationMetrics table
+    const auditOperations = await getPersistedAuditOperations(
+      cloneId as string | undefined,
+      parsedLimit
+    );
+
+    const data = dedupeAndSortTimeline(
       [
         ...operations.map(mapRepositoryOperation),
-        ...queueOperations
+        ...queueOperations,
+        ...auditOperations
       ],
       parsedLimit
     );

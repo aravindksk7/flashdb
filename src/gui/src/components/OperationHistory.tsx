@@ -1,20 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import './OperationHistory.css';
 
 const API_BASE = '/api';
+
+export interface OperationHistoryRef {
+  refresh: () => Promise<void>;
+}
 
 interface TimelineOperation {
   id: string;
   cloneId: string;
   checkpointId: string;
   checkpointName: string;
-  type: 'create' | 'restore' | 'delete' | string;
+  type: 'create' | 'restore' | 'delete' | 'validation' | 'repair' | string;
   status: 'pending' | 'processing' | 'completed' | 'failed' | string;
   timestamp: string;
   completedAt?: string | null;
   message?: string | null;
   source?: string;
+  findingsCount?: number;
+  validationStatus?: 'healthy' | 'unhealthy';
+  repairStatus?: 'planned' | 'executing' | 'completed' | 'cancelled';
 }
 
 interface OperationHistoryProps {
@@ -23,23 +30,36 @@ interface OperationHistoryProps {
   searchable?: boolean;
 }
 
-export const OperationHistory: React.FC<OperationHistoryProps> = ({
+export const OperationHistory = React.forwardRef<OperationHistoryRef, OperationHistoryProps>(({
   cloneId,
   title = 'Operation History',
   searchable = true
-}) => {
+}, ref) => {
   const [operations, setOperations] = useState<TimelineOperation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadHistory();
     const interval = setInterval(loadHistory, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    };
   }, [cloneId]);
+
+  // Expose refresh method via ref
+  React.useImperativeHandle(ref, () => ({
+    refresh: async () => {
+      // Debounce rapid refresh calls
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = setTimeout(loadHistory, 500) as any;
+    }
+  }), []);
 
   const loadHistory = async () => {
     try {
@@ -79,12 +99,18 @@ export const OperationHistory: React.FC<OperationHistoryProps> = ({
 
   const getTypeIcon = (type: string) => {
     switch (type) {
+      case 'create-clone':
       case 'create':
         return '+';
       case 'restore':
         return 'R';
+      case 'delete-clone':
       case 'delete':
         return 'X';
+      case 'validation':
+        return '✓';
+      case 'repair':
+        return '⚙';
       default:
         return '•';
     }
@@ -92,12 +118,20 @@ export const OperationHistory: React.FC<OperationHistoryProps> = ({
 
   const getTypeLabel = (type: string) => {
     switch (type) {
+      case 'create-clone':
+        return 'Clone Created';
+      case 'delete-clone':
+        return 'Clone Deleted';
       case 'create':
         return 'Created';
       case 'restore':
         return 'Restored';
       case 'delete':
         return 'Deleted';
+      case 'validation':
+        return 'Validation';
+      case 'repair':
+        return 'Repair';
       default:
         return type || 'Unknown';
     }
@@ -246,6 +280,33 @@ export const OperationHistory: React.FC<OperationHistoryProps> = ({
                   </>
                 )}
 
+                {op.type === 'validation' && op.findingsCount !== undefined && (
+                  <div className="detail-row">
+                    <span className="label">Findings:</span>
+                    <span className="value">{op.findingsCount} issue{op.findingsCount !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {op.type === 'validation' && op.validationStatus && (
+                  <div className="detail-row">
+                    <span className="label">Status:</span>
+                    <span
+                      className="value"
+                      style={{
+                        color: op.validationStatus === 'healthy' ? '#2e7d32' : '#d32f2f'
+                      }}
+                    >
+                      {op.validationStatus === 'healthy' ? '✓ Healthy' : '✕ Unhealthy'}
+                    </span>
+                  </div>
+                )}
+                {op.type === 'repair' && op.repairStatus && (
+                  <div className="detail-row">
+                    <span className="label">Repair:</span>
+                    <span className="value">
+                      {op.repairStatus.charAt(0).toUpperCase() + op.repairStatus.slice(1)}
+                    </span>
+                  </div>
+                )}
                 {op.message && (
                   <div className="detail-row">
                     <span className="label">Message:</span>
@@ -271,6 +332,7 @@ export const OperationHistory: React.FC<OperationHistoryProps> = ({
       </div>
     </div>
   );
-};
+});
 
+OperationHistory.displayName = 'OperationHistory';
 export default OperationHistory;
