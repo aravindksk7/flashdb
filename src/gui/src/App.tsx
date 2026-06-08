@@ -12,10 +12,8 @@ import { ClusterStatus } from './components/ClusterStatus';
 import DeploymentGuide from './components/DeploymentGuide';
 import { ConsoleIcon } from './components/ConsoleIcon';
 import { CloneCard } from './components/CloneCard';
-import { ContractComplianceDashboard } from './components/ContractComplianceDashboard';
-import { ReleaseGateDashboard } from './components/ReleaseGateDashboard';
-import { FeatureFlagDashboard } from './components/FeatureFlagDashboard';
 import { HostManagement } from './components/HostManagement';
+import { waitForTaskCompletion } from './utils/taskPolling';
 
 interface Clone {
   id: string;
@@ -221,9 +219,23 @@ function App() {
     if (!window.confirm('Are you sure you want to delete this clone?')) return;
 
     try {
-      await axios.delete(`${API_BASE}/clones/${cloneId}?deleteVhdx=true`);
+      const response = await axios.delete(`${API_BASE}/clones/${cloneId}?deleteVhdx=true`);
+
+      // If delete was queued (202), wait for task completion
+      const taskId = response.data?.data?.taskId;
+      if (response.status === 202 && taskId) {
+        try {
+          await waitForTaskCompletion(taskId);
+        } catch (waitErr: any) {
+          setError(`Clone deletion task failed: ${waitErr.message}`);
+          return;
+        }
+      }
+
+      // Only remove from UI after task completes successfully
       setClones(clones.filter(c => c.id !== cloneId));
       if (selectedClone?.id === cloneId) setSelectedClone(null);
+      setError(null);
     } catch (err: any) {
       setError(`Failed to delete clone: ${err.response?.data?.message || err.message}`);
     }
@@ -735,24 +747,6 @@ function App() {
       {activeTab === 'infrastructure' && (
         <div className="container">
           <HostManagement onHostsUpdated={loadData} />
-          <div style={{ marginTop: '2rem' }}>
-            <div className="section">
-              <div className="panel-header">
-                <div>
-                  <div className="panel-kicker">System Operations</div>
-                  <h2>Compliance & Release Management</h2>
-                  <p className="workflow-help">Monitor contract compliance, release gates, and feature flag rollouts.</p>
-                </div>
-              </div>
-            </div>
-            <ContractComplianceDashboard />
-            <div style={{ marginTop: '2rem' }}>
-              <ReleaseGateDashboard />
-            </div>
-            <div style={{ marginTop: '2rem' }}>
-              <FeatureFlagDashboard />
-            </div>
-          </div>
         </div>
       )}
 
